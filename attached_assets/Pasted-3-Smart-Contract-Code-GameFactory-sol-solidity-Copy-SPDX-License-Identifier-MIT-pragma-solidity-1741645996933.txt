@@ -1,0 +1,106 @@
+3. Smart Contract Code
+GameFactory.sol
+solidity
+Copy
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.0;
+
+import "./GameContract.sol";
+
+contract GameFactory {
+    event GameCreated(address indexed gameAddress, address indexed creator);
+
+    function createGame(
+        bytes32 salt,
+        uint256 betAmount,
+        uint256 gameDuration
+    ) external payable returns (address) {
+        require(msg.value == betAmount, "Bet amount required");
+        bytes memory bytecode = type(GameContract).creationCode;
+        bytes memory initCode = abi.encodePacked(bytecode, abi.encode(msg.sender, betAmount, gameDuration));
+        address gameAddress;
+        assembly {
+            gameAddress := create2(msg.value, add(initCode, 0x20), mload(initCode), salt)
+            if iszero(extcodesize(gameAddress)) { revert(0, 0) }
+        }
+        emit GameCreated(gameAddress, msg.sender);
+        return gameAddress;
+    }
+}
+GameContract.sol
+solidity
+Copy
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.0;
+
+contract GameContract {
+    address public creator;
+    uint256 public betAmount;
+    uint256 public gameDuration;
+    uint256 public startTime;
+    address[] public participants;
+    bool public gameEnded;
+    address public winner;
+
+    event BetPlaced(address indexed player, uint256 amount);
+    event GameEnded(address winner, uint256 payout);
+    event CheaterFlagged(address offender);
+
+    constructor(address _creator, uint256 _betAmount, uint256 _gameDuration) payable {
+        require(msg.value == _betAmount, "Initial bet required");
+        creator = _creator;
+        betAmount = _betAmount;
+        gameDuration = _gameDuration;
+        startTime = block.timestamp;
+        participants.push(_creator);
+    }
+
+    function joinGame() external payable {
+        require(!gameEnded, "Game ended");
+        require(msg.value == betAmount, "Incorrect bet amount");
+        participants.push(msg.sender);
+        emit BetPlaced(msg.sender, msg.value);
+    }
+
+    // Called after off-chain game verification via secure WebSocket
+    function declareWinner(address _winner) external {
+        require(!gameEnded, "Game ended");
+        require(isParticipant(_winner), "Not a participant");
+        winner = _winner;
+        gameEnded = true;
+        uint256 pot = address(this).balance;
+        payable(winner).transfer(pot);
+        emit GameEnded(winner, pot);
+    }
+
+    // Allows cancellation after the game duration expires
+    function cancelGame() external {
+        require(!gameEnded, "Game ended");
+        require(block.timestamp >= startTime + gameDuration, "Game still active");
+        for (uint i = 0; i < participants.length; i++) {
+            payable(participants[i]).transfer(betAmount);
+        }
+        gameEnded = true;
+    }
+
+    // Admin-triggered cheat flag: funds go to raffle address
+    function flagCheater(address offender, address raffleAddress) external {
+        require(!gameEnded, "Game ended");
+        // In production, access control must be enforced here.
+        gameEnded = true;
+        uint256 pot = address(this).balance;
+        payable(raffleAddress).transfer(pot);
+        emit CheaterFlagged(offender);
+    }
+
+    function isParticipant(address player) internal view returns (bool) {
+        for (uint i = 0; i < participants.length; i++) {
+            if (participants[i] == player) return true;
+        }
+        return false;
+    }
+
+    function getParticipants() external view returns (address[] memory) {
+        return participants;
+    }
+}

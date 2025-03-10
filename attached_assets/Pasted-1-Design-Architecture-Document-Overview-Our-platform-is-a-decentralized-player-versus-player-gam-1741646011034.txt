@@ -1,0 +1,101 @@
+1. Design & Architecture Document
+Overview
+Our platform is a decentralized, player‑versus‑player gaming network built on Ethereum. It uses smart contracts for secure escrow and automated payouts while offering a sleek, responsive UI for desktop, tablet, and mobile. Players pick from reskinned games (Tetris, Temple Run, Bubble Bop) via a dashboard and Tinder‑style matching to initiate prop bets and compete in real‑time sessions. Private WebSocket channels host live gameplay (with view‑only spectator rooms) and integrated chat rooms enhance social interaction. Leaderboards (game‑specific and global) and weekly tournaments for top players further drive engagement. On‑chain cheat detection enforces fairness—any misbehavior auto‑blacklists offenders and reallocates their funds to a public raffle.
+
+System Architecture
+Frontend
+Tech: React Vite with TypeScript
+UI Features:
+• Responsive dashboard for game selection
+• Tinder‑style “swipe” matching
+• Integrated chat and live score updates via WebSocket
+• Dedicated pages for profiles, leaderboards, and tournaments
+
+Folder Structure:
+
+bash
+Copy
+/frontend
+  /src
+    /components
+      Dashboard.tsx
+      GameCard.tsx
+      UserProfile.tsx
+      LeaderBoard.tsx
+      ChatBox.tsx
+      WebsocketHandler.tsx
+    /pages
+      Home.tsx
+      Game.tsx
+      Profile.tsx
+      Tournament.tsx
+    /services
+      api.ts
+      websocket.ts
+    /styles
+      main.css
+    App.tsx
+    main.tsx
+package.json, tsconfig.json, vite.config.ts
+Backend
+Tech: Express with TypeScript, PostgreSQL
+Responsibilities:
+• RESTful APIs for authentication, game state, leaderboards, tournaments, and chat
+• Database models for users, games, bets, sessions, messages, tournaments
+• Integration with blockchain service to trigger smart contract functions
+
+Folder Structure:
+
+bash
+Copy
+/backend
+  /src
+    /controllers
+      authController.ts
+      gameController.ts
+      leaderboardController.ts
+      tournamentController.ts
+      chatController.ts
+    /models
+      userModel.ts
+      gameModel.ts
+      betModel.ts
+      tournamentModel.ts
+    /routes
+      authRoutes.ts
+      gameRoutes.ts
+      leaderboardRoutes.ts
+      tournamentRoutes.ts
+      chatRoutes.ts
+    /services
+      blockchainService.ts
+      websocketService.ts
+      dbService.ts
+    index.ts
+package.json, tsconfig.json
+Blockchain Integration
+• Smart Contracts:
+– A CREATE2‑based GameFactory deploys game contracts on demand.
+– Each GameContract accepts configuration (bet amount, game duration, etc.), holds escrow, and later releases the pot to the winner.
+– Supports multiple players per match (prop bets) and includes a time‑limit for challenges.
+• Cheat Enforcement:
+– Off-chain game logic sends final scores via secure WebSockets.
+– A dedicated “flagCheater” function auto‑blacklists offenders and sends funds to a raffle wallet.
+
+WebSockets & Chat
+• Real‑time, bidirectional channels for gameplay events
+• Private channels for live matches; public “read‑only” channels for spectators
+• Integrated chat rooms per game for community interaction
+
+Leaderboards & Tournaments
+• Automated ranking updates per game and globally
+• Weekly “Tournament of Champions” for top‑20 players with crypto prize pools
+
+Token Transactions
+• Players may bet in any meme token (fee paid in native ETH)
+• Uniform betting and payout format regardless of game logic
+
+Administration & Scalability
+• Admin panel to integrate new games without deploying new contracts
+• Modular plug‑in architecture for game logic and SC‑configuration
+• Scalable microservices ensure high performance across devices
