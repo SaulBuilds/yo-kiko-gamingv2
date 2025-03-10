@@ -1,33 +1,27 @@
-import '@rainbow-me/rainbowkit/styles.css';
-import {
-  getDefaultWallets,
-  RainbowKitProvider,
-  darkTheme,
-} from '@rainbow-me/rainbowkit';
 import { http, createConfig } from 'wagmi';
-import { mainnet, sepolia } from 'wagmi/chains';
+import { mainnet, sepolia, arbitrum, optimism, base } from 'wagmi/chains';
+import { injected, metaMask, walletConnect } from 'wagmi/connectors';
 import { parseEther } from 'viem';
 
-const projectId = import.meta.env.VITE_WALLETCONNECT_PROJECT_ID!;
-
-const { wallets } = getDefaultWallets({
-  appName: 'Crypto Gaming Platform',
-  projectId,
-  chains: [mainnet, sepolia],
-});
-
+// Create wagmi config with multiple chains
 export const config = createConfig({
-  chains: [mainnet, sepolia],
+  chains: [mainnet, sepolia, arbitrum, optimism, base],
   transports: {
     [mainnet.id]: http(),
     [sepolia.id]: http(),
+    [arbitrum.id]: http(),
+    [optimism.id]: http(),
+    [base.id]: http(),
   },
+  connectors: [
+    injected(),
+    metaMask(),
+    walletConnect({
+      projectId: import.meta.env.VITE_WALLETCONNECT_PROJECT_ID!,
+    }),
+  ],
 });
 
-export const rainbowKitTheme = darkTheme({
-  accentColor: '#7B61FF',
-  borderRadius: 'small',
-});
 
 // Game contract related code
 const GAME_FACTORY_ABI = [
@@ -58,7 +52,6 @@ export class Web3Service {
 
   async createGame(betAmount: string, duration: number) {
     try {
-      // Using viem's parseEther instead of ethers
       const betAmountWei = parseEther(betAmount);
       // Implementation will be updated to use wagmi hooks
       return "game_address";
