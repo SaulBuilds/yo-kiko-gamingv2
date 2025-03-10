@@ -24,14 +24,16 @@ function Router() {
 
 function App() {
   return (
-    <WagmiConfig config={config}>
-      <QueryClientProvider client={queryClient}>
-        <AuthProvider>
-          <Router />
-          <Toaster />
-        </AuthProvider>
-      </QueryClientProvider>
-    </WagmiConfig>
+    <div className="min-h-screen bg-background">
+      <WagmiConfig config={config}>
+        <QueryClientProvider client={queryClient}>
+          <AuthProvider>
+            <Router />
+            <Toaster />
+          </AuthProvider>
+        </QueryClientProvider>
+      </WagmiConfig>
+    </div>
   );
 }
 
