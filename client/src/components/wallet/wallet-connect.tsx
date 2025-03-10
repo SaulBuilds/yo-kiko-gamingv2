@@ -9,17 +9,20 @@ import { useToast } from '@/hooks/use-toast';
 
 export function WalletConnect() {
   const { address, isConnected } = useAccount();
-  const { connect, connectors, isLoading, error } = useConnect();
+  const { connect, connectors } = useConnect();
   const { disconnect } = useDisconnect();
   const { toast } = useToast();
 
   if (isConnected) {
     return (
       <div className="flex items-center gap-2">
-        <Button variant="outline" className="font-mono">
+        <div className="font-mono">
           {address?.slice(0, 6)}...{address?.slice(-4)}
-        </Button>
-        <Button variant="ghost" onClick={() => disconnect()}>
+        </div>
+        <Button 
+          variant="ghost" 
+          onClick={() => disconnect()}
+        >
           Disconnect
         </Button>
       </div>
@@ -36,7 +39,7 @@ export function WalletConnect() {
               .then(() => {
                 toast({
                   title: "Connected",
-                  description: "Your wallet has been connected successfully.",
+                  description: "Wallet connected successfully",
                 });
               })
               .catch((error: Error) => {
@@ -47,12 +50,11 @@ export function WalletConnect() {
                 });
               });
           }}
-          disabled={!connector.ready || isLoading}
+          disabled={!connector.ready}
         >
           Connect with {connector.name}
         </Button>
       ))}
-      {error && <div className="text-red-500 text-sm">{error.message}</div>}
     </div>
   );
 }
