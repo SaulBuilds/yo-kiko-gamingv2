@@ -1,12 +1,12 @@
-import { pgTable, text, serial, integer, timestamp, boolean } from "drizzle-orm/pg-core";
+import { pgTable, text, serial, integer, timestamp } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
 export const users = pgTable("users", {
   id: serial("id").primaryKey(),
-  username: text("username").notNull().unique(),
-  password: text("password").notNull(),
-  walletAddress: text("wallet_address"),
+  walletAddress: text("wallet_address").notNull().unique(),
+  username: text("username"),
+  avatar: text("avatar_url"),
   score: integer("score").default(0),
   gamesPlayed: integer("games_played").default(0),
   gamesWon: integer("games_won").default(0)
@@ -25,9 +25,12 @@ export const gameMatches = pgTable("game_matches", {
 });
 
 export const insertUserSchema = createInsertSchema(users).pick({
+  walletAddress: true,
   username: true,
-  password: true,
-  walletAddress: true
+  avatar: true
+}).partial({
+  username: true,
+  avatar: true
 });
 
 export const insertGameMatchSchema = createInsertSchema(gameMatches).pick({

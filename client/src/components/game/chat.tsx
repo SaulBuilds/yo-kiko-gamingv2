@@ -27,7 +27,7 @@ export function Chat({ matchId }: ChatProps) {
     if (!user || !matchId) return;
 
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    const wsUrl = `${protocol}//${window.location.host}/ws`;
+    const wsUrl = `${protocol}//${window.location.host}/game-ws`;
     const ws = new WebSocket(wsUrl);
 
     ws.onopen = () => {

@@ -14,7 +14,7 @@ interface GameState {
 export async function registerRoutes(app: Express): Promise<Server> {
   setupAuth(app);
   const httpServer = createServer(app);
-  const wss = new WebSocketServer({ server: httpServer, path: '/ws' });
+  const wss = new WebSocketServer({ server: httpServer, path: '/game-ws' });
 
   // Game routes
   app.get("/api/matches", async (req, res) => {
@@ -50,12 +50,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         case "join": {
           const { matchId, userId } = message;
           clients.set(ws, matchId);
-          
+
           if (!gameStates.has(matchId)) {
             gameStates.set(matchId, new Map());
           }
           const match = await storage.getGameMatch(matchId);
-          
+
           if (match?.status === "waiting") {
             await storage.updateGameMatch(matchId, {
               player2Id: userId,
@@ -71,7 +71,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           const matchStates = gameStates.get(matchId);
           if (matchStates) {
             matchStates.set(userId, state);
-            
+
             // Broadcast to all clients in the match
             wss.clients.forEach((client) => {
               if (client.readyState === WebSocket.OPEN && clients.get(client) === matchId) {
