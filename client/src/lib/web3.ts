@@ -11,10 +11,18 @@ if (!projectId) {
 export const config = createConfig({
   chains: [mainnet, sepolia],
   connectors: [
-    metaMask(),
+    metaMask({
+      shimDisconnect: true,
+    }),
     walletConnect({
       projectId,
       showQrModal: true,
+      metadata: {
+        name: 'Crypto Gaming Platform',
+        description: 'Decentralized Gaming Platform',
+        url: window.location.origin,
+        icons: ['https://wagmi.sh/icon.png']
+      },
     }),
   ],
   transports: {
