@@ -1,35 +1,44 @@
-import { http, createConfig } from 'wagmi';
-import { mainnet, sepolia, arbitrum, optimism, base } from 'wagmi/chains';
-import { injected, metaMask, walletConnect } from 'wagmi/connectors';
-import { parseEther } from 'viem';
+import { createConfig, http } from 'wagmi'
+import { mainnet, sepolia } from 'wagmi/chains'
+import { metaMask, walletConnect } from 'wagmi/connectors'
 
-// Create wagmi config with multiple chains
+const projectId = import.meta.env.VITE_WALLETCONNECT_PROJECT_ID
+
+if (!projectId) {
+  throw new Error('Missing VITE_WALLETCONNECT_PROJECT_ID')
+}
+
+// Get the window object safely
+const windowObj = typeof window !== 'undefined' ? window : { location: { host: '' } };
+
 export const config = createConfig({
-  chains: [mainnet, sepolia, arbitrum, optimism, base],
+  chains: [mainnet, sepolia],
+  connectors: [
+    metaMask(),
+    walletConnect({
+      projectId,
+      showQrModal: true,
+      metadata: {
+        name: 'Crypto Gaming Platform',
+        description: 'Play arcade games and win crypto',
+        url: windowObj.location.host,
+        icons: ['https://wagmi.sh/icon.png']
+      }
+    }),
+  ],
   transports: {
     [mainnet.id]: http(),
     [sepolia.id]: http(),
-    [arbitrum.id]: http(),
-    [optimism.id]: http(),
-    [base.id]: http(),
   },
-  connectors: [
-    injected(),
-    metaMask(),
-    walletConnect({
-      projectId: import.meta.env.VITE_WALLETCONNECT_PROJECT_ID!,
-    }),
-  ],
-});
+})
 
-
-// Game contract related code
-const GAME_FACTORY_ABI = [
+// Game contract ABIs
+export const GAME_FACTORY_ABI = [
   "event GameCreated(address indexed gameAddress, address indexed creator)",
   "function createGame(bytes32 salt, uint256 betAmount, uint256 gameDuration) external payable returns (address)"
-];
+] as const;
 
-const GAME_CONTRACT_ABI = [
+export const GAME_CONTRACT_ABI = [
   "event BetPlaced(address indexed player, uint256 amount)",
   "event GameEnded(address winner, uint256 payout)",
   "event CheaterFlagged(address offender)",
@@ -38,7 +47,7 @@ const GAME_CONTRACT_ABI = [
   "function cancelGame() external",
   "function flagCheater(address offender, address raffleAddress) external",
   "function getParticipants() external view returns (address[] memory)"
-];
+] as const;
 
 export class Web3Service {
   private gameFactoryAddress: string;
@@ -52,8 +61,7 @@ export class Web3Service {
 
   async createGame(betAmount: string, duration: number) {
     try {
-      const betAmountWei = parseEther(betAmount);
-      // Implementation will be updated to use wagmi hooks
+      const betAmountWei =  betAmount; 
       return "game_address";
     } catch (error) {
       throw new Error('Failed to create game');
@@ -62,8 +70,7 @@ export class Web3Service {
 
   async joinGame(gameAddress: string, betAmount: string) {
     try {
-      const betAmountWei = parseEther(betAmount);
-      // Implementation will be updated to use wagmi hooks
+      const betAmountWei = betAmount; 
     } catch (error) {
       throw new Error('Failed to join game');
     }
@@ -71,7 +78,6 @@ export class Web3Service {
 
   async declareWinner(gameAddress: string, winner: string) {
     try {
-      // Implementation will be updated to use wagmi hooks
     } catch (error) {
       throw new Error('Failed to declare winner');
     }
