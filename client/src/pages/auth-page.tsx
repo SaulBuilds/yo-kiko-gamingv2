@@ -1,6 +1,5 @@
 import { useState } from "react";
 import { useLocation } from "wouter";
-import { ConnectButton } from '@rainbow-me/rainbowkit';
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -9,6 +8,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { insertUserSchema } from "@shared/schema";
+import { WalletConnect } from "@/components/wallet/wallet-connect";
 
 export default function AuthPage() {
   const [_, setLocation] = useLocation();
@@ -32,7 +32,7 @@ export default function AuthPage() {
             {!address ? (
               <div className="text-center">
                 <h2 className="text-2xl font-bold mb-4">Connect Your Wallet</h2>
-                <ConnectButton />
+                <WalletConnect />
               </div>
             ) : !user ? (
               <div className="text-center">
