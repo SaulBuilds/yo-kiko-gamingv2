@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import { TetrisPiece, GameState } from '@/types/game';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useToast } from '@/hooks/use-toast';
@@ -52,31 +52,8 @@ export function Tetris({ initialState, onStateChange, onGameOver }: TetrisProps)
   const [level, setLevel] = useState(initialState.level);
   const [gameOver, setGameOver] = useState(false);
   const [clearedLines, setClearedLines] = useState<number[]>([]);
-
-  const createNewPiece = useCallback(() => {
-    const pieces = Object.keys(TETROMINOS) as Array<keyof typeof TETROMINOS>;
-    const tetromino = TETROMINOS[pieces[Math.floor(Math.random() * pieces.length)]];
-    const newPiece = {
-      shape: tetromino.shape,
-      color: tetromino.color,
-      x: Math.floor(BOARD_WIDTH / 2) - Math.floor(tetromino.shape[0].length / 2),
-      y: 0
-    };
-
-    // Check if the new piece can be placed
-    if (!isValidMove(newPiece, newPiece.x, newPiece.y)) {
-      setGameOver(true);
-      onGameOver();
-      toast({
-        title: "Game Over!",
-        description: `Final Score: ${score}`,
-        duration: 5000,
-      });
-      return null;
-    }
-
-    return newPiece;
-  }, [isValidMove, onGameOver, score, toast]);
+  const lastTapTime = useRef(0);
+  const touchStartY = useRef(0);
 
   const isValidMove = useCallback((piece: TetrisPiece, x: number, y: number) => {
     for (let row = 0; row < piece.shape.length; row++) {
@@ -98,28 +75,55 @@ export function Tetris({ initialState, onStateChange, onGameOver }: TetrisProps)
     return true;
   }, [board]);
 
+  const createNewPiece = useCallback(() => {
+    const pieces = Object.keys(TETROMINOS) as Array<keyof typeof TETROMINOS>;
+    const tetromino = TETROMINOS[pieces[Math.floor(Math.random() * pieces.length)]];
+    const newPiece = {
+      shape: tetromino.shape,
+      color: tetromino.color,
+      x: Math.floor(BOARD_WIDTH / 2) - Math.floor(tetromino.shape[0].length / 2),
+      y: 0
+    };
+
+    // Check if the new piece overlaps with existing pieces at spawn
+    if (!isValidMove(newPiece, newPiece.x, newPiece.y)) {
+      setGameOver(true);
+      onGameOver();
+      toast({
+        title: "Game Over!",
+        description: `Final Score: ${score}`,
+        duration: 5000,
+      });
+      return null;
+    }
+
+    return newPiece;
+  }, [isValidMove, onGameOver, score, toast]);
+
   const mergePieceWithBoard = useCallback(() => {
     if (!currentPiece) return;
 
     const newBoard = board.map(row => [...row]);
-    let hitTop = false;
+    let pieceAtTop = false;
 
     currentPiece.shape.forEach((row, y) => {
       row.forEach((value, x) => {
         if (value) {
           const boardY = currentPiece.y + y;
           if (boardY <= 0) {
-            hitTop = true;
+            pieceAtTop = true;
           }
-          newBoard[boardY][currentPiece.x + x] = { 
-            value: 1, 
-            color: currentPiece.color 
-          };
+          if (boardY >= 0 && boardY < BOARD_HEIGHT) {
+            newBoard[boardY][currentPiece.x + x] = { 
+              value: 1, 
+              color: currentPiece.color 
+            };
+          }
         }
       });
     });
 
-    if (hitTop) {
+    if (pieceAtTop) {
       setGameOver(true);
       onGameOver();
       toast({
@@ -181,6 +185,22 @@ export function Tetris({ initialState, onStateChange, onGameOver }: TetrisProps)
     }
   }, [currentPiece, gameOver, isValidMove, mergePieceWithBoard]);
 
+  const hardDrop = useCallback(() => {
+    if (!currentPiece || gameOver) return;
+
+    let dropDistance = 0;
+    while (isValidMove(currentPiece, currentPiece.x, currentPiece.y + dropDistance + 1)) {
+      dropDistance++;
+    }
+
+    setCurrentPiece({
+      ...currentPiece,
+      y: currentPiece.y + dropDistance
+    });
+
+    mergePieceWithBoard();
+  }, [currentPiece, gameOver, isValidMove, mergePieceWithBoard]);
+
   const moveHorizontally = useCallback((direction: number) => {
     if (!currentPiece || gameOver) return;
 
@@ -204,8 +224,15 @@ export function Tetris({ initialState, onStateChange, onGameOver }: TetrisProps)
       shape: rotated
     };
 
-    if (isValidMove(newPiece, currentPiece.x, currentPiece.y)) {
-      setCurrentPiece(newPiece);
+    // Wall kick - try to adjust position if rotation causes collision
+    for (let offset of [0, -1, 1, -2, 2]) {
+      if (isValidMove(newPiece, currentPiece.x + offset, currentPiece.y)) {
+        setCurrentPiece({
+          ...newPiece,
+          x: currentPiece.x + offset
+        });
+        return;
+      }
     }
   }, [currentPiece, gameOver, isValidMove]);
 
@@ -227,12 +254,71 @@ export function Tetris({ initialState, onStateChange, onGameOver }: TetrisProps)
         case 'ArrowUp':
           rotatePiece();
           break;
+        case ' ':
+          hardDrop();
+          break;
       }
     };
 
     window.addEventListener('keydown', handleKeyPress);
     return () => window.removeEventListener('keydown', handleKeyPress);
-  }, [gameOver, moveDown, moveHorizontally, rotatePiece]);
+  }, [gameOver, moveDown, moveHorizontally, rotatePiece, hardDrop]);
+
+  // Handle touch controls
+  useEffect(() => {
+    const handleTouchStart = (e: TouchEvent) => {
+      if (gameOver) return;
+      touchStartY.current = e.touches[0].clientY;
+
+      const now = Date.now();
+      if (now - lastTapTime.current < 300) {
+        // Double tap detected
+        hardDrop();
+      }
+      lastTapTime.current = now;
+    };
+
+    const handleTouchEnd = (e: TouchEvent) => {
+      if (gameOver) return;
+      const touchEndY = e.changedTouches[0].clientY;
+      const deltaY = touchEndY - touchStartY.current;
+
+      if (Math.abs(deltaY) < 10) {
+        // Tap detected - rotate piece
+        rotatePiece();
+      }
+    };
+
+    const handleTouchMove = (e: TouchEvent) => {
+      if (gameOver) return;
+      const touch = e.touches[0];
+      const gameBoard = document.querySelector('.game-board');
+      if (!gameBoard) return;
+
+      const rect = gameBoard.getBoundingClientRect();
+      const x = touch.clientX - rect.left;
+      const moveThreshold = CELL_SIZE;
+
+      if (x < rect.width / 3) {
+        moveHorizontally(-1);
+      } else if (x > (rect.width * 2) / 3) {
+        moveHorizontally(1);
+      }
+    };
+
+    const gameBoard = document.querySelector('.game-board');
+    if (gameBoard) {
+      gameBoard.addEventListener('touchstart', handleTouchStart);
+      gameBoard.addEventListener('touchend', handleTouchEnd);
+      gameBoard.addEventListener('touchmove', handleTouchMove);
+
+      return () => {
+        gameBoard.removeEventListener('touchstart', handleTouchStart);
+        gameBoard.removeEventListener('touchend', handleTouchEnd);
+        gameBoard.removeEventListener('touchmove', handleTouchMove);
+      };
+    }
+  }, [gameOver, hardDrop, moveHorizontally, rotatePiece]);
 
   // Game loop
   useEffect(() => {
@@ -262,7 +348,7 @@ export function Tetris({ initialState, onStateChange, onGameOver }: TetrisProps)
   return (
     <div className="flex flex-col items-center">
       <div 
-        className="relative grid grid-cols-10 gap-px bg-primary/20 p-2 rounded-lg shadow-lg overflow-hidden"
+        className="relative grid grid-cols-10 gap-px bg-primary/20 p-2 rounded-lg shadow-lg overflow-hidden game-board"
         style={{
           width: `${BOARD_WIDTH * CELL_SIZE}px`,
           height: `${BOARD_HEIGHT * CELL_SIZE}px`,
