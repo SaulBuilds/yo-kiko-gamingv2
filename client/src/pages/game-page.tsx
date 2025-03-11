@@ -25,7 +25,7 @@ export default function GamePage() {
   const [opponentState, setOpponentState] = useState<GameState | null>(null);
 
   // Fetch match details
-  const { data: match } = useQuery({
+  const { data: match, isLoading: isMatchLoading } = useQuery({
     queryKey: ["/api/matches", params?.id],
     enabled: !!params?.id,
   });
@@ -42,6 +42,10 @@ export default function GamePage() {
       return res.json();
     },
     onSuccess: (match) => {
+      toast({
+        title: "Practice Game Created",
+        description: "Starting practice mode...",
+      });
       setLocation(`/game/${match.id}`);
     },
     onError: (error: Error) => {
@@ -107,6 +111,7 @@ export default function GamePage() {
     ws.onclose = () => {
       console.log("WebSocket connection closed");
       toast({
+        title: "Connection Lost",
         description: "Lost connection to game server",
         variant: "destructive",
       });
@@ -139,45 +144,53 @@ export default function GamePage() {
         finalScore: gameState.score
       }));
 
-      // Update user XP
       try {
         await apiRequest("POST", "/api/user/xp", {
-          xp: Math.floor(gameState.score / 10), // Convert score to XP
+          xp: Math.floor(gameState.score / 10),
           isPractice: match?.isPractice
         });
         queryClient.invalidateQueries({ queryKey: ["/api/user"] });
+
+        toast({
+          title: "Game Over!",
+          description: `You earned ${Math.floor(gameState.score / 10)} XP!`,
+        });
       } catch (error) {
         console.error("Failed to update XP:", error);
       }
     }
   };
 
-  if (!match && !params?.id) {
+  // Render practice mode page
+  if (!params?.id) {
     return (
       <div className="min-h-screen bg-background">
         <Navbar />
-        <div className="container mx-auto px-4 py-8">
-          <div className="text-center">
-            <h1 className="text-2xl font-bold mb-4">Practice Mode</h1>
+        <main className="container mx-auto px-4 py-8">
+          <div className="text-center space-y-4">
+            <h1 className="text-4xl font-bold pixel-font text-primary">Practice Mode</h1>
+            <p className="text-muted-foreground">Improve your skills without betting</p>
             <Button 
               onClick={() => startPracticeMutation.mutate()}
               disabled={startPracticeMutation.isPending}
-              className="pixel-font"
+              className="pixel-font text-lg"
+              size="lg"
             >
               Start Practice Game
             </Button>
           </div>
-        </div>
+        </main>
       </div>
     );
   }
 
-  if (!match) {
+  // Loading state
+  if (isMatchLoading || !match) {
     return (
       <div className="min-h-screen bg-background">
         <Navbar />
         <div className="container mx-auto px-4 py-8">
-          <p>Loading game...</p>
+          <p className="text-center">Loading game...</p>
         </div>
       </div>
     );
@@ -186,7 +199,7 @@ export default function GamePage() {
   return (
     <div className="min-h-screen bg-background">
       <Navbar />
-      <div className="container mx-auto px-4 py-8">
+      <main className="container mx-auto px-4 py-8">
         <div className="mb-4">
           <h1 className="text-2xl font-bold pixel-font">
             {match.isPractice ? "Practice Mode" : `Game Match #${params?.id} - Prize Pool: ${match.betAmount} ETH`}
@@ -195,6 +208,7 @@ export default function GamePage() {
             Status: {match.status.charAt(0).toUpperCase() + match.status.slice(1)}
           </p>
         </div>
+
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
           {/* Your Game */}
           <Card className="p-6">
@@ -220,7 +234,7 @@ export default function GamePage() {
             </Card>
           )}
         </div>
-      </div>
+      </main>
     </div>
   );
 }
