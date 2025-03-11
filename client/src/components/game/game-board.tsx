@@ -1,4 +1,4 @@
-import { Tetris } from './tetris';
+import { Tetris3D } from './tetris-3d';
 import { GameState } from '@/types/game';
 
 interface GameBoardProps {
@@ -10,7 +10,7 @@ interface GameBoardProps {
 export function GameBoard({ initialState, onStateUpdate, onGameOver }: GameBoardProps) {
   return (
     <div className="flex items-center justify-center w-full">
-      <Tetris 
+      <Tetris3D 
         initialState={initialState}
         onStateChange={onStateUpdate}
         onGameOver={onGameOver}
