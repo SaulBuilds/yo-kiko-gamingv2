@@ -54,6 +54,8 @@ export function Tetris({ initialState, onStateChange, onGameOver }: TetrisProps)
   const [clearedLines, setClearedLines] = useState<number[]>([]);
   const lastTapTime = useRef(0);
   const touchStartY = useRef(0);
+  const lastTetris = useRef(false); // Track back-to-back Tetris
+  const dropInterval = useRef<NodeJS.Timeout | null>(null);
 
   const isValidMove = useCallback((piece: TetrisPiece, x: number, y: number) => {
     for (let row = 0; row < piece.shape.length; row++) {
@@ -126,6 +128,9 @@ export function Tetris({ initialState, onStateChange, onGameOver }: TetrisProps)
     if (pieceAtTop) {
       setGameOver(true);
       onGameOver();
+      if (dropInterval.current) {
+        clearInterval(dropInterval.current);
+      }
       toast({
         title: "Game Over!",
         description: `Final Score: ${score}`,
@@ -156,7 +161,21 @@ export function Tetris({ initialState, onStateChange, onGameOver }: TetrisProps)
         setBoard([...emptyRows, ...finalBoard]);
         setClearedLines([]);
 
-        const points = [0, 100, 300, 500, 800][completedLines];
+        // Scoring system with Tetris bonus
+        let points;
+        if (completedLines === 4) {
+          points = lastTetris.current ? 1200 : 800; // Back-to-back Tetris bonus
+          lastTetris.current = true;
+          toast({
+            title: lastTetris.current ? "Back-to-Back Tetris!" : "Tetris!",
+            description: `+${points} points!`,
+            duration: 2000,
+          });
+        } else {
+          points = [0, 100, 300, 500][completedLines - 1] || 0;
+          lastTetris.current = false;
+        }
+
         setScore(prev => {
           const newScore = prev + points * level;
           if (newScore > level * 1000) {
@@ -326,20 +345,35 @@ export function Tetris({ initialState, onStateChange, onGameOver }: TetrisProps)
     }
   }, [gameOver, hardDrop, moveHorizontally, rotatePiece, moveDown]);
 
-  // Game loop
+  // Game loop with automatic falling
   useEffect(() => {
-    if (gameOver) return;
+    if (gameOver) {
+      if (dropInterval.current) {
+        clearInterval(dropInterval.current);
+      }
+      return;
+    }
 
     if (!currentPiece) {
       setCurrentPiece(createNewPiece());
       return;
     }
 
-    const interval = setInterval(() => {
+    // Clear existing interval if any
+    if (dropInterval.current) {
+      clearInterval(dropInterval.current);
+    }
+
+    // Create new interval with speed based on level
+    dropInterval.current = setInterval(() => {
       moveDown();
     }, Math.max(100, 1000 - (level * 100))); // Speed increases with level
 
-    return () => clearInterval(interval);
+    return () => {
+      if (dropInterval.current) {
+        clearInterval(dropInterval.current);
+      }
+    };
   }, [currentPiece, gameOver, level, moveDown, createNewPiece]);
 
   // Update parent component with game state
