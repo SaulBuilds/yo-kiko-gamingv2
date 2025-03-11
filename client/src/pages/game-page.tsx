@@ -13,7 +13,11 @@ export default function GamePage() {
   const [, params] = useRoute("/game/:id");
   const { user } = useAuth();
   const [socket, setSocket] = useState<WebSocket | null>(null);
-  const [gameState, setGameState] = useState<GameState | null>(null);
+  const [gameState, setGameState] = useState<GameState>({
+    board: Array(20).fill(Array(10).fill(0)),
+    score: 0,
+    level: 1
+  });
   const [opponentState, setOpponentState] = useState<GameState | null>(null);
   const { toast } = useToast();
 
@@ -34,13 +38,11 @@ export default function GamePage() {
 
     ws.onopen = () => {
       console.log("WebSocket connection established");
-      if(params?.id){
-        ws.send(JSON.stringify({
-          type: "join",
-          matchId: parseInt(params.id!),
-          userId: user.id
-        }));
-      }
+      ws.send(JSON.stringify({
+        type: "join",
+        matchId: parseInt(params.id!),
+        userId: user.id
+      }));
     };
 
     ws.onmessage = (event) => {
@@ -86,19 +88,18 @@ export default function GamePage() {
 
     setSocket(ws);
     return () => {
-      console.log("Cleaning up WebSocket connection");
       ws.close();
     };
   }, [user, params?.id, toast]);
 
-  const handleGameStateUpdate = (state: GameState) => {
-    setGameState(state);
+  const handleGameStateUpdate = (newState: GameState) => {
+    setGameState(newState);
     if (socket?.readyState === WebSocket.OPEN && params?.id) {
       socket.send(JSON.stringify({
         type: "gameState",
         matchId: parseInt(params.id),
         userId: user?.id,
-        state
+        state: newState
       }));
     }
   };
@@ -108,30 +109,41 @@ export default function GamePage() {
       socket.send(JSON.stringify({
         type: "gameOver",
         matchId: parseInt(params.id),
-        userId: user?.id
+        userId: user?.id,
+        finalScore: gameState.score
       }));
     }
   };
+
+  if (!match) {
+    return (
+      <div className="min-h-screen bg-background">
+        <Navbar />
+        <div className="container mx-auto px-4 py-8">
+          <p>Loading game...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-background">
       <Navbar />
       <div className="container mx-auto px-4 py-8">
-        {match && (
-          <div className="mb-4">
-            <h1 className="text-2xl font-bold">
-              Game Match #{params?.id} - Prize Pool: {match.betAmount} ETH
-            </h1>
-            <p className="text-muted-foreground">
-              Status: {match.status.charAt(0).toUpperCase() + match.status.slice(1)}
-            </p>
-          </div>
-        )}
+        <div className="mb-4">
+          <h1 className="text-2xl font-bold">
+            Game Match #{params?.id} - Prize Pool: {match.betAmount} ETH
+          </h1>
+          <p className="text-muted-foreground">
+            Status: {match.status.charAt(0).toUpperCase() + match.status.slice(1)}
+          </p>
+        </div>
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
           {/* Your Game */}
           <Card className="p-6">
             <h2 className="text-2xl font-bold mb-4">Your Game</h2>
             <GameBoard
+              initialState={gameState}
               onStateUpdate={handleGameStateUpdate}
               onGameOver={handleGameOver}
             />
