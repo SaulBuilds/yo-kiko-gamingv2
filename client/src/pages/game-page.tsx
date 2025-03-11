@@ -34,21 +34,25 @@ export default function GamePage() {
 
     ws.onopen = () => {
       console.log("WebSocket connection established");
-      ws.send(JSON.stringify({
-        type: "join",
-        matchId: parseInt(params.id),
-        userId: user.id
-      }));
+      if(params?.id){
+        ws.send(JSON.stringify({
+          type: "join",
+          matchId: parseInt(params.id!),
+          userId: user.id
+        }));
+      }
     };
 
     ws.onmessage = (event) => {
       try {
         const message = JSON.parse(event.data);
         console.log("Received message:", message);
+
         if (message.type === "gameState") {
           const states = new Map(message.states);
           const opponentStateData = Array.from(states.entries())
             .find(([id]) => id !== user.id)?.[1];
+
           if (opponentStateData) {
             setOpponentState(opponentStateData);
           }

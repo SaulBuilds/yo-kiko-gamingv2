@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback } from 'react';
-import { TetrisPiece } from '@/types/game';
+import { TetrisPiece, GameState } from '@/types/game';
 
 const BOARD_WIDTH = 10;
 const BOARD_HEIGHT = 20;
@@ -35,20 +35,19 @@ const TETROMINOS = {
   }
 };
 
-export interface TetrisProps {
-  onStateChange: (state: { board: number[][], score: number, level: number }) => void;
+interface TetrisProps {
+  onStateChange: (state: GameState) => void;
   onGameOver: () => void;
 }
 
 export function Tetris({ onStateChange, onGameOver }: TetrisProps) {
+  const createEmptyBoard = () => Array(BOARD_HEIGHT).fill(null).map(() => Array(BOARD_WIDTH).fill(0));
+
   const [board, setBoard] = useState<number[][]>(createEmptyBoard());
   const [currentPiece, setCurrentPiece] = useState<TetrisPiece | null>(null);
   const [score, setScore] = useState(0);
   const [level, setLevel] = useState(1);
   const [gameOver, setGameOver] = useState(false);
-
-  const createEmptyBoard = () => 
-    Array(BOARD_HEIGHT).fill(null).map(() => Array(BOARD_WIDTH).fill(0));
 
   const createNewPiece = useCallback(() => {
     const pieces = Object.keys(TETROMINOS) as Array<keyof typeof TETROMINOS>;
@@ -61,7 +60,7 @@ export function Tetris({ onStateChange, onGameOver }: TetrisProps) {
     };
   }, []);
 
-  const isValidMove = (piece: TetrisPiece, x: number, y: number) => {
+  const isValidMove = useCallback((piece: TetrisPiece, x: number, y: number) => {
     for (let row = 0; row < piece.shape.length; row++) {
       for (let col = 0; col < piece.shape[row].length; col++) {
         if (piece.shape[row][col]) {
@@ -79,7 +78,7 @@ export function Tetris({ onStateChange, onGameOver }: TetrisProps) {
       }
     }
     return true;
-  };
+  }, [board]);
 
   const mergePieceWithBoard = useCallback(() => {
     if (!currentPiece) return;
@@ -112,15 +111,18 @@ export function Tetris({ onStateChange, onGameOver }: TetrisProps) {
     // Update score
     if (completedLines > 0) {
       const points = [0, 100, 300, 500, 800][completedLines];
-      setScore(prev => prev + points * level);
-      if (score > level * 1000) {
-        setLevel(prev => prev + 1);
-      }
+      setScore(prev => {
+        const newScore = prev + points * level;
+        if (newScore > level * 1000) {
+          setLevel(l => l + 1);
+        }
+        return newScore;
+      });
     }
 
     setBoard(newBoard);
     setCurrentPiece(null);
-  }, [board, currentPiece, level, onGameOver, score]);
+  }, [board, currentPiece, level, onGameOver]);
 
   const moveDown = useCallback(() => {
     if (!currentPiece || gameOver) return;
@@ -133,9 +135,9 @@ export function Tetris({ onStateChange, onGameOver }: TetrisProps) {
     } else {
       mergePieceWithBoard();
     }
-  }, [currentPiece, gameOver, mergePieceWithBoard]);
+  }, [currentPiece, gameOver, isValidMove, mergePieceWithBoard]);
 
-  const moveHorizontally = (direction: number) => {
+  const moveHorizontally = useCallback((direction: number) => {
     if (!currentPiece || gameOver) return;
 
     if (isValidMove(currentPiece, currentPiece.x + direction, currentPiece.y)) {
@@ -144,9 +146,9 @@ export function Tetris({ onStateChange, onGameOver }: TetrisProps) {
         x: currentPiece.x + direction
       });
     }
-  };
+  }, [currentPiece, gameOver, isValidMove]);
 
-  const rotatePiece = () => {
+  const rotatePiece = useCallback(() => {
     if (!currentPiece || gameOver) return;
 
     const rotated = currentPiece.shape[0].map((_, i) =>
@@ -161,7 +163,7 @@ export function Tetris({ onStateChange, onGameOver }: TetrisProps) {
     if (isValidMove(newPiece, currentPiece.x, currentPiece.y)) {
       setCurrentPiece(newPiece);
     }
-  };
+  }, [currentPiece, gameOver, isValidMove]);
 
   useEffect(() => {
     const handleKeyPress = (e: KeyboardEvent) => {
@@ -183,7 +185,7 @@ export function Tetris({ onStateChange, onGameOver }: TetrisProps) {
 
     window.addEventListener('keydown', handleKeyPress);
     return () => window.removeEventListener('keydown', handleKeyPress);
-  }, [currentPiece, moveDown]);
+  }, [moveDown, moveHorizontally, rotatePiece]);
 
   useEffect(() => {
     if (gameOver) return;
@@ -206,7 +208,7 @@ export function Tetris({ onStateChange, onGameOver }: TetrisProps) {
 
   return (
     <div className="flex flex-col items-center bg-card p-4 rounded-lg">
-      <div className="grid grid-cols-10 gap-px bg-primary/20 p-2 rounded">
+      <div className="grid grid-cols-10 gap-px bg-primary/20 p-2 rounded h-[400px]"> {/* Added height for visibility */}
         {board.map((row, y) => (
           row.map((cell, x) => {
             let backgroundColor = cell ? TETROMINOS.I.color : 'transparent';
