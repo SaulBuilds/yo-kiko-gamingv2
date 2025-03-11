@@ -18,6 +18,7 @@ export interface IStorage {
   updateGameMatch(id: number, updates: Partial<GameMatch>): Promise<GameMatch>;
   getActiveMatches(): Promise<GameMatch[]>;
   sessionStore: session.SessionStore;
+  updateUserXP(userId: number, xp: number, updateScore: boolean): Promise<void>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -103,6 +104,22 @@ export class DatabaseStorage implements IStorage {
       .from(gameMatches)
       .where(eq(gameMatches.status, 'waiting'))
       .orderBy(gameMatches.id);
+  }
+
+  async updateUserXP(userId: number, xp: number, updateScore: boolean): Promise<void> {
+    const updates = {
+      xp: users.xp + xp,
+      gamesPlayed: users.gamesPlayed + 1
+    };
+
+    if (updateScore) {
+      updates.score = users.score + xp * 10; 
+    }
+
+    await db
+      .update(users)
+      .set(updates)
+      .where(eq(users.id, userId));
   }
 }
 
