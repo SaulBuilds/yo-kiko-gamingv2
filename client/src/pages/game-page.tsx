@@ -1,17 +1,21 @@
 import { useEffect, useState } from "react";
-import { useRoute } from "wouter";
+import { useRoute, useLocation } from "wouter";
 import { Card } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import { GameBoard } from "@/components/game/game-board";
 import { Spectator } from "@/components/game/spectator";
 import { useAuth } from "@/hooks/use-auth";
 import { GameState } from "@/types/game";
 import { useToast } from "@/hooks/use-toast";
 import { Navbar } from "@/components/layout/navbar";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation } from "@tanstack/react-query";
+import { apiRequest, queryClient } from "@/lib/queryClient";
 
 export default function GamePage() {
   const [, params] = useRoute("/game/:id");
+  const [_, setLocation] = useLocation();
   const { user } = useAuth();
+  const { toast } = useToast();
   const [socket, setSocket] = useState<WebSocket | null>(null);
   const [gameState, setGameState] = useState<GameState>({
     board: Array(20).fill(Array(10).fill(0)),
@@ -19,12 +23,34 @@ export default function GamePage() {
     level: 1
   });
   const [opponentState, setOpponentState] = useState<GameState | null>(null);
-  const { toast } = useToast();
 
   // Fetch match details
   const { data: match } = useQuery({
     queryKey: ["/api/matches", params?.id],
     enabled: !!params?.id,
+  });
+
+  // Start practice game mutation
+  const startPracticeMutation = useMutation({
+    mutationFn: async () => {
+      const res = await apiRequest("POST", "/api/matches", {
+        betAmount: "0",
+        gameType: "tetris",
+        isPractice: true
+      });
+      if (!res.ok) throw new Error("Failed to create practice game");
+      return res.json();
+    },
+    onSuccess: (match) => {
+      setLocation(`/game/${match.id}`);
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
   });
 
   useEffect(() => {
@@ -104,7 +130,7 @@ export default function GamePage() {
     }
   };
 
-  const handleGameOver = () => {
+  const handleGameOver = async () => {
     if (socket?.readyState === WebSocket.OPEN && params?.id) {
       socket.send(JSON.stringify({
         type: "gameOver",
@@ -112,8 +138,39 @@ export default function GamePage() {
         userId: user?.id,
         finalScore: gameState.score
       }));
+
+      // Update user XP
+      try {
+        await apiRequest("POST", "/api/user/xp", {
+          xp: Math.floor(gameState.score / 10), // Convert score to XP
+          isPractice: match?.isPractice
+        });
+        queryClient.invalidateQueries({ queryKey: ["/api/user"] });
+      } catch (error) {
+        console.error("Failed to update XP:", error);
+      }
     }
   };
+
+  if (!match && !params?.id) {
+    return (
+      <div className="min-h-screen bg-background">
+        <Navbar />
+        <div className="container mx-auto px-4 py-8">
+          <div className="text-center">
+            <h1 className="text-2xl font-bold mb-4">Practice Mode</h1>
+            <Button 
+              onClick={() => startPracticeMutation.mutate()}
+              disabled={startPracticeMutation.isPending}
+              className="pixel-font"
+            >
+              Start Practice Game
+            </Button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   if (!match) {
     return (
@@ -131,8 +188,8 @@ export default function GamePage() {
       <Navbar />
       <div className="container mx-auto px-4 py-8">
         <div className="mb-4">
-          <h1 className="text-2xl font-bold">
-            Game Match #{params?.id} - Prize Pool: {match.betAmount} ETH
+          <h1 className="text-2xl font-bold pixel-font">
+            {match.isPractice ? "Practice Mode" : `Game Match #${params?.id} - Prize Pool: ${match.betAmount} ETH`}
           </h1>
           <p className="text-muted-foreground">
             Status: {match.status.charAt(0).toUpperCase() + match.status.slice(1)}
@@ -141,7 +198,7 @@ export default function GamePage() {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
           {/* Your Game */}
           <Card className="p-6">
-            <h2 className="text-2xl font-bold mb-4">Your Game</h2>
+            <h2 className="text-2xl font-bold mb-4 pixel-font">Your Game</h2>
             <GameBoard
               initialState={gameState}
               onStateUpdate={handleGameStateUpdate}
@@ -149,17 +206,19 @@ export default function GamePage() {
             />
           </Card>
 
-          {/* Opponent's Game */}
-          <Card className="p-6">
-            <h2 className="text-2xl font-bold mb-4">Opponent's Game</h2>
-            {opponentState ? (
-              <Spectator gameState={opponentState} />
-            ) : (
-              <div className="text-center text-muted-foreground">
-                Waiting for opponent...
-              </div>
-            )}
-          </Card>
+          {/* Opponent's Game (only show in multiplayer mode) */}
+          {!match.isPractice && (
+            <Card className="p-6">
+              <h2 className="text-2xl font-bold mb-4 pixel-font">Opponent's Game</h2>
+              {opponentState ? (
+                <Spectator gameState={opponentState} />
+              ) : (
+                <div className="text-center text-muted-foreground">
+                  Waiting for opponent...
+                </div>
+              )}
+            </Card>
+          )}
         </div>
       </div>
     </div>

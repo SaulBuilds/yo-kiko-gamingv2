@@ -74,6 +74,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.post("/api/user/xp", async (req, res) => {
+    if (!req.session?.userId) {
+      return res.status(401).json({ error: "Not authenticated" });
+    }
+
+    try {
+      const { xp, isPractice } = req.body;
+      const user = await storage.getUser(req.session.userId);
+
+      if (!user) {
+        return res.status(404).json({ error: "User not found" });
+      }
+
+      // Update user XP and only update score if it's not a practice game
+      await storage.updateUserXP(req.session.userId, xp, !isPractice);
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error updating XP:", error);
+      res.status(500).json({ error: "Failed to update XP" });
+    }
+  });
+
+
   // Game match routes
   app.get("/api/matches", async (req, res) => {
     if (!req.session?.userId) return res.status(401).json({ error: "Not authenticated" });
@@ -91,7 +114,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const match = await storage.createGameMatch({
         player1Id: req.session.userId,
         betAmount: req.body.betAmount,
-        gameType: "tetris"
+        gameType: "tetris",
+        isPractice: req.body.isPractice || false
       });
       res.json(match);
     } catch (error) {
@@ -106,8 +130,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // WebSocket handling
-  const wss = new WebSocketServer({ 
-    server: httpServer, 
+  const wss = new WebSocketServer({
+    server: httpServer,
     path: '/game-ws',
     verifyClient: (info, done) => {
       log(`WebSocket connection attempt from ${info.req.headers.origin}`, 'websocket');
@@ -191,7 +215,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     });
   });
 
-  setupAuth(app); 
+  setupAuth(app);
 
   return httpServer;
 }

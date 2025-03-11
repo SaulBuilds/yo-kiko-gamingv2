@@ -1,4 +1,4 @@
-import { pgTable, text, serial, integer, timestamp } from "drizzle-orm/pg-core";
+import { pgTable, text, serial, integer, timestamp, boolean } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
@@ -8,6 +8,7 @@ export const users = pgTable("users", {
   username: text("username"),
   avatar: text("avatar_url"),
   score: integer("score").default(0),
+  xp: integer("xp").default(0),
   gamesPlayed: integer("games_played").default(0),
   gamesWon: integer("games_won").default(0)
 });
@@ -21,7 +22,8 @@ export const gameMatches = pgTable("game_matches", {
   winnerId: integer("winner_id"),
   startTime: timestamp("start_time"),
   endTime: timestamp("end_time"),
-  gameType: text("game_type").notNull().default("tetris")
+  gameType: text("game_type").notNull().default("tetris"),
+  isPractice: boolean("is_practice").default(false)
 });
 
 export const insertUserSchema = createInsertSchema(users).pick({
@@ -36,7 +38,10 @@ export const insertUserSchema = createInsertSchema(users).pick({
 export const insertGameMatchSchema = createInsertSchema(gameMatches).pick({
   player1Id: true,
   betAmount: true,
-  gameType: true
+  gameType: true,
+  isPractice: true
+}).partial({
+  isPractice: true
 });
 
 export type InsertUser = z.infer<typeof insertUserSchema>;
