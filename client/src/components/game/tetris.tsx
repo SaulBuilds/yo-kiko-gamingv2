@@ -41,9 +41,7 @@ export interface TetrisProps {
 }
 
 export function Tetris({ onStateChange, onGameOver }: TetrisProps) {
-  const [board, setBoard] = useState<number[][]>(
-    Array(BOARD_HEIGHT).fill(Array(BOARD_WIDTH).fill(0))
-  );
+  const [board, setBoard] = useState<number[][]>(createEmptyBoard());
   const [currentPiece, setCurrentPiece] = useState<TetrisPiece | null>(null);
   const [score, setScore] = useState(0);
   const [level, setLevel] = useState(1);
@@ -115,11 +113,14 @@ export function Tetris({ onStateChange, onGameOver }: TetrisProps) {
     if (completedLines > 0) {
       const points = [0, 100, 300, 500, 800][completedLines];
       setScore(prev => prev + points * level);
+      if (score > level * 1000) {
+        setLevel(prev => prev + 1);
+      }
     }
 
     setBoard(newBoard);
     setCurrentPiece(null);
-  }, [board, currentPiece, level, onGameOver]);
+  }, [board, currentPiece, level, onGameOver, score]);
 
   const moveDown = useCallback(() => {
     if (!currentPiece || gameOver) return;
@@ -194,7 +195,7 @@ export function Tetris({ onStateChange, onGameOver }: TetrisProps) {
 
     const interval = setInterval(() => {
       moveDown();
-    }, 1000 - (level * 100));
+    }, Math.max(100, 1000 - (level * 100)));
 
     return () => clearInterval(interval);
   }, [currentPiece, gameOver, level, moveDown, createNewPiece]);
@@ -209,11 +210,11 @@ export function Tetris({ onStateChange, onGameOver }: TetrisProps) {
         {board.map((row, y) => (
           row.map((cell, x) => {
             let backgroundColor = cell ? TETROMINOS.I.color : 'transparent';
-            
+
             if (currentPiece && !gameOver) {
               const pieceX = x - currentPiece.x;
               const pieceY = y - currentPiece.y;
-              
+
               if (
                 pieceY >= 0 &&
                 pieceY < currentPiece.shape.length &&
