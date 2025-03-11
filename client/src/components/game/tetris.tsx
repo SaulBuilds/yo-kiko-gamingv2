@@ -1,6 +1,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import { TetrisPiece, GameState } from '@/types/game';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useToast } from '@/hooks/use-toast';
 
 const BOARD_WIDTH = 10;
 const BOARD_HEIGHT = 20;
@@ -44,6 +45,7 @@ interface TetrisProps {
 }
 
 export function Tetris({ initialState, onStateChange, onGameOver }: TetrisProps) {
+  const { toast } = useToast();
   const [board, setBoard] = useState(initialState.board.map(row => row.map(cell => ({ value: cell, color: null }))));
   const [currentPiece, setCurrentPiece] = useState<TetrisPiece | null>(null);
   const [score, setScore] = useState(initialState.score);
@@ -54,13 +56,27 @@ export function Tetris({ initialState, onStateChange, onGameOver }: TetrisProps)
   const createNewPiece = useCallback(() => {
     const pieces = Object.keys(TETROMINOS) as Array<keyof typeof TETROMINOS>;
     const tetromino = TETROMINOS[pieces[Math.floor(Math.random() * pieces.length)]];
-    return {
+    const newPiece = {
       shape: tetromino.shape,
       color: tetromino.color,
       x: Math.floor(BOARD_WIDTH / 2) - Math.floor(tetromino.shape[0].length / 2),
       y: 0
     };
-  }, []);
+
+    // Check if the new piece can be placed
+    if (!isValidMove(newPiece, newPiece.x, newPiece.y)) {
+      setGameOver(true);
+      onGameOver();
+      toast({
+        title: "Game Over!",
+        description: `Final Score: ${score}`,
+        duration: 5000,
+      });
+      return null;
+    }
+
+    return newPiece;
+  }, [isValidMove, onGameOver, score, toast]);
 
   const isValidMove = useCallback((piece: TetrisPiece, x: number, y: number) => {
     for (let row = 0; row < piece.shape.length; row++) {
@@ -86,14 +102,14 @@ export function Tetris({ initialState, onStateChange, onGameOver }: TetrisProps)
     if (!currentPiece) return;
 
     const newBoard = board.map(row => [...row]);
+    let hitTop = false;
+
     currentPiece.shape.forEach((row, y) => {
       row.forEach((value, x) => {
         if (value) {
           const boardY = currentPiece.y + y;
-          if (boardY < 0) {
-            setGameOver(true);
-            onGameOver();
-            return;
+          if (boardY <= 0) {
+            hitTop = true;
           }
           newBoard[boardY][currentPiece.x + x] = { 
             value: 1, 
@@ -102,6 +118,17 @@ export function Tetris({ initialState, onStateChange, onGameOver }: TetrisProps)
         }
       });
     });
+
+    if (hitTop) {
+      setGameOver(true);
+      onGameOver();
+      toast({
+        title: "Game Over!",
+        description: `Final Score: ${score}`,
+        duration: 5000,
+      });
+      return;
+    }
 
     // Check for completed lines
     let completedLines = 0;
@@ -117,7 +144,6 @@ export function Tetris({ initialState, onStateChange, onGameOver }: TetrisProps)
     if (linesToClear.length > 0) {
       setClearedLines(linesToClear);
 
-      // Remove completed lines after animation
       setTimeout(() => {
         const finalBoard = newBoard.filter((_, index) => !linesToClear.includes(index));
         const emptyRows = Array(linesToClear.length).fill(null).map(() => 
@@ -126,7 +152,6 @@ export function Tetris({ initialState, onStateChange, onGameOver }: TetrisProps)
         setBoard([...emptyRows, ...finalBoard]);
         setClearedLines([]);
 
-        // Update score and level
         const points = [0, 100, 300, 500, 800][completedLines];
         setScore(prev => {
           const newScore = prev + points * level;
@@ -141,7 +166,7 @@ export function Tetris({ initialState, onStateChange, onGameOver }: TetrisProps)
     }
 
     setCurrentPiece(null);
-  }, [board, currentPiece, level, onGameOver]);
+  }, [board, currentPiece, level, onGameOver, score, toast]);
 
   const moveDown = useCallback(() => {
     if (!currentPiece || gameOver) return;
@@ -282,6 +307,23 @@ export function Tetris({ initialState, onStateChange, onGameOver }: TetrisProps)
             );
           })
         ))}
+
+        {/* Game Over Overlay */}
+        <AnimatePresence>
+          {gameOver && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="absolute inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center"
+            >
+              <div className="text-center bg-background/90 p-6 rounded-lg shadow-xl">
+                <h2 className="text-2xl font-bold pixel-font text-primary mb-2">Game Over!</h2>
+                <p className="text-xl pixel-font">Final Score: {score}</p>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
 
       <motion.div 
