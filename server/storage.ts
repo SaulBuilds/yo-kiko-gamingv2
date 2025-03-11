@@ -1,8 +1,11 @@
-import { User, GameMatch, InsertUser, InsertGameMatch } from "@shared/schema";
+import { users, gameMatches, type User, type GameMatch, type InsertUser, type InsertGameMatch } from "@shared/schema";
+import { db } from "./db";
+import { eq } from "drizzle-orm";
 import session from "express-session";
-import createMemoryStore from "memorystore";
+import connectPg from "connect-pg-simple";
+import { pool } from "./db";
 
-const MemoryStore = createMemoryStore(session);
+const PostgresSessionStore = connectPg(session);
 
 export interface IStorage {
   getUser(id: number): Promise<User | undefined>;
@@ -17,93 +20,90 @@ export interface IStorage {
   sessionStore: session.SessionStore;
 }
 
-export class MemStorage implements IStorage {
-  private users: Map<number, User>;
-  private matches: Map<number, GameMatch>;
-  private currentUserId: number;
-  private currentMatchId: number;
+export class DatabaseStorage implements IStorage {
   sessionStore: session.SessionStore;
 
   constructor() {
-    this.users = new Map();
-    this.matches = new Map();
-    this.currentUserId = 1;
-    this.currentMatchId = 1;
-    this.sessionStore = new MemoryStore({
-      checkPeriod: 86400000,
+    this.sessionStore = new PostgresSessionStore({
+      pool,
+      createTableIfMissing: true
     });
   }
 
   async getUser(id: number): Promise<User | undefined> {
-    return this.users.get(id);
+    const [user] = await db.select().from(users).where(eq(users.id, id));
+    return user;
   }
 
   async getUserByWalletAddress(walletAddress: string): Promise<User | undefined> {
-    return Array.from(this.users.values()).find(
-      (user) => user.walletAddress === walletAddress
-    );
+    const [user] = await db.select().from(users).where(eq(users.walletAddress, walletAddress));
+    return user;
   }
 
   async createUser(insertUser: InsertUser): Promise<User> {
-    const id = this.currentUserId++;
-    const user: User = {
-      ...insertUser,
-      id,
-      score: 0,
-      gamesPlayed: 0,
-      gamesWon: 0
-    };
-    this.users.set(id, user);
+    const [user] = await db.insert(users).values(insertUser).returning();
     return user;
   }
 
   async updateUserScore(userId: number, score: number): Promise<void> {
-    const user = await this.getUser(userId);
-    if (user) {
-      user.score += score;
-      this.users.set(userId, user);
-    }
+    await db
+      .update(users)
+      .set({ 
+        score: users.score + score, 
+        gamesPlayed: users.gamesPlayed + 1 
+      })
+      .where(eq(users.id, userId));
   }
 
   async getLeaderboard(): Promise<User[]> {
-    return Array.from(this.users.values())
-      .sort((a, b) => (b.score || 0) - (a.score || 0))
-      .slice(0, 10);
+    return await db
+      .select()
+      .from(users)
+      .orderBy(users.score, 'desc')
+      .limit(10);
   }
 
   async createGameMatch(match: InsertGameMatch): Promise<GameMatch> {
-    const id = this.currentMatchId++;
-    const gameMatch: GameMatch = {
-      ...match,
-      id,
-      player2Id: null,
-      status: 'waiting',
-      winnerId: null,
-      startTime: null,
-      endTime: null
-    };
-    this.matches.set(id, gameMatch);
+    const [gameMatch] = await db
+      .insert(gameMatches)
+      .values({
+        ...match,
+        status: 'waiting',
+        startTime: null,
+        endTime: null,
+      })
+      .returning();
     return gameMatch;
   }
 
   async getGameMatch(id: number): Promise<GameMatch | undefined> {
-    return this.matches.get(id);
+    const [match] = await db
+      .select()
+      .from(gameMatches)
+      .where(eq(gameMatches.id, id));
+    return match;
   }
 
   async updateGameMatch(id: number, updates: Partial<GameMatch>): Promise<GameMatch> {
-    const match = await this.getGameMatch(id);
+    const [match] = await db
+      .update(gameMatches)
+      .set(updates)
+      .where(eq(gameMatches.id, id))
+      .returning();
+
     if (!match) {
       throw new Error("Match not found");
     }
-    const updatedMatch = { ...match, ...updates };
-    this.matches.set(id, updatedMatch);
-    return updatedMatch;
+    return match;
   }
 
   async getActiveMatches(): Promise<GameMatch[]> {
-    return Array.from(this.matches.values())
-      .filter(match => match.status !== 'completed');
+    return await db
+      .select()
+      .from(gameMatches)
+      .where(eq(gameMatches.status, 'waiting'))
+      .orderBy(gameMatches.id);
   }
 }
 
-export const storage = new MemStorage();
+export const storage = new DatabaseStorage();
