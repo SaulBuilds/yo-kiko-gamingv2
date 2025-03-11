@@ -4,6 +4,7 @@ import { WebSocketServer, WebSocket } from "ws";
 import { setupAuth } from "./auth";
 import { storage } from "./storage";
 import { log } from "./vite";
+import session from "express-session";
 
 interface GameState {
   board: number[][];
@@ -13,6 +14,20 @@ interface GameState {
 
 export async function registerRoutes(app: Express): Promise<Server> {
   const httpServer = createServer(app);
+
+  // Session middleware setup
+  app.use(
+    session({
+      secret: 'your-secret-key',
+      resave: false,
+      saveUninitialized: false,
+      store: storage.sessionStore,
+      cookie: {
+        secure: process.env.NODE_ENV === 'production',
+        maxAge: 24 * 60 * 60 * 1000 // 24 hours
+      }
+    })
+  );
 
   // User routes
   app.post("/api/user", async (req, res) => {
@@ -61,19 +76,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Game match routes
   app.get("/api/matches", async (req, res) => {
-    if (!req.session?.userId) return res.sendStatus(401);
+    if (!req.session?.userId) return res.status(401).json({ error: "Not authenticated" });
     const matches = await storage.getActiveMatches();
     res.json(matches);
   });
 
   app.post("/api/matches", async (req, res) => {
-    if (!req.session?.userId) return res.sendStatus(401);
-    const match = await storage.createGameMatch({
-      player1Id: req.session.userId,
-      betAmount: req.body.betAmount,
-      gameType: "tetris"
-    });
-    res.json(match);
+    console.log("Creating match, session:", req.session);
+    if (!req.session?.userId) {
+      return res.status(401).json({ error: "Not authenticated" });
+    }
+
+    try {
+      const match = await storage.createGameMatch({
+        player1Id: req.session.userId,
+        betAmount: req.body.betAmount,
+        gameType: "tetris"
+      });
+      res.json(match);
+    } catch (error) {
+      console.error("Error creating match:", error);
+      res.status(500).json({ error: "Failed to create match" });
+    }
   });
 
   app.get("/api/leaderboard", async (_req, res) => {
@@ -167,7 +191,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     });
   });
 
-  setupAuth(app); // Added setupAuth here
+  setupAuth(app); 
 
   return httpServer;
 }
