@@ -12,30 +12,64 @@ interface GameState {
 }
 
 export async function registerRoutes(app: Express): Promise<Server> {
-  setupAuth(app);
   const httpServer = createServer(app);
 
-  const wss = new WebSocketServer({ 
-    server: httpServer, 
-    path: '/game-ws',
-    verifyClient: (info, done) => {
-      log(`WebSocket connection attempt from ${info.req.headers.origin}`, 'websocket');
-      // Accept all connections during development
-      done(true);
+  // User routes
+  app.post("/api/user", async (req, res) => {
+    try {
+      const { walletAddress } = req.body;
+      if (!walletAddress) {
+        return res.status(400).json({ error: "Wallet address is required" });
+      }
+
+      let user = await storage.getUserByWalletAddress(walletAddress);
+      if (!user) {
+        user = await storage.createUser({
+          walletAddress,
+          username: null,
+          avatar: null,
+        });
+      }
+
+      // Set up session
+      if (req.session) {
+        req.session.userId = user.id;
+      }
+      res.json(user);
+    } catch (error) {
+      console.error("Error creating user:", error);
+      res.status(500).json({ error: "Failed to create user" });
     }
   });
 
-  // Game routes
+  app.get("/api/user", async (req, res) => {
+    if (!req.session?.userId) {
+      return res.status(401).json({ error: "Not authenticated" });
+    }
+
+    try {
+      const user = await storage.getUser(req.session.userId);
+      if (!user) {
+        return res.status(404).json({ error: "User not found" });
+      }
+      res.json(user);
+    } catch (error) {
+      console.error("Error fetching user:", error);
+      res.status(500).json({ error: "Failed to fetch user" });
+    }
+  });
+
+  // Game match routes
   app.get("/api/matches", async (req, res) => {
-    if (!req.isAuthenticated()) return res.sendStatus(401);
+    if (!req.session?.userId) return res.sendStatus(401);
     const matches = await storage.getActiveMatches();
     res.json(matches);
   });
 
   app.post("/api/matches", async (req, res) => {
-    if (!req.isAuthenticated()) return res.sendStatus(401);
+    if (!req.session?.userId) return res.sendStatus(401);
     const match = await storage.createGameMatch({
-      player1Id: req.user.id,
+      player1Id: req.session.userId,
       betAmount: req.body.betAmount,
       gameType: "tetris"
     });
@@ -47,12 +81,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
     res.json(leaderboard);
   });
 
-  // WebSocket handling for game state
+  // WebSocket handling
+  const wss = new WebSocketServer({ 
+    server: httpServer, 
+    path: '/game-ws',
+    verifyClient: (info, done) => {
+      log(`WebSocket connection attempt from ${info.req.headers.origin}`, 'websocket');
+      done(true);
+    }
+  });
+
   const gameStates = new Map<number, Map<number, GameState>>();
   const clients = new Map<WebSocket, number>();
 
   wss.on("connection", (ws, req) => {
-    log(`New WebSocket connection established from ${req.headers.origin}`, 'websocket');
+    log(`New WebSocket connection established`, 'websocket');
 
     ws.on("message", async (data) => {
       try {
@@ -85,8 +128,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
             const matchStates = gameStates.get(matchId);
             if (matchStates) {
               matchStates.set(userId, state);
-
-              // Broadcast to all clients in the match
               wss.clients.forEach((client) => {
                 if (client.readyState === WebSocket.OPEN && clients.get(client) === matchId) {
                   client.send(JSON.stringify({
@@ -119,10 +160,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
     });
 
-    ws.on("error", (error) => {
-      log(`WebSocket error: ${error}`, 'websocket');
-    });
-
     ws.on("close", () => {
       const matchId = clients.get(ws);
       log(`Connection closed for match ${matchId}`, 'websocket');
@@ -130,9 +167,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     });
   });
 
-  wss.on("error", (error) => {
-    log(`WebSocket server error: ${error}`, 'websocket');
-  });
+  setupAuth(app); // Added setupAuth here
 
   return httpServer;
 }

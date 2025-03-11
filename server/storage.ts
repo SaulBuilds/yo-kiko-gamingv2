@@ -6,7 +6,7 @@ const MemoryStore = createMemoryStore(session);
 
 export interface IStorage {
   getUser(id: number): Promise<User | undefined>;
-  getUserByUsername(username: string): Promise<User | undefined>;
+  getUserByWalletAddress(walletAddress: string): Promise<User | undefined>;
   createUser(user: InsertUser): Promise<User>;
   updateUserScore(userId: number, score: number): Promise<void>;
   getLeaderboard(): Promise<User[]>;
@@ -38,16 +38,16 @@ export class MemStorage implements IStorage {
     return this.users.get(id);
   }
 
-  async getUserByUsername(username: string): Promise<User | undefined> {
+  async getUserByWalletAddress(walletAddress: string): Promise<User | undefined> {
     return Array.from(this.users.values()).find(
-      (user) => user.username === username
+      (user) => user.walletAddress === walletAddress
     );
   }
 
   async createUser(insertUser: InsertUser): Promise<User> {
     const id = this.currentUserId++;
-    const user: User = { 
-      ...insertUser, 
+    const user: User = {
+      ...insertUser,
       id,
       score: 0,
       gamesPlayed: 0,
@@ -67,7 +67,7 @@ export class MemStorage implements IStorage {
 
   async getLeaderboard(): Promise<User[]> {
     return Array.from(this.users.values())
-      .sort((a, b) => b.score - a.score)
+      .sort((a, b) => (b.score || 0) - (a.score || 0))
       .slice(0, 10);
   }
 
