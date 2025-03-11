@@ -5,7 +5,7 @@ import { useToast } from '@/hooks/use-toast';
 
 const BOARD_WIDTH = 10;
 const BOARD_HEIGHT = 20;
-const CELL_SIZE = 30;
+const CELL_SIZE = 25; // Reduced cell size for better mobile fit
 
 const TETROMINOS = {
   I: {
@@ -114,9 +114,9 @@ export function Tetris({ initialState, onStateChange, onGameOver }: TetrisProps)
             pieceAtTop = true;
           }
           if (boardY >= 0 && boardY < BOARD_HEIGHT) {
-            newBoard[boardY][currentPiece.x + x] = { 
-              value: 1, 
-              color: currentPiece.color 
+            newBoard[boardY][currentPiece.x + x] = {
+              value: 1,
+              color: currentPiece.color
             };
           }
         }
@@ -150,7 +150,7 @@ export function Tetris({ initialState, onStateChange, onGameOver }: TetrisProps)
 
       setTimeout(() => {
         const finalBoard = newBoard.filter((_, index) => !linesToClear.includes(index));
-        const emptyRows = Array(linesToClear.length).fill(null).map(() => 
+        const emptyRows = Array(linesToClear.length).fill(null).map(() =>
           Array(BOARD_WIDTH).fill({ value: 0, color: null })
         );
         setBoard([...emptyRows, ...finalBoard]);
@@ -268,11 +268,14 @@ export function Tetris({ initialState, onStateChange, onGameOver }: TetrisProps)
   useEffect(() => {
     const handleTouchStart = (e: TouchEvent) => {
       if (gameOver) return;
+      e.preventDefault(); // Prevent default zoom behavior
       touchStartY.current = e.touches[0].clientY;
 
       const now = Date.now();
       if (now - lastTapTime.current < 300) {
-        // Double tap detected
+        // Double tap detected - don't end game, just drop piece
+        e.preventDefault();
+        e.stopPropagation();
         hardDrop();
       }
       lastTapTime.current = now;
@@ -280,6 +283,7 @@ export function Tetris({ initialState, onStateChange, onGameOver }: TetrisProps)
 
     const handleTouchEnd = (e: TouchEvent) => {
       if (gameOver) return;
+      e.preventDefault();
       const touchEndY = e.changedTouches[0].clientY;
       const deltaY = touchEndY - touchStartY.current;
 
@@ -291,26 +295,28 @@ export function Tetris({ initialState, onStateChange, onGameOver }: TetrisProps)
 
     const handleTouchMove = (e: TouchEvent) => {
       if (gameOver) return;
+      e.preventDefault();
       const touch = e.touches[0];
       const gameBoard = document.querySelector('.game-board');
       if (!gameBoard) return;
 
       const rect = gameBoard.getBoundingClientRect();
       const x = touch.clientX - rect.left;
-      const moveThreshold = CELL_SIZE;
 
       if (x < rect.width / 3) {
         moveHorizontally(-1);
       } else if (x > (rect.width * 2) / 3) {
         moveHorizontally(1);
+      } else {
+        moveDown(); // Middle area swipe down
       }
     };
 
     const gameBoard = document.querySelector('.game-board');
     if (gameBoard) {
-      gameBoard.addEventListener('touchstart', handleTouchStart);
-      gameBoard.addEventListener('touchend', handleTouchEnd);
-      gameBoard.addEventListener('touchmove', handleTouchMove);
+      gameBoard.addEventListener('touchstart', handleTouchStart, { passive: false });
+      gameBoard.addEventListener('touchend', handleTouchEnd, { passive: false });
+      gameBoard.addEventListener('touchmove', handleTouchMove, { passive: false });
 
       return () => {
         gameBoard.removeEventListener('touchstart', handleTouchStart);
@@ -318,7 +324,7 @@ export function Tetris({ initialState, onStateChange, onGameOver }: TetrisProps)
         gameBoard.removeEventListener('touchmove', handleTouchMove);
       };
     }
-  }, [gameOver, hardDrop, moveHorizontally, rotatePiece]);
+  }, [gameOver, hardDrop, moveHorizontally, rotatePiece, moveDown]);
 
   // Game loop
   useEffect(() => {
@@ -338,20 +344,22 @@ export function Tetris({ initialState, onStateChange, onGameOver }: TetrisProps)
 
   // Update parent component with game state
   useEffect(() => {
-    onStateChange({ 
-      board: board.map(row => row.map(cell => cell.value)), 
-      score, 
-      level 
+    onStateChange({
+      board: board.map(row => row.map(cell => cell.value)),
+      score,
+      level
     });
   }, [board, score, level, onStateChange]);
 
   return (
-    <div className="flex flex-col items-center">
-      <div 
+    <div className="flex flex-col items-center max-h-[90vh] overflow-hidden">
+      <div
         className="relative grid grid-cols-10 gap-px bg-primary/20 p-2 rounded-lg shadow-lg overflow-hidden game-board"
         style={{
           width: `${BOARD_WIDTH * CELL_SIZE}px`,
           height: `${BOARD_HEIGHT * CELL_SIZE}px`,
+          maxHeight: '90vh',
+          touchAction: 'none' // Prevent browser handling of touch events
         }}
       >
         {board.map((row, y) => (
@@ -412,12 +420,12 @@ export function Tetris({ initialState, onStateChange, onGameOver }: TetrisProps)
         </AnimatePresence>
       </div>
 
-      <motion.div 
-        className="mt-8 text-center bg-card p-4 rounded-lg shadow-lg"
+      <motion.div
+        className="mt-4 text-center bg-card p-4 rounded-lg shadow-lg"
         initial={{ y: 20, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
       >
-        <p className="text-primary text-2xl font-bold pixel-font mb-2">Score: {score}</p>
+        <p className="text-primary text-xl font-bold pixel-font mb-2">Score: {score}</p>
         <p className="text-muted-foreground pixel-font">Level: {level}</p>
       </motion.div>
     </div>
