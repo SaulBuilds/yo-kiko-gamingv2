@@ -1,20 +1,20 @@
-import { useState, useCallback } from 'react';
-import { Card } from '@/components/ui/card';
 import { Tetris } from './tetris';
 import { GameState } from '@/types/game';
 
 interface GameBoardProps {
+  initialState: GameState;
   onStateUpdate: (state: GameState) => void;
   onGameOver: () => void;
 }
 
-export function GameBoard({ onStateUpdate, onGameOver }: GameBoardProps) {
+export function GameBoard({ initialState, onStateUpdate, onGameOver }: GameBoardProps) {
   return (
-    <Card className="w-full flex items-center justify-center min-h-[600px] p-4">
+    <div className="flex items-center justify-center w-full">
       <Tetris 
+        initialState={initialState}
         onStateChange={onStateUpdate}
         onGameOver={onGameOver}
       />
-    </Card>
+    </div>
   );
 }

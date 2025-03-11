@@ -3,7 +3,7 @@ import { TetrisPiece, GameState } from '@/types/game';
 
 const BOARD_WIDTH = 10;
 const BOARD_HEIGHT = 20;
-const CELL_SIZE = 30; // Added fixed cell size
+const CELL_SIZE = 30;
 
 const TETROMINOS = {
   I: {
@@ -37,19 +37,16 @@ const TETROMINOS = {
 };
 
 interface TetrisProps {
+  initialState: GameState;
   onStateChange: (state: GameState) => void;
   onGameOver: () => void;
 }
 
-export function Tetris({ onStateChange, onGameOver }: TetrisProps) {
-  const createEmptyBoard = useCallback(() => 
-    Array(BOARD_HEIGHT).fill(null).map(() => Array(BOARD_WIDTH).fill(0))
-  , []);
-
-  const [board, setBoard] = useState(() => createEmptyBoard());
+export function Tetris({ initialState, onStateChange, onGameOver }: TetrisProps) {
+  const [board, setBoard] = useState(initialState.board);
   const [currentPiece, setCurrentPiece] = useState<TetrisPiece | null>(null);
-  const [score, setScore] = useState(0);
-  const [level, setLevel] = useState(1);
+  const [score, setScore] = useState(initialState.score);
+  const [level, setLevel] = useState(initialState.level);
   const [gameOver, setGameOver] = useState(false);
 
   const createNewPiece = useCallback(() => {
@@ -111,7 +108,7 @@ export function Tetris({ onStateChange, onGameOver }: TetrisProps) {
       }
     }
 
-    // Update score
+    // Update score and level
     if (completedLines > 0) {
       const points = [0, 100, 300, 500, 800][completedLines];
       setScore(prev => {
@@ -214,21 +211,15 @@ export function Tetris({ onStateChange, onGameOver }: TetrisProps) {
     onStateChange({ board, score, level });
   }, [board, score, level, onStateChange]);
 
-  const boardStyle = {
-    width: `${BOARD_WIDTH * CELL_SIZE}px`,
-    height: `${BOARD_HEIGHT * CELL_SIZE}px`,
-  };
-
-  const cellStyle = {
-    width: `${CELL_SIZE}px`,
-    height: `${CELL_SIZE}px`,
-  };
-
   return (
     <div className="flex flex-col items-center bg-card p-4 rounded-lg">
       <div 
-        className="grid grid-cols-10 gap-px bg-primary/20 p-2 rounded" 
-        style={boardStyle}
+        className="grid grid-cols-10 gap-px bg-primary/20 p-2 rounded"
+        style={{
+          width: `${BOARD_WIDTH * CELL_SIZE}px`,
+          height: `${BOARD_HEIGHT * CELL_SIZE}px`,
+          backgroundColor: 'rgba(0, 0, 0, 0.2)'
+        }}
       >
         {board.map((row, y) => (
           row.map((cell, x) => {
@@ -254,8 +245,10 @@ export function Tetris({ onStateChange, onGameOver }: TetrisProps) {
                 key={`${y}-${x}`}
                 className="border border-primary/10"
                 style={{
-                  ...cellStyle,
-                  backgroundColor
+                  width: `${CELL_SIZE}px`,
+                  height: `${CELL_SIZE}px`,
+                  backgroundColor,
+                  transition: 'background-color 0.1s'
                 }}
               />
             );
