@@ -3,6 +3,7 @@ import { TetrisPiece, GameState } from '@/types/game';
 
 const BOARD_WIDTH = 10;
 const BOARD_HEIGHT = 20;
+const CELL_SIZE = 30; // Added fixed cell size
 
 const TETROMINOS = {
   I: {
@@ -41,9 +42,11 @@ interface TetrisProps {
 }
 
 export function Tetris({ onStateChange, onGameOver }: TetrisProps) {
-  const createEmptyBoard = () => Array(BOARD_HEIGHT).fill(null).map(() => Array(BOARD_WIDTH).fill(0));
+  const createEmptyBoard = useCallback(() => 
+    Array(BOARD_HEIGHT).fill(null).map(() => Array(BOARD_WIDTH).fill(0))
+  , []);
 
-  const [board, setBoard] = useState<number[][]>(createEmptyBoard());
+  const [board, setBoard] = useState(() => createEmptyBoard());
   const [currentPiece, setCurrentPiece] = useState<TetrisPiece | null>(null);
   const [score, setScore] = useState(0);
   const [level, setLevel] = useState(1);
@@ -165,8 +168,11 @@ export function Tetris({ onStateChange, onGameOver }: TetrisProps) {
     }
   }, [currentPiece, gameOver, isValidMove]);
 
+  // Handle keyboard controls
   useEffect(() => {
     const handleKeyPress = (e: KeyboardEvent) => {
+      if (gameOver) return;
+
       switch (e.key) {
         case 'ArrowLeft':
           moveHorizontally(-1);
@@ -185,8 +191,9 @@ export function Tetris({ onStateChange, onGameOver }: TetrisProps) {
 
     window.addEventListener('keydown', handleKeyPress);
     return () => window.removeEventListener('keydown', handleKeyPress);
-  }, [moveDown, moveHorizontally, rotatePiece]);
+  }, [gameOver, moveDown, moveHorizontally, rotatePiece]);
 
+  // Game loop
   useEffect(() => {
     if (gameOver) return;
 
@@ -202,13 +209,27 @@ export function Tetris({ onStateChange, onGameOver }: TetrisProps) {
     return () => clearInterval(interval);
   }, [currentPiece, gameOver, level, moveDown, createNewPiece]);
 
+  // Update parent component with game state
   useEffect(() => {
     onStateChange({ board, score, level });
   }, [board, score, level, onStateChange]);
 
+  const boardStyle = {
+    width: `${BOARD_WIDTH * CELL_SIZE}px`,
+    height: `${BOARD_HEIGHT * CELL_SIZE}px`,
+  };
+
+  const cellStyle = {
+    width: `${CELL_SIZE}px`,
+    height: `${CELL_SIZE}px`,
+  };
+
   return (
     <div className="flex flex-col items-center bg-card p-4 rounded-lg">
-      <div className="grid grid-cols-10 gap-px bg-primary/20 p-2 rounded h-[400px]"> {/* Added height for visibility */}
+      <div 
+        className="grid grid-cols-10 gap-px bg-primary/20 p-2 rounded" 
+        style={boardStyle}
+      >
         {board.map((row, y) => (
           row.map((cell, x) => {
             let backgroundColor = cell ? TETROMINOS.I.color : 'transparent';
@@ -231,15 +252,18 @@ export function Tetris({ onStateChange, onGameOver }: TetrisProps) {
             return (
               <div
                 key={`${y}-${x}`}
-                className="w-6 h-6 border border-primary/10"
-                style={{ backgroundColor }}
+                className="border border-primary/10"
+                style={{
+                  ...cellStyle,
+                  backgroundColor
+                }}
               />
             );
           })
         ))}
       </div>
       <div className="mt-4 text-center">
-        <p className="text-primary">Score: {score}</p>
+        <p className="text-primary text-lg font-bold">Score: {score}</p>
         <p className="text-muted-foreground">Level: {level}</p>
       </div>
     </div>
