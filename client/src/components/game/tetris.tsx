@@ -212,18 +212,17 @@ export function Tetris({ initialState, onStateChange, onGameOver }: TetrisProps)
   }, [board, score, level, onStateChange]);
 
   return (
-    <div className="flex flex-col items-center bg-card p-4 rounded-lg">
+    <div className="flex flex-col items-center">
       <div 
-        className="grid grid-cols-10 gap-px bg-primary/20 p-2 rounded"
+        className="grid grid-cols-10 gap-px bg-primary/20 p-2 rounded-lg shadow-lg"
         style={{
           width: `${BOARD_WIDTH * CELL_SIZE}px`,
           height: `${BOARD_HEIGHT * CELL_SIZE}px`,
-          backgroundColor: 'rgba(0, 0, 0, 0.2)'
         }}
       >
         {board.map((row, y) => (
           row.map((cell, x) => {
-            let backgroundColor = cell ? TETROMINOS.I.color : 'transparent';
+            let backgroundColor = cell ? '#FF61DC' : 'transparent';
 
             if (currentPiece && !gameOver) {
               const pieceX = x - currentPiece.x;
@@ -243,12 +242,11 @@ export function Tetris({ initialState, onStateChange, onGameOver }: TetrisProps)
             return (
               <div
                 key={`${y}-${x}`}
-                className="border border-primary/10"
+                className="border border-primary/10 transition-colors duration-100"
                 style={{
                   width: `${CELL_SIZE}px`,
                   height: `${CELL_SIZE}px`,
-                  backgroundColor,
-                  transition: 'background-color 0.1s'
+                  backgroundColor
                 }}
               />
             );
@@ -256,8 +254,8 @@ export function Tetris({ initialState, onStateChange, onGameOver }: TetrisProps)
         ))}
       </div>
       <div className="mt-4 text-center">
-        <p className="text-primary text-lg font-bold">Score: {score}</p>
-        <p className="text-muted-foreground">Level: {level}</p>
+        <p className="text-primary text-lg font-bold pixel-font">Score: {score}</p>
+        <p className="text-muted-foreground pixel-font">Level: {level}</p>
       </div>
     </div>
   );
