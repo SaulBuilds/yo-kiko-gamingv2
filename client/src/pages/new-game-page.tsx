@@ -2,25 +2,22 @@ import { useState } from "react";
 import { useLocation } from "wouter";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { useAuth } from "@/hooks/use-auth";
+import { useToast } from "@/hooks/use-toast";
 import { useMutation } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
-import { useToast } from "@/hooks/use-toast";
 import { Navbar } from "@/components/layout/navbar";
 
 export default function NewGamePage() {
   const [_, setLocation] = useLocation();
-  const { user } = useAuth();
   const { toast } = useToast();
-  const [betAmount, setBetAmount] = useState("0.01");
 
+  // Create practice game by default for now
   const createGameMutation = useMutation({
     mutationFn: async () => {
       const res = await apiRequest("POST", "/api/matches", {
-        betAmount,
-        gameType: "tetris"
+        betAmount: "0",
+        gameType: "tetris",
+        isPractice: true
       });
       if (!res.ok) throw new Error("Failed to create game");
       return res.json();
@@ -28,7 +25,7 @@ export default function NewGamePage() {
     onSuccess: (match) => {
       toast({
         title: "Game Created",
-        description: "Your match has been created successfully!",
+        description: "Starting practice game...",
       });
       setLocation(`/game/${match.id}`);
     },
@@ -47,46 +44,32 @@ export default function NewGamePage() {
       <main className="container mx-auto px-4 py-8">
         <Card className="max-w-md mx-auto">
           <CardHeader>
-            <CardTitle>Create New Game</CardTitle>
+            <CardTitle className="pixel-font">Practice Mode</CardTitle>
           </CardHeader>
           <CardContent>
-            <form
-              onSubmit={(e) => {
-                e.preventDefault();
-                createGameMutation.mutate();
-              }}
-              className="space-y-6"
-            >
-              <div className="space-y-2">
-                <Label htmlFor="betAmount">Bet Amount (ETH)</Label>
-                <Input
-                  id="betAmount"
-                  type="number"
-                  step="0.01"
-                  value={betAmount}
-                  onChange={(e) => setBetAmount(e.target.value)}
-                  min="0.01"
-                />
-              </div>
-
+            <div className="space-y-6">
+              <p className="text-muted-foreground">
+                Practice your skills without betting. Earn XP and improve your gameplay!
+              </p>
               <div className="flex gap-4">
                 <Button
                   type="button"
                   variant="outline"
-                  className="flex-1"
+                  className="flex-1 pixel-font"
                   onClick={() => setLocation("/")}
                 >
                   Cancel
                 </Button>
                 <Button
                   type="submit"
-                  className="flex-1"
+                  className="flex-1 pixel-font"
                   disabled={createGameMutation.isPending}
+                  onClick={() => createGameMutation.mutate()}
                 >
-                  Create Match
+                  Start Game
                 </Button>
               </div>
-            </form>
+            </div>
           </CardContent>
         </Card>
       </main>
