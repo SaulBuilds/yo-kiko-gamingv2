@@ -1,11 +1,12 @@
 import { useEffect, useState } from "react";
 import { useRoute } from "wouter";
+import { Card } from "@/components/ui/card";
 import { GameBoard } from "@/components/game/game-board";
-import { Chat } from "@/components/game/chat";
 import { Spectator } from "@/components/game/spectator";
 import { useAuth } from "@/hooks/use-auth";
 import { GameState } from "@/types/game";
 import { useToast } from "@/hooks/use-toast";
+import { Navbar } from "@/components/layout/navbar";
 
 export default function GamePage() {
   const [match] = useRoute("/game/:id");
@@ -83,45 +84,50 @@ export default function GamePage() {
   const handleGameStateUpdate = (state: GameState) => {
     setGameState(state);
     if (socket?.readyState === WebSocket.OPEN) {
-      const message = JSON.stringify({
+      socket.send(JSON.stringify({
         type: "gameState",
         matchId: match?.params.id,
         userId: user?.id,
         state
-      });
-      console.log("Sending game state:", message);
-      socket.send(message);
+      }));
     }
   };
 
   const handleGameOver = () => {
     if (socket?.readyState === WebSocket.OPEN) {
-      const message = JSON.stringify({
+      socket.send(JSON.stringify({
         type: "gameOver",
         matchId: match?.params.id,
         userId: user?.id
-      });
-      console.log("Sending game over:", message);
-      socket.send(message);
+      }));
     }
   };
 
   return (
     <div className="min-h-screen bg-background">
+      <Navbar />
       <div className="container mx-auto px-4 py-8">
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          <div className="lg:col-span-2">
-            <div className="grid grid-cols-2 gap-4">
-              <GameBoard
-                onStateUpdate={handleGameStateUpdate}
-                onGameOver={handleGameOver}
-              />
-              {opponentState && (
-                <Spectator gameState={opponentState} />
-              )}
-            </div>
-          </div>
-          <Chat matchId={match?.params.id} />
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+          {/* Your Game */}
+          <Card className="p-6">
+            <h2 className="text-2xl font-bold mb-4">Your Game</h2>
+            <GameBoard
+              onStateUpdate={handleGameStateUpdate}
+              onGameOver={handleGameOver}
+            />
+          </Card>
+
+          {/* Opponent's Game */}
+          <Card className="p-6">
+            <h2 className="text-2xl font-bold mb-4">Opponent's Game</h2>
+            {opponentState ? (
+              <Spectator gameState={opponentState} />
+            ) : (
+              <div className="text-center text-muted-foreground">
+                Waiting for opponent...
+              </div>
+            )}
+          </Card>
         </div>
       </div>
     </div>
