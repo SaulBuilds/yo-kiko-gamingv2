@@ -13,7 +13,8 @@ export const config = createConfig({
   connectors: [
     metaMask({
       shimDisconnect: true,
-      shimChainChangedNavigate: false,
+      shimChainChangedNavigate: true,
+      UNSTABLE_shimOnConnectSelectAccount: true,
     }),
     walletConnect({
       projectId,

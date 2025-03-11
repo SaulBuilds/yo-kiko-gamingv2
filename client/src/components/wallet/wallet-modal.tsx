@@ -6,12 +6,13 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Card, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useConnect } from 'wagmi';
 import { create } from "zustand";
-import { useToast } from '@/hooks/use-toast';
-import { ArrowRight, Loader2 } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
+import { ArrowRight } from "lucide-react";
 import { useEffect, useState } from "react";
 
 interface WalletStore {
@@ -26,11 +27,12 @@ export const useWalletStore = create<WalletStore>((set) => ({
 
 export function WalletModal() {
   const { isOpen, setOpen } = useWalletStore();
-  const { connect, connectors, isPending, error } = useConnect();
+  const { connect, connectors, error } = useConnect();
   const { toast } = useToast();
   const [hasMetaMask, setHasMetaMask] = useState(false);
 
   useEffect(() => {
+    // Check if MetaMask is installed
     const checkMetaMask = async () => {
       const isMetaMaskAvailable = typeof window !== 'undefined' && 
         typeof window.ethereum !== 'undefined' && 
@@ -137,11 +139,7 @@ export function WalletModal() {
                       </p>
                     </div>
                   </div>
-                  {isPending ? (
-                    <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
-                  ) : (
-                    <ArrowRight className="h-5 w-5 text-muted-foreground" />
-                  )}
+                  <ArrowRight className="h-5 w-5 text-muted-foreground" />
                 </div>
               </Card>
             ))}
