@@ -1,4 +1,4 @@
-import { createContext, ReactNode, useContext } from "react";
+import { createContext, ReactNode, useContext, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useAccount, useConnect, useDisconnect } from 'wagmi';
 import { User as SelectUser } from "@shared/schema";
@@ -28,15 +28,46 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     data: user,
     error,
     isLoading,
+    refetch,
   } = useQuery<SelectUser | null>({
     queryKey: ["/api/user", address],
     queryFn: getQueryFn({ on401: "returnNull" }),
     enabled: !!address,
   });
 
+  // Create/update user when wallet is connected
+  useEffect(() => {
+    if (address && !user && !isLoading) {
+      console.log("Creating user for wallet:", address);
+      apiRequest("POST", "/api/user", { walletAddress: address })
+        .then((res) => {
+          if (!res.ok) {
+            throw new Error("Failed to create user");
+          }
+          return res.json();
+        })
+        .then((newUser) => {
+          console.log("User created:", newUser);
+          queryClient.setQueryData(["/api/user", address], newUser);
+          refetch();
+        })
+        .catch((error) => {
+          console.error("Error creating user:", error);
+          toast({
+            title: "Error",
+            description: "Failed to create user profile",
+            variant: "destructive",
+          });
+        });
+    }
+  }, [address, user, isLoading, toast, refetch]);
+
   const updateProfileMutation = useMutation({
     mutationFn: async (data: { username?: string; avatar?: string }) => {
       const res = await apiRequest("PATCH", "/api/user/profile", data);
+      if (!res.ok) {
+        throw new Error("Failed to update profile");
+      }
       return await res.json();
     },
     onSuccess: (updatedUser: SelectUser) => {
