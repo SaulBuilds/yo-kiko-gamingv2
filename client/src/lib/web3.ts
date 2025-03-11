@@ -18,8 +18,8 @@ export const config = createConfig({
       projectId,
       showQrModal: true,
       metadata: {
-        name: 'Crypto Gaming Platform',
-        description: 'Decentralized Gaming Platform',
+        name: 'sumthn.fun',
+        description: 'Crypto Gaming Platform',
         url: window.location.origin,
         icons: ['https://wagmi.sh/icon.png']
       },
@@ -29,7 +29,7 @@ export const config = createConfig({
     [mainnet.id]: http(),
     [sepolia.id]: http(),
   },
-})
+});
 
 // Game contract ABIs
 export const GAME_FACTORY_ABI = [
