@@ -7,17 +7,24 @@ import { useAuth } from "@/hooks/use-auth";
 import { GameState } from "@/types/game";
 import { useToast } from "@/hooks/use-toast";
 import { Navbar } from "@/components/layout/navbar";
+import { useQuery } from "@tanstack/react-query";
 
 export default function GamePage() {
-  const [match] = useRoute("/game/:id");
+  const [, params] = useRoute("/game/:id");
   const { user } = useAuth();
   const [socket, setSocket] = useState<WebSocket | null>(null);
   const [gameState, setGameState] = useState<GameState | null>(null);
   const [opponentState, setOpponentState] = useState<GameState | null>(null);
   const { toast } = useToast();
 
+  // Fetch match details
+  const { data: match } = useQuery({
+    queryKey: ["/api/matches", params?.id],
+    enabled: !!params?.id,
+  });
+
   useEffect(() => {
-    if (!user) return;
+    if (!user || !params?.id) return;
 
     const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
     const wsUrl = `${protocol}//${window.location.host}/game-ws`;
@@ -29,7 +36,7 @@ export default function GamePage() {
       console.log("WebSocket connection established");
       ws.send(JSON.stringify({
         type: "join",
-        matchId: match?.params.id,
+        matchId: parseInt(params.id),
         userId: user.id
       }));
     };
@@ -68,7 +75,6 @@ export default function GamePage() {
     ws.onclose = () => {
       console.log("WebSocket connection closed");
       toast({
-        title: "Disconnected",
         description: "Lost connection to game server",
         variant: "destructive",
       });
@@ -79,14 +85,14 @@ export default function GamePage() {
       console.log("Cleaning up WebSocket connection");
       ws.close();
     };
-  }, [user, match?.params.id, toast]);
+  }, [user, params?.id, toast]);
 
   const handleGameStateUpdate = (state: GameState) => {
     setGameState(state);
-    if (socket?.readyState === WebSocket.OPEN) {
+    if (socket?.readyState === WebSocket.OPEN && params?.id) {
       socket.send(JSON.stringify({
         type: "gameState",
-        matchId: match?.params.id,
+        matchId: parseInt(params.id),
         userId: user?.id,
         state
       }));
@@ -94,10 +100,10 @@ export default function GamePage() {
   };
 
   const handleGameOver = () => {
-    if (socket?.readyState === WebSocket.OPEN) {
+    if (socket?.readyState === WebSocket.OPEN && params?.id) {
       socket.send(JSON.stringify({
         type: "gameOver",
-        matchId: match?.params.id,
+        matchId: parseInt(params.id),
         userId: user?.id
       }));
     }
@@ -107,6 +113,16 @@ export default function GamePage() {
     <div className="min-h-screen bg-background">
       <Navbar />
       <div className="container mx-auto px-4 py-8">
+        {match && (
+          <div className="mb-4">
+            <h1 className="text-2xl font-bold">
+              Game Match #{params?.id} - Prize Pool: {match.betAmount} ETH
+            </h1>
+            <p className="text-muted-foreground">
+              Status: {match.status.charAt(0).toUpperCase() + match.status.slice(1)}
+            </p>
+          </div>
+        )}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
           {/* Your Game */}
           <Card className="p-6">
