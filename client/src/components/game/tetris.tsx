@@ -2,6 +2,7 @@ import { useEffect, useState, useCallback, useRef } from 'react';
 import { TetrisPiece, GameState } from '@/types/game';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useToast } from '@/hooks/use-toast';
+import { ScoreAnimation } from './score-animation';
 
 const BOARD_WIDTH = 10;
 const BOARD_HEIGHT = 20;
@@ -44,6 +45,13 @@ interface TetrisProps {
   onGameOver: () => void;
 }
 
+interface ScoreAnim {
+  id: number;
+  points: number;
+  isTetris: boolean;
+  position: { x: number; y: number };
+}
+
 export function Tetris({ initialState, onStateChange, onGameOver }: TetrisProps) {
   const { toast } = useToast();
   const [board, setBoard] = useState(initialState.board.map(row => row.map(cell => ({ value: cell, color: null }))));
@@ -52,6 +60,7 @@ export function Tetris({ initialState, onStateChange, onGameOver }: TetrisProps)
   const [level, setLevel] = useState(initialState.level);
   const [gameOver, setGameOver] = useState(false);
   const [clearedLines, setClearedLines] = useState<number[]>([]);
+  const [scoreAnims, setScoreAnims] = useState<ScoreAnim[]>([]);
   const lastTapTime = useRef(0);
   const touchStartY = useRef(0);
   const lastTetris = useRef(false); // Track back-to-back Tetris
@@ -161,19 +170,38 @@ export function Tetris({ initialState, onStateChange, onGameOver }: TetrisProps)
         setBoard([...emptyRows, ...finalBoard]);
         setClearedLines([]);
 
-        // Scoring system with Tetris bonus
+        // Scoring system with Tetris bonus and animation
         let points;
-        if (completedLines === 4) {
+        const isTetris = completedLines === 4;
+        if (isTetris) {
           points = lastTetris.current ? 1200 : 800; // Back-to-back Tetris bonus
           lastTetris.current = true;
+        } else {
+          points = [0, 100, 300, 500][completedLines - 1] || 0;
+          lastTetris.current = false;
+        }
+
+        // Calculate animation position
+        const animY = (linesToClear[0] * CELL_SIZE) + (CELL_SIZE * 2);
+        const animX = (BOARD_WIDTH * CELL_SIZE) / 2;
+
+        // Add score animation
+        setScoreAnims(prev => [
+          ...prev,
+          {
+            id: Date.now(),
+            points,
+            isTetris,
+            position: { x: animX, y: animY }
+          }
+        ]);
+
+        if (isTetris) {
           toast({
             title: lastTetris.current ? "Back-to-Back Tetris!" : "Tetris!",
             description: `+${points} points!`,
             duration: 2000,
           });
-        } else {
-          points = [0, 100, 300, 500][completedLines - 1] || 0;
-          lastTetris.current = false;
         }
 
         setScore(prev => {
@@ -434,6 +462,19 @@ export function Tetris({ initialState, onStateChange, onGameOver }: TetrisProps)
               />
             );
           })
+        ))}
+
+        {/* Score Animations */}
+        {scoreAnims.map(anim => (
+          <ScoreAnimation
+            key={anim.id}
+            points={anim.points}
+            isTetris={anim.isTetris}
+            position={anim.position}
+            onComplete={() => {
+              setScoreAnims(prev => prev.filter(a => a.id !== anim.id));
+            }}
+          />
         ))}
 
         {/* Game Over Overlay */}
