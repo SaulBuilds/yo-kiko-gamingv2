@@ -1,5 +1,5 @@
 import { useState, useCallback } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card } from '@/components/ui/card';
 import { Tetris } from './tetris';
 import { GameState } from '@/types/game';
 
@@ -9,16 +9,12 @@ interface GameBoardProps {
 }
 
 export function GameBoard({ onStateUpdate, onGameOver }: GameBoardProps) {
-  const handleStateChange = useCallback((state: GameState) => {
-    onStateUpdate(state);
-  }, [onStateUpdate]);
-
   return (
-    <div>
+    <Card className="w-full flex items-center justify-center min-h-[600px] p-4">
       <Tetris 
-        onStateChange={handleStateChange}
+        onStateChange={onStateUpdate}
         onGameOver={onGameOver}
       />
-    </div>
+    </Card>
   );
 }
