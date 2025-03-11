@@ -6,12 +6,14 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Card } from "@/components/ui/card";
-import { Wallet, ArrowRight } from "lucide-react";
-import { useConnect } from "wagmi";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { useConnect } from 'wagmi';
 import { create } from "zustand";
 import { useToast } from "@/hooks/use-toast";
+import { ArrowRight } from "lucide-react";
+import { useEffect, useState } from "react";
 
 interface WalletStore {
   isOpen: boolean;
@@ -25,15 +27,33 @@ export const useWalletStore = create<WalletStore>((set) => ({
 
 export function WalletModal() {
   const { isOpen, setOpen } = useWalletStore();
-  const { connect, connectors, isLoading, error } = useConnect();
+  const { connect, connectors, error } = useConnect();
   const { toast } = useToast();
+  const [hasMetaMask, setHasMetaMask] = useState(false);
+
+  useEffect(() => {
+    // Check if MetaMask is installed
+    const checkMetaMask = async () => {
+      const isMetaMaskAvailable = typeof window !== 'undefined' && 
+        typeof window.ethereum !== 'undefined' && 
+        window.ethereum.isMetaMask;
+      setHasMetaMask(isMetaMaskAvailable);
+    };
+    checkMetaMask();
+  }, []);
 
   const walletOptions = [
     {
       name: "Browser Wallet",
-      description: "Connect using MetaMask or other browser wallets",
+      description: hasMetaMask 
+        ? "Connect using MetaMask browser wallet" 
+        : "Install MetaMask to use your browser wallet",
       icon: "🦊",
       onClick: () => {
+        if (!hasMetaMask) {
+          window.open("https://metamask.io/download/", "_blank");
+          return;
+        }
         const connector = connectors.find((c) => c.id === "metaMask");
         if (connector) {
           connect({ connector })
@@ -53,7 +73,6 @@ export function WalletModal() {
             });
         }
       },
-      installUrl: "https://metamask.io/download/",
     },
     {
       name: "WalletConnect",
@@ -125,19 +144,21 @@ export function WalletModal() {
               </Card>
             ))}
           </div>
-          <div className="border-t pt-4">
-            <h4 className="font-semibold mb-2">New to Web3?</h4>
-            <p className="text-sm text-muted-foreground mb-4">
-              If you're new to blockchain technology and don't have a wallet yet, we recommend starting with MetaMask:
-            </p>
-            <Button
-              variant="outline"
-              className="w-full"
-              onClick={() => window.open("https://metamask.io/download/", "_blank")}
-            >
-              Install MetaMask
-            </Button>
-          </div>
+          {!hasMetaMask && (
+            <div className="border-t pt-4">
+              <h4 className="font-semibold mb-2">New to Web3?</h4>
+              <p className="text-sm text-muted-foreground mb-4">
+                If you're new to blockchain technology and don't have a wallet yet, we recommend starting with MetaMask:
+              </p>
+              <Button
+                variant="outline"
+                className="w-full"
+                onClick={() => window.open("https://metamask.io/download/", "_blank")}
+              >
+                Install MetaMask
+              </Button>
+            </div>
+          )}
         </ScrollArea>
       </DialogContent>
     </Dialog>
