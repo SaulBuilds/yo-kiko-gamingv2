@@ -219,35 +219,6 @@ export function Tetris({ initialState, onStateChange, onGameOver }: TetrisProps)
     setCurrentPiece(null);
   }, [board, currentPiece, level, onGameOver, score, toast]);
 
-  const moveDown = useCallback(() => {
-    if (!currentPiece || gameOver) return;
-
-    if (isValidMove(currentPiece, currentPiece.x, currentPiece.y + 1)) {
-      setCurrentPiece({
-        ...currentPiece,
-        y: currentPiece.y + 1
-      });
-    } else {
-      mergePieceWithBoard();
-    }
-  }, [currentPiece, gameOver, isValidMove, mergePieceWithBoard]);
-
-  const hardDrop = useCallback(() => {
-    if (!currentPiece || gameOver) return;
-
-    let dropDistance = 0;
-    while (isValidMove(currentPiece, currentPiece.x, currentPiece.y + dropDistance + 1)) {
-      dropDistance++;
-    }
-
-    setCurrentPiece({
-      ...currentPiece,
-      y: currentPiece.y + dropDistance
-    });
-
-    mergePieceWithBoard();
-  }, [currentPiece, gameOver, isValidMove, mergePieceWithBoard]);
-
   const moveHorizontally = useCallback((direction: number) => {
     if (!currentPiece || gameOver) return;
 
@@ -283,6 +254,23 @@ export function Tetris({ initialState, onStateChange, onGameOver }: TetrisProps)
     }
   }, [currentPiece, gameOver, isValidMove]);
 
+  const hardDrop = useCallback(() => {
+    if (!currentPiece || gameOver) return;
+
+    let dropDistance = 0;
+    while (isValidMove(currentPiece, currentPiece.x, currentPiece.y + dropDistance + 1)) {
+      dropDistance++;
+    }
+
+    setCurrentPiece({
+      ...currentPiece,
+      y: currentPiece.y + dropDistance
+    });
+
+    mergePieceWithBoard();
+  }, [currentPiece, gameOver, isValidMove, mergePieceWithBoard]);
+
+
   // Handle keyboard controls
   useEffect(() => {
     const handleKeyPress = (e: KeyboardEvent) => {
@@ -296,7 +284,7 @@ export function Tetris({ initialState, onStateChange, onGameOver }: TetrisProps)
           moveHorizontally(1);
           break;
         case 'ArrowDown':
-          moveDown();
+          //moveDown();  //Removed - handled in game loop now
           break;
         case 'ArrowUp':
           rotatePiece();
@@ -309,7 +297,7 @@ export function Tetris({ initialState, onStateChange, onGameOver }: TetrisProps)
 
     window.addEventListener('keydown', handleKeyPress);
     return () => window.removeEventListener('keydown', handleKeyPress);
-  }, [gameOver, moveDown, moveHorizontally, rotatePiece, hardDrop]);
+  }, [gameOver, moveHorizontally, rotatePiece, hardDrop]);
 
   // Handle touch controls
   useEffect(() => {
@@ -355,7 +343,7 @@ export function Tetris({ initialState, onStateChange, onGameOver }: TetrisProps)
       } else if (x > (rect.width * 2) / 3) {
         moveHorizontally(1);
       } else {
-        moveDown(); // Middle area swipe down
+        //moveDown(); // Middle area swipe down - Removed - handled in game loop now
       }
     };
 
@@ -371,7 +359,7 @@ export function Tetris({ initialState, onStateChange, onGameOver }: TetrisProps)
         gameBoard.removeEventListener('touchmove', handleTouchMove);
       };
     }
-  }, [gameOver, hardDrop, moveHorizontally, rotatePiece, moveDown]);
+  }, [gameOver, hardDrop, moveHorizontally, rotatePiece]);
 
   // Game loop with automatic falling
   useEffect(() => {
@@ -383,7 +371,10 @@ export function Tetris({ initialState, onStateChange, onGameOver }: TetrisProps)
     }
 
     if (!currentPiece) {
-      setCurrentPiece(createNewPiece());
+      const newPiece = createNewPiece();
+      if (newPiece) {
+        setCurrentPiece(newPiece);
+      }
       return;
     }
 
@@ -394,7 +385,14 @@ export function Tetris({ initialState, onStateChange, onGameOver }: TetrisProps)
 
     // Create new interval with speed based on level
     dropInterval.current = setInterval(() => {
-      moveDown();
+      if (isValidMove(currentPiece, currentPiece.x, currentPiece.y + 1)) {
+        setCurrentPiece({
+          ...currentPiece,
+          y: currentPiece.y + 1
+        });
+      } else {
+        mergePieceWithBoard();
+      }
     }, Math.max(100, 1000 - (level * 100))); // Speed increases with level
 
     return () => {
@@ -402,7 +400,7 @@ export function Tetris({ initialState, onStateChange, onGameOver }: TetrisProps)
         clearInterval(dropInterval.current);
       }
     };
-  }, [currentPiece, gameOver, level, moveDown, createNewPiece]);
+  }, [currentPiece, gameOver, level, isValidMove, mergePieceWithBoard, createNewPiece]);
 
   // Update parent component with game state
   useEffect(() => {
