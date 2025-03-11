@@ -1,5 +1,6 @@
 import { useEffect, useState, useCallback } from 'react';
 import { TetrisPiece, GameState } from '@/types/game';
+import { motion, AnimatePresence } from 'framer-motion';
 
 const BOARD_WIDTH = 10;
 const BOARD_HEIGHT = 20;
@@ -43,11 +44,12 @@ interface TetrisProps {
 }
 
 export function Tetris({ initialState, onStateChange, onGameOver }: TetrisProps) {
-  const [board, setBoard] = useState(initialState.board);
+  const [board, setBoard] = useState(initialState.board.map(row => row.map(cell => ({ value: cell, color: null }))));
   const [currentPiece, setCurrentPiece] = useState<TetrisPiece | null>(null);
   const [score, setScore] = useState(initialState.score);
   const [level, setLevel] = useState(initialState.level);
   const [gameOver, setGameOver] = useState(false);
+  const [clearedLines, setClearedLines] = useState<number[]>([]);
 
   const createNewPiece = useCallback(() => {
     const pieces = Object.keys(TETROMINOS) as Array<keyof typeof TETROMINOS>;
@@ -70,7 +72,7 @@ export function Tetris({ initialState, onStateChange, onGameOver }: TetrisProps)
             newX < 0 ||
             newX >= BOARD_WIDTH ||
             newY >= BOARD_HEIGHT ||
-            (newY >= 0 && board[newY][newX])
+            (newY >= 0 && board[newY][newX].value)
           ) {
             return false;
           }
@@ -93,34 +95,51 @@ export function Tetris({ initialState, onStateChange, onGameOver }: TetrisProps)
             onGameOver();
             return;
           }
-          newBoard[boardY][currentPiece.x + x] = value;
+          newBoard[boardY][currentPiece.x + x] = { 
+            value: 1, 
+            color: currentPiece.color 
+          };
         }
       });
     });
 
     // Check for completed lines
     let completedLines = 0;
+    const linesToClear: number[] = [];
+
     for (let y = BOARD_HEIGHT - 1; y >= 0; y--) {
-      if (newBoard[y].every(cell => cell)) {
+      if (newBoard[y].every(cell => cell.value)) {
         completedLines++;
-        newBoard.splice(y, 1);
-        newBoard.unshift(Array(BOARD_WIDTH).fill(0));
+        linesToClear.push(y);
       }
     }
 
-    // Update score and level
-    if (completedLines > 0) {
-      const points = [0, 100, 300, 500, 800][completedLines];
-      setScore(prev => {
-        const newScore = prev + points * level;
-        if (newScore > level * 1000) {
-          setLevel(l => l + 1);
-        }
-        return newScore;
-      });
+    if (linesToClear.length > 0) {
+      setClearedLines(linesToClear);
+
+      // Remove completed lines after animation
+      setTimeout(() => {
+        const finalBoard = newBoard.filter((_, index) => !linesToClear.includes(index));
+        const emptyRows = Array(linesToClear.length).fill(null).map(() => 
+          Array(BOARD_WIDTH).fill({ value: 0, color: null })
+        );
+        setBoard([...emptyRows, ...finalBoard]);
+        setClearedLines([]);
+
+        // Update score and level
+        const points = [0, 100, 300, 500, 800][completedLines];
+        setScore(prev => {
+          const newScore = prev + points * level;
+          if (newScore > level * 1000) {
+            setLevel(l => l + 1);
+          }
+          return newScore;
+        });
+      }, 500);
+    } else {
+      setBoard(newBoard);
     }
 
-    setBoard(newBoard);
     setCurrentPiece(null);
   }, [board, currentPiece, level, onGameOver]);
 
@@ -201,20 +220,24 @@ export function Tetris({ initialState, onStateChange, onGameOver }: TetrisProps)
 
     const interval = setInterval(() => {
       moveDown();
-    }, Math.max(100, 1000 - (level * 100)));
+    }, Math.max(100, 1000 - (level * 100))); // Speed increases with level
 
     return () => clearInterval(interval);
   }, [currentPiece, gameOver, level, moveDown, createNewPiece]);
 
   // Update parent component with game state
   useEffect(() => {
-    onStateChange({ board, score, level });
+    onStateChange({ 
+      board: board.map(row => row.map(cell => cell.value)), 
+      score, 
+      level 
+    });
   }, [board, score, level, onStateChange]);
 
   return (
     <div className="flex flex-col items-center">
       <div 
-        className="grid grid-cols-10 gap-px bg-primary/20 p-2 rounded-lg shadow-lg"
+        className="relative grid grid-cols-10 gap-px bg-primary/20 p-2 rounded-lg shadow-lg overflow-hidden"
         style={{
           width: `${BOARD_WIDTH * CELL_SIZE}px`,
           height: `${BOARD_HEIGHT * CELL_SIZE}px`,
@@ -222,7 +245,7 @@ export function Tetris({ initialState, onStateChange, onGameOver }: TetrisProps)
       >
         {board.map((row, y) => (
           row.map((cell, x) => {
-            let backgroundColor = cell ? '#FF61DC' : 'transparent';
+            let backgroundColor = cell.value ? cell.color : 'transparent';
 
             if (currentPiece && !gameOver) {
               const pieceX = x - currentPiece.x;
@@ -240,23 +263,35 @@ export function Tetris({ initialState, onStateChange, onGameOver }: TetrisProps)
             }
 
             return (
-              <div
+              <motion.div
                 key={`${y}-${x}`}
-                className="border border-primary/10 transition-colors duration-100"
+                className={`border border-primary/10 ${
+                  clearedLines.includes(y) ? 'animate-pulse bg-white' : ''
+                }`}
                 style={{
                   width: `${CELL_SIZE}px`,
                   height: `${CELL_SIZE}px`,
                   backgroundColor
                 }}
+                animate={{
+                  scale: clearedLines.includes(y) ? [1, 1.1, 1] : 1,
+                  opacity: clearedLines.includes(y) ? [1, 0] : 1
+                }}
+                transition={{ duration: 0.5 }}
               />
             );
           })
         ))}
       </div>
-      <div className="mt-4 text-center">
-        <p className="text-primary text-lg font-bold pixel-font">Score: {score}</p>
+
+      <motion.div 
+        className="mt-8 text-center bg-card p-4 rounded-lg shadow-lg"
+        initial={{ y: 20, opacity: 0 }}
+        animate={{ y: 0, opacity: 1 }}
+      >
+        <p className="text-primary text-2xl font-bold pixel-font mb-2">Score: {score}</p>
         <p className="text-muted-foreground pixel-font">Level: {level}</p>
-      </div>
+      </motion.div>
     </div>
   );
 }
