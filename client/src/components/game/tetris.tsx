@@ -7,6 +7,7 @@ import { ScoreAnimation } from './score-animation';
 const BOARD_WIDTH = 10;
 const BOARD_HEIGHT = 20;
 const CELL_SIZE = 25; // Reduced cell size for better mobile fit
+const BASE_DROP_SPEED = 1000; // Base speed in milliseconds
 
 const TETROMINOS = {
   I: {
@@ -270,6 +271,21 @@ export function Tetris({ initialState, onStateChange, onGameOver }: TetrisProps)
     mergePieceWithBoard();
   }, [currentPiece, gameOver, isValidMove, mergePieceWithBoard]);
 
+  const moveDown = useCallback(() => {
+    if (!currentPiece || gameOver) return;
+
+    if (isValidMove(currentPiece, currentPiece.x, currentPiece.y + 1)) {
+      setCurrentPiece({
+        ...currentPiece,
+        y: currentPiece.y + 1
+      });
+      return true;
+    } else {
+      mergePieceWithBoard();
+      return false;
+    }
+  }, [currentPiece, gameOver, isValidMove, mergePieceWithBoard]);
+
 
   // Handle keyboard controls
   useEffect(() => {
@@ -284,10 +300,10 @@ export function Tetris({ initialState, onStateChange, onGameOver }: TetrisProps)
           moveHorizontally(1);
           break;
         case 'ArrowDown':
-          //moveDown();  //Removed - handled in game loop now
+          moveDown();
           break;
         case 'ArrowUp':
-          rotatePiece();
+          hardDrop(); // Changed to hard drop
           break;
         case ' ':
           hardDrop();
@@ -297,7 +313,7 @@ export function Tetris({ initialState, onStateChange, onGameOver }: TetrisProps)
 
     window.addEventListener('keydown', handleKeyPress);
     return () => window.removeEventListener('keydown', handleKeyPress);
-  }, [gameOver, moveHorizontally, rotatePiece, hardDrop]);
+  }, [gameOver, moveDown, moveHorizontally, hardDrop]);
 
   // Handle touch controls
   useEffect(() => {
@@ -383,24 +399,18 @@ export function Tetris({ initialState, onStateChange, onGameOver }: TetrisProps)
       clearInterval(dropInterval.current);
     }
 
+    // Calculate drop speed based on level
+    const dropSpeed = Math.max(100, BASE_DROP_SPEED - (level * 100)); // Speed increases with level
+
     // Create new interval with speed based on level
-    dropInterval.current = setInterval(() => {
-      if (isValidMove(currentPiece, currentPiece.x, currentPiece.y + 1)) {
-        setCurrentPiece({
-          ...currentPiece,
-          y: currentPiece.y + 1
-        });
-      } else {
-        mergePieceWithBoard();
-      }
-    }, Math.max(100, 1000 - (level * 100))); // Speed increases with level
+    dropInterval.current = setInterval(moveDown, dropSpeed);
 
     return () => {
       if (dropInterval.current) {
         clearInterval(dropInterval.current);
       }
     };
-  }, [currentPiece, gameOver, level, isValidMove, mergePieceWithBoard, createNewPiece]);
+  }, [currentPiece, gameOver, level, moveDown, createNewPiece]);
 
   // Update parent component with game state
   useEffect(() => {

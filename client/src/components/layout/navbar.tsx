@@ -14,11 +14,10 @@ export function Navbar() {
             onClick={() => setLocation("/")}
           >
             <Image 
-              src="/assets/yokiko_logo.png" 
+              src="/assets/yo-kiko_lettermark.svg" 
               alt="Yo-Kiko"
               className="h-8 w-auto"
             />
-            <h1 className="pixel-font text-xl text-primary">yo-kiko</h1>
           </div>
 
           <div className="flex items-center space-x-4">

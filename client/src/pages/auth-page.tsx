@@ -9,6 +9,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { insertUserSchema } from "@shared/schema";
 import { WalletConnect } from "@/components/wallet/wallet-connect";
+import {Image} from "@/components/ui/image";
 
 export default function AuthPage() {
   const [_, setLocation] = useLocation();
@@ -27,11 +28,20 @@ export default function AuthPage() {
   return (
     <div className="min-h-screen grid grid-cols-1 md:grid-cols-2">
       <div className="flex items-center justify-center p-8">
+      
         <Card className="w-full max-w-md">
           <CardContent className="pt-6 space-y-6">
+            <div className="flex items-center justify-center p-8">
+            <Image 
+              src="/assets/yo-kiko_lettermark.svg" 
+              alt="Yo-Kiko"
+              className="h-20 w-auto items-center justify-center"
+            />
+              </div>
             {!address ? (
+      
               <div className="text-center">
-                <h2 className="text-2xl font-bold mb-4">Connect Your Wallet</h2>
+
                 <WalletConnect />
               </div>
             ) : !user ? (
@@ -95,9 +105,6 @@ export default function AuthPage() {
       </div>
 
       <div className="hidden md:flex flex-col justify-center p-8 bg-primary/5">
-        <h1 className="text-4xl font-bold mb-4 text-primary">
-          Crypto Gaming Platform
-        </h1>
         <p className="text-lg text-muted-foreground">
           Welcome to the future of competitive gaming. Connect your wallet to start
           playing classic arcade games, compete with players worldwide, and win
