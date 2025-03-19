@@ -303,17 +303,17 @@ export function Tetris({ initialState, onStateChange, onGameOver }: TetrisProps)
           moveDown();
           break;
         case 'ArrowUp':
-          hardDrop(); // Changed to hard drop
+          rotatePiece(); // Changed back to rotate
           break;
         case ' ':
-          hardDrop();
+          hardDrop(); // Space bar for instant drop
           break;
       }
     };
 
     window.addEventListener('keydown', handleKeyPress);
     return () => window.removeEventListener('keydown', handleKeyPress);
-  }, [gameOver, moveDown, moveHorizontally, hardDrop]);
+  }, [gameOver, moveDown, moveHorizontally, rotatePiece, hardDrop]);
 
   // Handle touch controls
   useEffect(() => {
