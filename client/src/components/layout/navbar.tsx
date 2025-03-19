@@ -1,5 +1,6 @@
 import { useLocation } from "wouter";
 import { WalletConnect } from "@/components/wallet/wallet-connect";
+import { Image } from "@/components/ui/image";
 
 export function Navbar() {
   const [_, setLocation] = useLocation();
@@ -12,7 +13,12 @@ export function Navbar() {
             className="flex items-center space-x-4 cursor-pointer" 
             onClick={() => setLocation("/")}
           >
-            <h1 className="pixel-font text-xl text-primary">sumthn.fun</h1>
+            <Image 
+              src="/assets/yokiko_logo.png" 
+              alt="Yo-Kiko"
+              className="h-8 w-auto"
+            />
+            <h1 className="pixel-font text-xl text-primary">yo-kiko</h1>
           </div>
 
           <div className="flex items-center space-x-4">
