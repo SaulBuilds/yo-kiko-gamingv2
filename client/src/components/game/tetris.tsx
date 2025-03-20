@@ -228,15 +228,17 @@ export function Tetris({ initialState, onStateChange, onGameOver }: TetrisProps)
       dropDistance++;
     }
 
-    setCurrentPiece({
-      ...currentPiece,
-      y: currentPiece.y + dropDistance
-    });
+    if (dropDistance > 0) {
+      setCurrentPiece(prev => ({
+        ...prev!,
+        y: prev!.y + dropDistance
+      }));
 
-    // Small delay before merging to allow animation
-    setTimeout(() => {
-      mergePieceWithBoard();
-    }, 50);
+      // Allow a brief moment for animation before merging
+      setTimeout(() => {
+        mergePieceWithBoard();
+      }, 50);
+    }
   }, [currentPiece, gameOver, isValidMove, mergePieceWithBoard]);
 
   const moveHorizontally = useCallback((direction: number) => {
@@ -373,14 +375,14 @@ export function Tetris({ initialState, onStateChange, onGameOver }: TetrisProps)
     if (!nextPiece) return null;
 
     return (
-      <div className="absolute top-4 right-4 bg-card/80 p-4 rounded-lg shadow-lg">
-        <h3 className="text-sm text-primary font-bold mb-2">Next Piece</h3>
-        <div className="grid grid-cols-4 gap-px bg-primary/20 p-2 rounded">
+      <div className="fixed right-4 top-20 bg-card/80 p-6 rounded-lg shadow-lg">
+        <h3 className="text-sm text-primary font-bold mb-4">Next Piece</h3>
+        <div className="grid grid-cols-4 gap-1 bg-primary/20 p-4 rounded">
           {nextPiece.shape.map((row, y) =>
             row.map((cell, x) => (
               <div
                 key={`next-${y}-${x}`}
-                className="w-4 h-4 border border-primary/10"
+                className="w-6 h-6 border border-primary/10"
                 style={{
                   backgroundColor: cell ? nextPiece.color : 'transparent'
                 }}
@@ -444,8 +446,6 @@ export function Tetris({ initialState, onStateChange, onGameOver }: TetrisProps)
           })
         ))}
 
-        <NextPiecePreview />
-
         {scoreAnims.map(anim => (
           <ScoreAnimation
             key={anim.id}
@@ -472,6 +472,8 @@ export function Tetris({ initialState, onStateChange, onGameOver }: TetrisProps)
           </motion.div>
         )}
       </div>
+
+      <NextPiecePreview />
 
       <motion.div
         className="mt-4 text-center bg-card p-4 rounded-lg shadow-lg"
