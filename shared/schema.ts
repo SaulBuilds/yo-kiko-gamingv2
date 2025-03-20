@@ -23,7 +23,11 @@ export const gameMatches = pgTable("game_matches", {
   startTime: timestamp("start_time"),
   endTime: timestamp("end_time"),
   gameType: text("game_type").notNull().default("tetris"),
-  isPractice: boolean("is_practice").default(false)
+  isPractice: boolean("is_practice").default(false),
+  timeLimit: integer("time_limit"), // in minutes
+  player1Score: integer("player1_score"),
+  player2Score: integer("player2_score"),
+  expiresAt: timestamp("expires_at")
 });
 
 export const insertUserSchema = createInsertSchema(users).pick({
@@ -39,9 +43,11 @@ export const insertGameMatchSchema = createInsertSchema(gameMatches).pick({
   player1Id: true,
   betAmount: true,
   gameType: true,
-  isPractice: true
+  isPractice: true,
+  timeLimit: true
 }).partial({
-  isPractice: true
+  isPractice: true,
+  timeLimit: true
 });
 
 export type InsertUser = z.infer<typeof insertUserSchema>;
