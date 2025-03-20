@@ -228,15 +228,14 @@ export function Tetris({ initialState, onStateChange, onGameOver }: TetrisProps)
       dropDistance++;
     }
 
-    // Set piece at the lowest position and merge immediately
+    // Only move and merge if we found a valid drop position
     if (dropDistance > 0) {
-      const finalY = currentPiece.y + dropDistance;
       const finalPiece = {
         ...currentPiece,
-        y: finalY
+        y: currentPiece.y + dropDistance
       };
       setCurrentPiece(finalPiece);
-      mergePieceWithBoard();
+      setTimeout(() => mergePieceWithBoard(), 10); // Small delay for visual feedback
     }
   }, [currentPiece, gameOver, isValidMove, mergePieceWithBoard]);
 
@@ -304,7 +303,7 @@ export function Tetris({ initialState, onStateChange, onGameOver }: TetrisProps)
     return () => window.removeEventListener('keydown', handleKeyPress);
   }, [gameOver, moveDown, moveHorizontally, rotatePiece, hardDrop]);
 
-  // Game loop with automatic falling
+  // Game loop with automatic falling - modifying the useEffect
   useEffect(() => {
     if (gameOver) {
       if (dropInterval.current) {
@@ -322,14 +321,8 @@ export function Tetris({ initialState, onStateChange, onGameOver }: TetrisProps)
         setCurrentPiece(newPiece);
         setNextPiece(createNewPiece());
       } else if (newPiece) {
-        // Game over if new piece can't be placed
         setGameOver(true);
         onGameOver();
-        toast({
-          title: "Game Over!",
-          description: `Final Score: ${score}`,
-          duration: 5000,
-        });
       }
       return;
     }
@@ -339,8 +332,8 @@ export function Tetris({ initialState, onStateChange, onGameOver }: TetrisProps)
       clearInterval(dropInterval.current);
     }
 
-    // Calculate drop speed based on level
-    const dropSpeed = Math.max(100, BASE_DROP_SPEED - (level * 100)); // Speed increases with level
+    // Calculate drop speed based on level (faster as level increases)
+    const dropSpeed = Math.max(100, BASE_DROP_SPEED - (level * 100));
 
     // Create new interval with speed based on level
     dropInterval.current = setInterval(() => {
@@ -359,7 +352,7 @@ export function Tetris({ initialState, onStateChange, onGameOver }: TetrisProps)
         clearInterval(dropInterval.current);
       }
     };
-  }, [currentPiece, gameOver, level, isValidMove, mergePieceWithBoard, createNewPiece, nextPiece, onGameOver, score, toast]);
+  }, [currentPiece, gameOver, level, isValidMove, mergePieceWithBoard, createNewPiece, nextPiece, onGameOver]);
 
   // Update parent component with game state
   useEffect(() => {
@@ -373,15 +366,27 @@ export function Tetris({ initialState, onStateChange, onGameOver }: TetrisProps)
   const NextPiecePreview = () => {
     if (!nextPiece) return null;
 
+    // Calculate the size of the preview grid based on piece dimensions
+    const maxWidth = Math.max(...nextPiece.shape[0].map((_, i) => 
+      nextPiece.shape.reduce((sum, row) => sum + (row[i] ? 1 : 0), 0)
+    ));
+    const maxHeight = nextPiece.shape.length;
+
     return (
       <div className="fixed right-4 top-20 bg-card/80 p-6 rounded-lg shadow-lg">
         <h3 className="text-sm text-primary font-bold mb-4">Next Piece</h3>
-        <div className="grid grid-cols-4 gap-1 bg-primary/20 p-4 rounded">
+        <div 
+          className="grid gap-1 bg-primary/20 p-4 rounded"
+          style={{
+            gridTemplateColumns: `repeat(${maxWidth}, 1fr)`,
+            gridTemplateRows: `repeat(${maxHeight}, 1fr)`
+          }}
+        >
           {nextPiece.shape.map((row, y) =>
             row.map((cell, x) => (
               <div
                 key={`next-${y}-${x}`}
-                className="w-6 h-6 border border-primary/10"
+                className="w-8 h-8 border border-primary/10"
                 style={{
                   backgroundColor: cell ? nextPiece.color : 'transparent'
                 }}
