@@ -57,6 +57,7 @@ export function Tetris({ initialState, onStateChange, onGameOver }: TetrisProps)
   const { toast } = useToast();
   const [board, setBoard] = useState(initialState.board.map(row => row.map(cell => ({ value: cell, color: null }))));
   const [currentPiece, setCurrentPiece] = useState<TetrisPiece | null>(null);
+  const [nextPiece, setNextPiece] = useState<TetrisPiece | null>(null);
   const [score, setScore] = useState(initialState.score);
   const [level, setLevel] = useState(initialState.level);
   const [gameOver, setGameOver] = useState(false);
@@ -64,8 +65,19 @@ export function Tetris({ initialState, onStateChange, onGameOver }: TetrisProps)
   const [scoreAnims, setScoreAnims] = useState<ScoreAnim[]>([]);
   const lastTapTime = useRef(0);
   const touchStartY = useRef(0);
-  const lastTetris = useRef(false); // Track back-to-back Tetris
+  const lastTetris = useRef(false);
   const dropInterval = useRef<NodeJS.Timeout | null>(null);
+
+  const createNewPiece = useCallback(() => {
+    const pieces = Object.keys(TETROMINOS) as Array<keyof typeof TETROMINOS>;
+    const tetromino = TETROMINOS[pieces[Math.floor(Math.random() * pieces.length)]];
+    return {
+      shape: tetromino.shape,
+      color: tetromino.color,
+      x: Math.floor(BOARD_WIDTH / 2) - Math.floor(tetromino.shape[0].length / 2),
+      y: 0
+    };
+  }, []);
 
   const isValidMove = useCallback((piece: TetrisPiece, x: number, y: number) => {
     for (let row = 0; row < piece.shape.length; row++) {
@@ -86,31 +98,6 @@ export function Tetris({ initialState, onStateChange, onGameOver }: TetrisProps)
     }
     return true;
   }, [board]);
-
-  const createNewPiece = useCallback(() => {
-    const pieces = Object.keys(TETROMINOS) as Array<keyof typeof TETROMINOS>;
-    const tetromino = TETROMINOS[pieces[Math.floor(Math.random() * pieces.length)]];
-    const newPiece = {
-      shape: tetromino.shape,
-      color: tetromino.color,
-      x: Math.floor(BOARD_WIDTH / 2) - Math.floor(tetromino.shape[0].length / 2),
-      y: 0
-    };
-
-    // Check if the new piece overlaps with existing pieces at spawn
-    if (!isValidMove(newPiece, newPiece.x, newPiece.y)) {
-      setGameOver(true);
-      onGameOver();
-      toast({
-        title: "Game Over!",
-        description: `Final Score: ${score}`,
-        duration: 5000,
-      });
-      return null;
-    }
-
-    return newPiece;
-  }, [isValidMove, onGameOver, score, toast]);
 
   const mergePieceWithBoard = useCallback(() => {
     if (!currentPiece) return;
@@ -149,7 +136,6 @@ export function Tetris({ initialState, onStateChange, onGameOver }: TetrisProps)
       return;
     }
 
-    // Check for completed lines
     let completedLines = 0;
     const linesToClear: number[] = [];
 
@@ -171,22 +157,19 @@ export function Tetris({ initialState, onStateChange, onGameOver }: TetrisProps)
         setBoard([...emptyRows, ...finalBoard]);
         setClearedLines([]);
 
-        // Scoring system with Tetris bonus and animation
         let points;
         const isTetris = completedLines === 4;
         if (isTetris) {
-          points = lastTetris.current ? 1200 : 800; // Back-to-back Tetris bonus
+          points = lastTetris.current ? 1200 : 800;
           lastTetris.current = true;
         } else {
           points = [0, 100, 300, 500][completedLines - 1] || 0;
           lastTetris.current = false;
         }
 
-        // Calculate animation position
         const animY = (linesToClear[0] * CELL_SIZE) + (CELL_SIZE * 2);
         const animX = (BOARD_WIDTH * CELL_SIZE) / 2;
 
-        // Add score animation
         setScoreAnims(prev => [
           ...prev,
           {
@@ -217,8 +200,44 @@ export function Tetris({ initialState, onStateChange, onGameOver }: TetrisProps)
       setBoard(newBoard);
     }
 
-    setCurrentPiece(null);
-  }, [board, currentPiece, level, onGameOver, score, toast]);
+    // Set next piece as current and generate new next piece
+    setCurrentPiece(nextPiece);
+    setNextPiece(createNewPiece());
+  }, [board, currentPiece, level, nextPiece, onGameOver, score, toast, createNewPiece]);
+
+  const moveDown = useCallback(() => {
+    if (!currentPiece || gameOver) return;
+
+    if (isValidMove(currentPiece, currentPiece.x, currentPiece.y + 1)) {
+      setCurrentPiece({
+        ...currentPiece,
+        y: currentPiece.y + 1
+      });
+      return true;
+    } else {
+      mergePieceWithBoard();
+      return false;
+    }
+  }, [currentPiece, gameOver, isValidMove, mergePieceWithBoard]);
+
+  const hardDrop = useCallback(() => {
+    if (!currentPiece || gameOver) return;
+
+    let dropDistance = 0;
+    while (isValidMove(currentPiece, currentPiece.x, currentPiece.y + dropDistance + 1)) {
+      dropDistance++;
+    }
+
+    setCurrentPiece({
+      ...currentPiece,
+      y: currentPiece.y + dropDistance
+    });
+
+    // Small delay before merging to allow animation
+    setTimeout(() => {
+      mergePieceWithBoard();
+    }, 50);
+  }, [currentPiece, gameOver, isValidMove, mergePieceWithBoard]);
 
   const moveHorizontally = useCallback((direction: number) => {
     if (!currentPiece || gameOver) return;
@@ -255,38 +274,6 @@ export function Tetris({ initialState, onStateChange, onGameOver }: TetrisProps)
     }
   }, [currentPiece, gameOver, isValidMove]);
 
-  const hardDrop = useCallback(() => {
-    if (!currentPiece || gameOver) return;
-
-    let dropDistance = 0;
-    while (isValidMove(currentPiece, currentPiece.x, currentPiece.y + dropDistance + 1)) {
-      dropDistance++;
-    }
-
-    setCurrentPiece({
-      ...currentPiece,
-      y: currentPiece.y + dropDistance
-    });
-
-    mergePieceWithBoard();
-  }, [currentPiece, gameOver, isValidMove, mergePieceWithBoard]);
-
-  const moveDown = useCallback(() => {
-    if (!currentPiece || gameOver) return;
-
-    if (isValidMove(currentPiece, currentPiece.x, currentPiece.y + 1)) {
-      setCurrentPiece({
-        ...currentPiece,
-        y: currentPiece.y + 1
-      });
-      return true;
-    } else {
-      mergePieceWithBoard();
-      return false;
-    }
-  }, [currentPiece, gameOver, isValidMove, mergePieceWithBoard]);
-
-
   // Handle keyboard controls
   useEffect(() => {
     const handleKeyPress = (e: KeyboardEvent) => {
@@ -303,10 +290,11 @@ export function Tetris({ initialState, onStateChange, onGameOver }: TetrisProps)
           moveDown();
           break;
         case 'ArrowUp':
-          rotatePiece(); // Changed back to rotate
+          rotatePiece();
           break;
         case ' ':
-          hardDrop(); // Space bar for instant drop
+          e.preventDefault(); // Prevent page scroll
+          hardDrop();
           break;
       }
     };
@@ -314,68 +302,6 @@ export function Tetris({ initialState, onStateChange, onGameOver }: TetrisProps)
     window.addEventListener('keydown', handleKeyPress);
     return () => window.removeEventListener('keydown', handleKeyPress);
   }, [gameOver, moveDown, moveHorizontally, rotatePiece, hardDrop]);
-
-  // Handle touch controls
-  useEffect(() => {
-    const handleTouchStart = (e: TouchEvent) => {
-      if (gameOver) return;
-      e.preventDefault(); // Prevent default zoom behavior
-      touchStartY.current = e.touches[0].clientY;
-
-      const now = Date.now();
-      if (now - lastTapTime.current < 300) {
-        // Double tap detected - don't end game, just drop piece
-        e.preventDefault();
-        e.stopPropagation();
-        hardDrop();
-      }
-      lastTapTime.current = now;
-    };
-
-    const handleTouchEnd = (e: TouchEvent) => {
-      if (gameOver) return;
-      e.preventDefault();
-      const touchEndY = e.changedTouches[0].clientY;
-      const deltaY = touchEndY - touchStartY.current;
-
-      if (Math.abs(deltaY) < 10) {
-        // Tap detected - rotate piece
-        rotatePiece();
-      }
-    };
-
-    const handleTouchMove = (e: TouchEvent) => {
-      if (gameOver) return;
-      e.preventDefault();
-      const touch = e.touches[0];
-      const gameBoard = document.querySelector('.game-board');
-      if (!gameBoard) return;
-
-      const rect = gameBoard.getBoundingClientRect();
-      const x = touch.clientX - rect.left;
-
-      if (x < rect.width / 3) {
-        moveHorizontally(-1);
-      } else if (x > (rect.width * 2) / 3) {
-        moveHorizontally(1);
-      } else {
-        //moveDown(); // Middle area swipe down - Removed - handled in game loop now
-      }
-    };
-
-    const gameBoard = document.querySelector('.game-board');
-    if (gameBoard) {
-      gameBoard.addEventListener('touchstart', handleTouchStart, { passive: false });
-      gameBoard.addEventListener('touchend', handleTouchEnd, { passive: false });
-      gameBoard.addEventListener('touchmove', handleTouchMove, { passive: false });
-
-      return () => {
-        gameBoard.removeEventListener('touchstart', handleTouchStart);
-        gameBoard.removeEventListener('touchend', handleTouchEnd);
-        gameBoard.removeEventListener('touchmove', handleTouchMove);
-      };
-    }
-  }, [gameOver, hardDrop, moveHorizontally, rotatePiece]);
 
   // Game loop with automatic falling
   useEffect(() => {
@@ -387,9 +313,22 @@ export function Tetris({ initialState, onStateChange, onGameOver }: TetrisProps)
     }
 
     if (!currentPiece) {
-      const newPiece = createNewPiece();
-      if (newPiece) {
+      if (!nextPiece) {
+        setNextPiece(createNewPiece());
+      }
+      const newPiece = nextPiece;
+      if (newPiece && isValidMove(newPiece, newPiece.x, newPiece.y)) {
         setCurrentPiece(newPiece);
+        setNextPiece(createNewPiece());
+      } else if (newPiece) {
+        // Game over if new piece can't be placed
+        setGameOver(true);
+        onGameOver();
+        toast({
+          title: "Game Over!",
+          description: `Final Score: ${score}`,
+          duration: 5000,
+        });
       }
       return;
     }
@@ -403,14 +342,23 @@ export function Tetris({ initialState, onStateChange, onGameOver }: TetrisProps)
     const dropSpeed = Math.max(100, BASE_DROP_SPEED - (level * 100)); // Speed increases with level
 
     // Create new interval with speed based on level
-    dropInterval.current = setInterval(moveDown, dropSpeed);
+    dropInterval.current = setInterval(() => {
+      if (isValidMove(currentPiece, currentPiece.x, currentPiece.y + 1)) {
+        setCurrentPiece(prev => ({
+          ...prev!,
+          y: prev!.y + 1
+        }));
+      } else {
+        mergePieceWithBoard();
+      }
+    }, dropSpeed);
 
     return () => {
       if (dropInterval.current) {
         clearInterval(dropInterval.current);
       }
     };
-  }, [currentPiece, gameOver, level, moveDown, createNewPiece]);
+  }, [currentPiece, gameOver, level, isValidMove, mergePieceWithBoard, createNewPiece, nextPiece, onGameOver, score, toast]);
 
   // Update parent component with game state
   useEffect(() => {
@@ -421,15 +369,39 @@ export function Tetris({ initialState, onStateChange, onGameOver }: TetrisProps)
     });
   }, [board, score, level, onStateChange]);
 
+  const NextPiecePreview = () => {
+    if (!nextPiece) return null;
+
+    return (
+      <div className="absolute top-4 right-4 bg-card/80 p-4 rounded-lg shadow-lg">
+        <h3 className="text-sm text-primary font-bold mb-2">Next Piece</h3>
+        <div className="grid grid-cols-4 gap-px bg-primary/20 p-2 rounded">
+          {nextPiece.shape.map((row, y) =>
+            row.map((cell, x) => (
+              <div
+                key={`next-${y}-${x}`}
+                className="w-4 h-4 border border-primary/10"
+                style={{
+                  backgroundColor: cell ? nextPiece.color : 'transparent'
+                }}
+              />
+            ))
+          )}
+        </div>
+      </div>
+    );
+  };
+
   return (
-    <div className="flex flex-col items-center max-h-[90vh] overflow-hidden">
+    <div className="flex flex-col items-center max-h-[95vh] overflow-hidden">
       <div
-        className="relative grid grid-cols-10 gap-px bg-primary/20 p-2 rounded-lg shadow-lg overflow-hidden game-board"
+        className="relative grid grid-cols-10 gap-px bg-primary/20 p-2 rounded-lg shadow-lg game-board mb-4"
         style={{
           width: `${BOARD_WIDTH * CELL_SIZE}px`,
           height: `${BOARD_HEIGHT * CELL_SIZE}px`,
-          maxHeight: '90vh',
-          touchAction: 'none' // Prevent browser handling of touch events
+          maxHeight: '95vh',
+          touchAction: 'none',
+          border: '2px solid rgba(var(--primary), 0.2)'
         }}
       >
         {board.map((row, y) => (
@@ -472,7 +444,8 @@ export function Tetris({ initialState, onStateChange, onGameOver }: TetrisProps)
           })
         ))}
 
-        {/* Score Animations */}
+        <NextPiecePreview />
+
         {scoreAnims.map(anim => (
           <ScoreAnimation
             key={anim.id}
@@ -485,22 +458,19 @@ export function Tetris({ initialState, onStateChange, onGameOver }: TetrisProps)
           />
         ))}
 
-        {/* Game Over Overlay */}
-        <AnimatePresence>
-          {gameOver && (
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              className="absolute inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center"
-            >
-              <div className="text-center bg-background/90 p-6 rounded-lg shadow-xl">
-                <h2 className="text-2xl font-bold pixel-font text-primary mb-2">Game Over!</h2>
-                <p className="text-xl pixel-font">Final Score: {score}</p>
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
+        {gameOver && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="absolute inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center"
+          >
+            <div className="text-center bg-background/90 p-6 rounded-lg shadow-xl">
+              <h2 className="text-2xl font-bold pixel-font text-primary mb-2">Game Over!</h2>
+              <p className="text-xl pixel-font">Final Score: {score}</p>
+            </div>
+          </motion.div>
+        )}
       </div>
 
       <motion.div
