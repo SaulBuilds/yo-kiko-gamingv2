@@ -1,9 +1,9 @@
 import { useEffect, useState } from "react";
-import { useRoute, useLocation } from "wouter";
+import { useRoute } from "wouter";
+import { useLocation } from "wouter";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { GameBoard } from "@/components/game/game-board";
-import { Spectator } from "@/components/game/spectator";
 import { useAuth } from "@/hooks/use-auth";
 import { GameState } from "@/types/game";
 import { useToast } from "@/hooks/use-toast";
@@ -30,7 +30,6 @@ export default function GamePage() {
     enabled: !!params?.id,
   });
 
-  // Start practice game mutation
   const startPracticeMutation = useMutation({
     mutationFn: async () => {
       const res = await apiRequest("POST", "/api/matches", {
@@ -47,6 +46,37 @@ export default function GamePage() {
         description: "Starting practice mode...",
       });
       setLocation(`/game/${match.id}`);
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  const finishGameMutation = useMutation({
+    mutationFn: async (score: number) => {
+      const res = await apiRequest("POST", `/api/matches/${params?.id}/finish`, {
+        score,
+        playerId: user?.id
+      });
+      if (!res.ok) throw new Error("Failed to save game score");
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/matches"] });
+      toast({
+        title: "Score Saved!",
+        description: "Your game score has been recorded.",
+      });
+      // Close websocket connection
+      if (socket) {
+        socket.close();
+      }
+      // Navigate back to dashboard
+      setLocation("/");
     },
     onError: (error: Error) => {
       toast({
@@ -100,15 +130,36 @@ export default function GamePage() {
 
   const handleGameOver = async () => {
     try {
+      // Update XP
       await apiRequest("POST", "/api/user/xp", {
         xp: Math.floor(gameState.score / 10),
-        isPractice: match?.isPractice || true
+        isPractice: match?.isPractice || false
       });
+
+      // Send game over message via websocket
+      if (socket?.readyState === WebSocket.OPEN && params?.id) {
+        socket.send(JSON.stringify({
+          type: "gameOver",
+          matchId: parseInt(params.id),
+          userId: user?.id,
+          score: gameState.score
+        }));
+      }
+
       queryClient.invalidateQueries({ queryKey: ["/api/user"] });
 
       toast({
         title: "Game Over!",
-        description: `You earned ${Math.floor(gameState.score / 10)} XP!`,
+        description: `You scored ${gameState.score} points!`,
+        action: (
+          <Button 
+            onClick={() => finishGameMutation.mutate(gameState.score)}
+            disabled={finishGameMutation.isPending}
+          >
+            Save Score
+          </Button>
+        ),
+        duration: 0, // Don't auto dismiss
       });
     } catch (error) {
       console.error("Failed to update XP:", error);
