@@ -228,16 +228,15 @@ export function Tetris({ initialState, onStateChange, onGameOver }: TetrisProps)
       dropDistance++;
     }
 
+    // Set piece at the lowest position and merge immediately
     if (dropDistance > 0) {
-      setCurrentPiece(prev => ({
-        ...prev!,
-        y: prev!.y + dropDistance
-      }));
-
-      // Allow a brief moment for animation before merging
-      setTimeout(() => {
-        mergePieceWithBoard();
-      }, 50);
+      const finalY = currentPiece.y + dropDistance;
+      const finalPiece = {
+        ...currentPiece,
+        y: finalY
+      };
+      setCurrentPiece(finalPiece);
+      mergePieceWithBoard();
     }
   }, [currentPiece, gameOver, isValidMove, mergePieceWithBoard]);
 
