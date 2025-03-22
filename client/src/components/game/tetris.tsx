@@ -328,18 +328,13 @@ export function Tetris({ initialState, onStateChange, onGameOver, onSaveScore }:
         // Horizontal swipe - move piece
         moveHorizontally(deltaX > 0 ? 1 : -1);
         touchState.current.startX = touch.clientX;
-      } else if (deltaY < -SWIPE_THRESHOLD) {
-        // Upward swipe - hard drop
-        e.preventDefault();
-        e.stopPropagation();
-        hardDrop();
       } else if (deltaY > SWIPE_THRESHOLD) {
         // Downward swipe - soft drop
         moveDown();
         touchState.current.startY = touch.clientY;
       }
     }
-  }, [currentPiece, gameOver, moveHorizontally, moveDown, hardDrop]);
+  }, [currentPiece, gameOver, moveHorizontally, moveDown]);
 
   const handleTouchEnd = useCallback((e: React.TouchEvent) => {
     if (!currentPiece || gameOver) return;
@@ -417,16 +412,12 @@ export function Tetris({ initialState, onStateChange, onGameOver, onSaveScore }:
         case 'ArrowUp':
           rotatePiece();
           break;
-        case ' ':
-          e.preventDefault();
-          hardDrop();
-          break;
       }
     };
 
     window.addEventListener('keydown', handleKeyPress);
     return () => window.removeEventListener('keydown', handleKeyPress);
-  }, [gameOver, moveDown, moveHorizontally, rotatePiece, hardDrop]);
+  }, [gameOver, moveDown, moveHorizontally, rotatePiece]);
 
   useEffect(() => {
     if (gameOver) {
