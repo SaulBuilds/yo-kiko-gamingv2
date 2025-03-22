@@ -17,18 +17,20 @@ export interface IStorage {
   getGameMatch(id: number): Promise<GameMatch | undefined>;
   updateGameMatch(id: number, updates: Partial<GameMatch>): Promise<GameMatch>;
   getActiveMatches(): Promise<GameMatch[]>;
-  sessionStore: session.SessionStore;
+  sessionStore: session.Store;
   updateUserXP(userId: number, xp: number, updateScore: boolean): Promise<void>;
 }
 
 export class DatabaseStorage implements IStorage {
-  sessionStore: session.SessionStore;
+  sessionStore: session.Store;
 
   constructor() {
     this.sessionStore = new PostgresSessionStore({
       pool,
-      createTableIfMissing: true,
-      tableName: 'user_sessions' // Explicitly name the sessions table
+      tableName: 'user_sessions',
+      createTableIfMissing: false, 
+      schemaName: 'public',
+      pruneSessionInterval: false 
     });
   }
 
@@ -50,10 +52,7 @@ export class DatabaseStorage implements IStorage {
   async updateUserScore(userId: number, score: number): Promise<void> {
     await db
       .update(users)
-      .set({ 
-        score: users.score + score, 
-        gamesPlayed: users.gamesPlayed + 1 
-      })
+      .set({ score: score })
       .where(eq(users.id, userId));
   }
 
@@ -61,7 +60,7 @@ export class DatabaseStorage implements IStorage {
     return await db
       .select()
       .from(users)
-      .orderBy(users.score, 'desc')
+      .orderBy(users.score)
       .limit(10);
   }
 
@@ -108,13 +107,16 @@ export class DatabaseStorage implements IStorage {
   }
 
   async updateUserXP(userId: number, xp: number, updateScore: boolean): Promise<void> {
+    const user = await this.getUser(userId);
+    if (!user) throw new Error("User not found");
+
     const updates = {
-      xp: users.xp + xp,
-      gamesPlayed: users.gamesPlayed + 1
+      xp: (user.xp || 0) + xp,
+      gamesPlayed: (user.gamesPlayed || 0) + 1
     };
 
     if (updateScore) {
-      updates.score = users.score + xp * 10; 
+      updates.score = (user.score || 0) + xp * 10;
     }
 
     await db
