@@ -250,19 +250,22 @@ export function Tetris({ initialState, onStateChange, onGameOver, onSaveScore }:
       // Award points for hard drop (2 points per cell dropped)
       setScore(prev => prev + (dropDistance * 2));
 
-      // Create a new piece object to trigger proper re-render
-      const newPiece = {
+      // Create a new piece object with final position
+      const newPosition = {
         ...currentPiece,
         y: currentPiece.y + dropDistance
       };
-      setCurrentPiece(newPiece);
 
-      // Merge piece with board after position update
-      setTimeout(() => {
+      // Update piece position first
+      setCurrentPiece(newPosition);
+
+      // Use requestAnimationFrame to ensure the position update is rendered
+      // before merging with the board
+      requestAnimationFrame(() => {
         if (!gameOver) {
           mergePieceWithBoard();
         }
-      }, 0);
+      });
     }
   }, [currentPiece, gameOver, isValidMove, mergePieceWithBoard]);
 
@@ -326,10 +329,10 @@ export function Tetris({ initialState, onStateChange, onGameOver, onSaveScore }:
         // Horizontal swipe - move piece
         moveHorizontally(deltaX > 0 ? 1 : -1);
         touchState.current.startX = touch.clientX;
-      } else if (deltaY < 0 && Math.abs(deltaY) > SWIPE_THRESHOLD) {
+      } else if (deltaY < -SWIPE_THRESHOLD) {
         // Upward swipe - hard drop
         hardDrop();
-      } else if (deltaY > 0) {
+      } else if (deltaY > SWIPE_THRESHOLD) {
         // Downward swipe - soft drop
         moveDown();
         touchState.current.startY = touch.clientY;
