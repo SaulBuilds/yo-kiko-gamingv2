@@ -18,7 +18,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Session middleware setup
   app.use(
     session({
-      secret: 'your-secret-key',
+      secret: process.env.SESSION_SECRET || 'your-secret-key',
       resave: false,
       saveUninitialized: false,
       store: storage.sessionStore,
@@ -46,9 +46,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
-      if (req.session) {
-        req.session.userId = user.id;
-      }
+      // Set the session
+      req.session.userId = user.id;
       res.json(user);
     } catch (error) {
       console.error("Error creating user:", error);
@@ -57,11 +56,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   app.get("/api/user", async (req, res) => {
-    if (!req.session?.userId) {
-      return res.status(401).json({ error: "Not authenticated" });
-    }
-
     try {
+      if (!req.session?.userId) {
+        return res.status(401).json({ error: "Not authenticated" });
+      }
+
       const user = await storage.getUser(req.session.userId);
       if (!user) {
         return res.status(404).json({ error: "User not found" });
