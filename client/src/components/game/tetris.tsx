@@ -251,16 +251,13 @@ export function Tetris({ initialState, onStateChange, onGameOver, onSaveScore }:
       setScore(prev => prev + (dropDistance * 2));
 
       // Create a new piece object with final position
-      const newPosition = {
+      const finalPosition = {
         ...currentPiece,
         y: currentPiece.y + dropDistance
       };
 
-      // Update piece position first
-      setCurrentPiece(newPosition);
-
-      // Use requestAnimationFrame to ensure the position update is rendered
-      // before merging with the board
+      // Update piece position and merge with board in a single update
+      setCurrentPiece(finalPosition);
       requestAnimationFrame(() => {
         if (!gameOver) {
           mergePieceWithBoard();
@@ -315,7 +312,6 @@ export function Tetris({ initialState, onStateChange, onGameOver, onSaveScore }:
   }, []);
 
   const handleTouchMove = useCallback((e: React.TouchEvent) => {
-    e.preventDefault();
     if (!currentPiece || gameOver) return;
 
     const touch = e.touches[0];
@@ -331,6 +327,8 @@ export function Tetris({ initialState, onStateChange, onGameOver, onSaveScore }:
         touchState.current.startX = touch.clientX;
       } else if (deltaY < -SWIPE_THRESHOLD) {
         // Upward swipe - hard drop
+        e.preventDefault();
+        e.stopPropagation();
         hardDrop();
       } else if (deltaY > SWIPE_THRESHOLD) {
         // Downward swipe - soft drop
@@ -341,7 +339,6 @@ export function Tetris({ initialState, onStateChange, onGameOver, onSaveScore }:
   }, [currentPiece, gameOver, moveHorizontally, moveDown, hardDrop]);
 
   const handleTouchEnd = useCallback((e: React.TouchEvent) => {
-    e.preventDefault();
     if (!currentPiece || gameOver) return;
 
     const touch = e.changedTouches[0];
@@ -476,12 +473,14 @@ export function Tetris({ initialState, onStateChange, onGameOver, onSaveScore }:
   }, [currentPiece, gameOver, level, isValidMove, createNewPiece, nextPiece, onGameOver]);
 
   useEffect(() => {
-    onStateChange({
-      board: board.map(row => row.map(cell => cell.value)),
-      score,
-      level
-    });
-  }, [board, score, level, onStateChange]);
+    if (currentPiece && !gameOver) {
+      onStateChange({
+        board: board.map(row => row.map(cell => cell.value)),
+        score,
+        level
+      });
+    }
+  }, [board, score, level, currentPiece, gameOver]); // Added proper dependencies
 
 
   return (
