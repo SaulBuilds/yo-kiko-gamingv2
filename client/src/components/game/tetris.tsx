@@ -1,14 +1,14 @@
-import { useEffect, useState, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { TetrisPiece, GameState } from '@/types/game';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import { useToast } from '@/hooks/use-toast';
 import { ScoreAnimation } from './score-animation';
-import { Button } from '@/components/ui/button'; // Assuming Button component is imported from here
+import { Button } from '@/components/ui/button';
 
 const BOARD_WIDTH = 10;
 const BOARD_HEIGHT = 20;
-const CELL_SIZE = 25; // Reduced cell size for better mobile fit
-const BASE_DROP_SPEED = 1000; // Base speed in milliseconds
+const CELL_SIZE = 25; 
+const BASE_DROP_SPEED = 1000; 
 
 const TETROMINOS = {
   I: {
@@ -45,6 +45,7 @@ interface TetrisProps {
   initialState: GameState;
   onStateChange: (state: GameState) => void;
   onGameOver: () => void;
+  onSaveScore?: (score: number) => void;
 }
 
 interface ScoreAnim {
@@ -54,7 +55,7 @@ interface ScoreAnim {
   position: { x: number; y: number };
 }
 
-export function Tetris({ initialState, onStateChange, onGameOver }: TetrisProps) {
+export function Tetris({ initialState, onStateChange, onGameOver, onSaveScore }: TetrisProps) {
   const { toast } = useToast();
   const [board, setBoard] = useState(initialState.board.map(row => row.map(cell => ({ value: cell, color: null }))));
   const [currentPiece, setCurrentPiece] = useState<TetrisPiece | null>(null);
@@ -201,7 +202,6 @@ export function Tetris({ initialState, onStateChange, onGameOver }: TetrisProps)
       setBoard(newBoard);
     }
 
-    // Set next piece as current and generate new next piece
     setCurrentPiece(nextPiece);
     setNextPiece(createNewPiece());
   }, [board, currentPiece, level, nextPiece, onGameOver, score, toast, createNewPiece]);
@@ -229,14 +229,13 @@ export function Tetris({ initialState, onStateChange, onGameOver }: TetrisProps)
       dropDistance++;
     }
 
-    // Only move and merge if we found a valid drop position
     if (dropDistance > 0) {
       const finalPiece = {
         ...currentPiece,
         y: currentPiece.y + dropDistance
       };
       setCurrentPiece(finalPiece);
-      setTimeout(() => mergePieceWithBoard(), 10); // Small delay for visual feedback
+      setTimeout(() => mergePieceWithBoard(), 10); 
     }
   }, [currentPiece, gameOver, isValidMove, mergePieceWithBoard]);
 
@@ -263,7 +262,6 @@ export function Tetris({ initialState, onStateChange, onGameOver }: TetrisProps)
       shape: rotated
     };
 
-    // Wall kick - try to adjust position if rotation causes collision
     for (let offset of [0, -1, 1, -2, 2]) {
       if (isValidMove(newPiece, currentPiece.x + offset, currentPiece.y)) {
         setCurrentPiece({
@@ -275,7 +273,6 @@ export function Tetris({ initialState, onStateChange, onGameOver }: TetrisProps)
     }
   }, [currentPiece, gameOver, isValidMove]);
 
-  // Handle keyboard controls
   useEffect(() => {
     const handleKeyPress = (e: KeyboardEvent) => {
       if (gameOver) return;
@@ -294,7 +291,7 @@ export function Tetris({ initialState, onStateChange, onGameOver }: TetrisProps)
           rotatePiece();
           break;
         case ' ':
-          e.preventDefault(); // Prevent page scroll
+          e.preventDefault(); 
           hardDrop();
           break;
       }
@@ -304,7 +301,6 @@ export function Tetris({ initialState, onStateChange, onGameOver }: TetrisProps)
     return () => window.removeEventListener('keydown', handleKeyPress);
   }, [gameOver, moveDown, moveHorizontally, rotatePiece, hardDrop]);
 
-  // Game loop with automatic falling - modifying the useEffect
   useEffect(() => {
     if (gameOver) {
       if (dropInterval.current) {
@@ -328,15 +324,12 @@ export function Tetris({ initialState, onStateChange, onGameOver }: TetrisProps)
       return;
     }
 
-    // Clear existing interval if any
     if (dropInterval.current) {
       clearInterval(dropInterval.current);
     }
 
-    // Calculate drop speed based on level (faster as level increases)
     const dropSpeed = Math.max(100, BASE_DROP_SPEED - (level * 100));
 
-    // Create new interval with speed based on level
     dropInterval.current = setInterval(() => {
       if (isValidMove(currentPiece, currentPiece.x, currentPiece.y + 1)) {
         setCurrentPiece(prev => ({
@@ -355,7 +348,6 @@ export function Tetris({ initialState, onStateChange, onGameOver }: TetrisProps)
     };
   }, [currentPiece, gameOver, level, isValidMove, mergePieceWithBoard, createNewPiece, nextPiece, onGameOver]);
 
-  // Update parent component with game state
   useEffect(() => {
     onStateChange({
       board: board.map(row => row.map(cell => cell.value)),
@@ -367,7 +359,6 @@ export function Tetris({ initialState, onStateChange, onGameOver }: TetrisProps)
   const NextPiecePreview = () => {
     if (!nextPiece) return null;
 
-    // Calculate the size of the preview grid based on piece dimensions
     const maxWidth = Math.max(...nextPiece.shape[0].map((_, i) =>
       nextPiece.shape.reduce((sum, row) => sum + (row[i] ? 1 : 0), 0)
     ));
@@ -470,12 +461,13 @@ export function Tetris({ initialState, onStateChange, onGameOver }: TetrisProps)
             exit={{ opacity: 0 }}
             className="absolute inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center"
           >
-            <div className="text-center bg-background/90 p-6 rounded-lg shadow-xl">
+            <div className="text-center bg-background/90 p-6 rounded-lg shadow-xl max-w-[80%] w-full">
               <h2 className="text-2xl font-bold pixel-font text-primary mb-4">Game Over!</h2>
               <p className="text-xl pixel-font mb-6">Final Score: {score}</p>
               <Button
-                onClick={() => onGameOver()}
+                onClick={() => onSaveScore ? onSaveScore(score) : onGameOver()}
                 className="w-full pixel-font text-lg"
+                variant="default"
               >
                 Save Score & Exit
               </Button>
