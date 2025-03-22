@@ -71,14 +71,26 @@ export default function HomePage() {
                           <span className="text-2xl">{game.icon}</span>
                           <span className="pixel-font text-sm">{game.name}</span>
                         </span>
-                        <Button 
-                          size="sm"
-                          variant="secondary"
-                          onClick={() => setLocation("/game/new")}
-                          className="pixel-font text-xs"
-                        >
-                          Play <ArrowRight className="ml-2 h-4 w-4" />
-                        </Button>
+                        <div className="flex gap-2">
+                          <Button 
+                            size="sm"
+                            variant="secondary"
+                            onClick={() => setLocation("/game/new")}
+                            className="pixel-font text-xs"
+                          >
+                            Practice
+                          </Button>
+                          {game.id === "tetris" && (
+                            <Button 
+                              size="sm"
+                              variant="default"
+                              className="pixel-font text-xs bg-gradient-to-r from-yellow-500 to-amber-500"
+                              onClick={() => setLocation("/game/wager")}
+                            >
+                              Wager
+                            </Button>
+                          )}
+                        </div>
                       </CardTitle>
                     </CardHeader>
                     <CardContent>
