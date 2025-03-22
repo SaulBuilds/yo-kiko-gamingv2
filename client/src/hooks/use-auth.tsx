@@ -28,50 +28,58 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     data: user,
     error,
     isLoading,
-    refetch,
+    refetch: refetchUser
   } = useQuery<SelectUser | null>({
-    queryKey: ["/api/user", address],
+    queryKey: ["/api/user"],
     queryFn: getQueryFn({ on401: "returnNull" }),
     enabled: !!address,
+    retry: false,
+    staleTime: 30000 // Cache for 30 seconds
   });
 
   // Create/update user when wallet is connected
   useEffect(() => {
-    if (address && !user && !isLoading) {
-      console.log("Creating user for wallet:", address);
-      apiRequest("POST", "/api/user", { walletAddress: address })
-        .then((res) => {
-          if (!res.ok) {
-            throw new Error("Failed to create user");
-          }
-          return res.json();
-        })
-        .then((newUser) => {
-          console.log("User created:", newUser);
-          queryClient.setQueryData(["/api/user", address], newUser);
-          refetch();
-        })
-        .catch((error) => {
-          console.error("Error creating user:", error);
+    let mounted = true;
+
+    const createUser = async () => {
+      if (!address || user || isLoading) return;
+
+      try {
+        const res = await apiRequest("POST", "/api/user", { walletAddress: address });
+        if (!res.ok) throw new Error("Failed to create user");
+
+        const newUser = await res.json();
+        if (mounted) {
+          queryClient.setQueryData(["/api/user"], newUser);
+          await refetchUser();
+        }
+      } catch (error) {
+        console.error("Error creating user:", error);
+        if (mounted) {
           toast({
             title: "Error",
-            description: "Failed to create user profile",
+            description: "Failed to create user profile. Please try again.",
             variant: "destructive",
           });
-        });
-    }
-  }, [address, user, isLoading, toast, refetch]);
+        }
+      }
+    };
+
+    createUser();
+
+    return () => {
+      mounted = false;
+    };
+  }, [address, user, isLoading, toast, refetchUser]);
 
   const updateProfileMutation = useMutation({
     mutationFn: async (data: { username?: string; avatar?: string }) => {
       const res = await apiRequest("PATCH", "/api/user/profile", data);
-      if (!res.ok) {
-        throw new Error("Failed to update profile");
-      }
+      if (!res.ok) throw new Error("Failed to update profile");
       return await res.json();
     },
     onSuccess: (updatedUser: SelectUser) => {
-      queryClient.setQueryData(["/api/user", address], updatedUser);
+      queryClient.setQueryData(["/api/user"], updatedUser);
       toast({
         title: "Profile updated",
         description: "Your profile has been successfully updated.",
@@ -101,7 +109,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const disconnect = async () => {
     try {
       await disconnectAsync();
-      queryClient.setQueryData(["/api/user", address], null);
+      queryClient.setQueryData(["/api/user"], null);
     } catch (error) {
       toast({
         title: "Disconnect failed",
