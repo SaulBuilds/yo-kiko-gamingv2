@@ -152,7 +152,7 @@ export default function GamePage() {
         title: "Game Over!",
         description: `You scored ${gameState.score} points!`,
         action: (
-          <Button 
+          <Button
             onClick={() => finishGameMutation.mutate(gameState.score)}
             disabled={finishGameMutation.isPending}
           >
@@ -175,7 +175,7 @@ export default function GamePage() {
           <div className="text-center space-y-4">
             <h1 className="text-4xl font-bold pixel-font text-primary">Practice Mode</h1>
             <p className="text-muted-foreground">Improve your skills without betting</p>
-            <Button 
+            <Button
               onClick={() => startPracticeMutation.mutate()}
               disabled={startPracticeMutation.isPending}
               className="pixel-font text-lg"
@@ -205,6 +205,7 @@ export default function GamePage() {
                 initialState={gameState}
                 onStateUpdate={handleGameStateUpdate}
                 onGameOver={handleGameOver}
+                onSaveScore={(score) => finishGameMutation.mutate(score)}
               />
             </CardContent>
           </Card>
