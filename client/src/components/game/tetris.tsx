@@ -7,8 +7,10 @@ import { Button } from '@/components/ui/button';
 
 const BOARD_WIDTH = 10;
 const BOARD_HEIGHT = 20;
-const CELL_SIZE = 25; 
-const BASE_DROP_SPEED = 1000; 
+const CELL_SIZE = 25;
+const BASE_DROP_SPEED = 800; // Slightly faster base speed
+const SWIPE_THRESHOLD = 50; // Minimum distance for a swipe
+const DOUBLE_TAP_DELAY = 300; // Maximum delay between taps for double tap
 
 const TETROMINOS = {
   I: {
@@ -55,6 +57,12 @@ interface ScoreAnim {
   position: { x: number; y: number };
 }
 
+interface TouchState {
+  startX: number;
+  startY: number;
+  lastTapTime: number;
+}
+
 export function Tetris({ initialState, onStateChange, onGameOver, onSaveScore }: TetrisProps) {
   const { toast } = useToast();
   const [board, setBoard] = useState(initialState.board.map(row => row.map(cell => ({ value: cell, color: null }))));
@@ -69,6 +77,11 @@ export function Tetris({ initialState, onStateChange, onGameOver, onSaveScore }:
   const touchStartY = useRef(0);
   const lastTetris = useRef(false);
   const dropInterval = useRef<NodeJS.Timeout | null>(null);
+  const touchState = useRef<TouchState>({
+    startX: 0,
+    startY: 0,
+    lastTapTime: 0
+  });
 
   const createNewPiece = useCallback(() => {
     const pieces = Object.keys(TETROMINOS) as Array<keyof typeof TETROMINOS>;
@@ -225,17 +238,23 @@ export function Tetris({ initialState, onStateChange, onGameOver, onSaveScore }:
     if (!currentPiece || gameOver) return;
 
     let dropDistance = 0;
+    // Calculate maximum drop distance
     while (isValidMove(currentPiece, currentPiece.x, currentPiece.y + dropDistance + 1)) {
       dropDistance++;
     }
 
     if (dropDistance > 0) {
-      const finalPiece = {
+      // Award points for hard drop (2 points per cell dropped)
+      setScore(prev => prev + (dropDistance * 2));
+
+      // Immediately set piece position and merge
+      setCurrentPiece({
         ...currentPiece,
         y: currentPiece.y + dropDistance
-      };
-      setCurrentPiece(finalPiece);
-      setTimeout(() => mergePieceWithBoard(), 10); 
+      });
+
+      // Force immediate merge without any animation delay
+      setTimeout(mergePieceWithBoard, 0);
     }
   }, [currentPiece, gameOver, isValidMove, mergePieceWithBoard]);
 
@@ -273,6 +292,44 @@ export function Tetris({ initialState, onStateChange, onGameOver, onSaveScore }:
     }
   }, [currentPiece, gameOver, isValidMove]);
 
+  const handleTouchStart = useCallback((e: React.TouchEvent) => {
+    const touch = e.touches[0];
+    touchState.current = {
+      startX: touch.clientX,
+      startY: touch.clientY,
+      lastTapTime: Date.now()
+    };
+  }, []);
+
+  const handleTouchEnd = useCallback((e: React.TouchEvent) => {
+    if (!currentPiece || gameOver) return;
+
+    const touch = e.changedTouches[0];
+    const deltaX = touch.clientX - touchState.current.startX;
+    const deltaY = touch.clientY - touchState.current.startY;
+    const timeDiff = Date.now() - touchState.current.lastTapTime;
+
+    // Double tap detection for hard drop
+    if (Math.abs(deltaX) < 10 && Math.abs(deltaY) < 10 && timeDiff < DOUBLE_TAP_DELAY) {
+      e.preventDefault();
+      hardDrop();
+    } else if (Math.abs(deltaX) < 10 && Math.abs(deltaY) < 10) {
+      // Single tap for rotation
+      rotatePiece();
+    } else if (Math.abs(deltaX) > SWIPE_THRESHOLD) {
+      // Horizontal swipe
+      moveHorizontally(deltaX > 0 ? 1 : -1);
+    } else if (deltaY > SWIPE_THRESHOLD) {
+      // Downward swipe for soft drop
+      moveDown();
+    }
+    touchState.current.lastTapTime = Date.now();
+  }, [currentPiece, gameOver, moveDown, moveHorizontally, rotatePiece, hardDrop]);
+
+  const preventDefault = useCallback((e: React.TouchEvent) => {
+    e.preventDefault();
+  }, []);
+
   useEffect(() => {
     const handleKeyPress = (e: KeyboardEvent) => {
       if (gameOver) return;
@@ -291,7 +348,7 @@ export function Tetris({ initialState, onStateChange, onGameOver, onSaveScore }:
           rotatePiece();
           break;
         case ' ':
-          e.preventDefault(); 
+          e.preventDefault();
           hardDrop();
           break;
       }
@@ -328,16 +385,17 @@ export function Tetris({ initialState, onStateChange, onGameOver, onSaveScore }:
       clearInterval(dropInterval.current);
     }
 
-    const dropSpeed = Math.max(100, BASE_DROP_SPEED - (level * 100));
+    // Faster drop speed as level increases
+    const dropSpeed = Math.max(50, BASE_DROP_SPEED - (level * 60));
 
     dropInterval.current = setInterval(() => {
-      if (isValidMove(currentPiece, currentPiece.x, currentPiece.y + 1)) {
+      if (!isValidMove(currentPiece, currentPiece.x, currentPiece.y + 1)) {
+        mergePieceWithBoard();
+      } else {
         setCurrentPiece(prev => ({
           ...prev!,
           y: prev!.y + 1
         }));
-      } else {
-        mergePieceWithBoard();
       }
     }, dropSpeed);
 
@@ -346,7 +404,7 @@ export function Tetris({ initialState, onStateChange, onGameOver, onSaveScore }:
         clearInterval(dropInterval.current);
       }
     };
-  }, [currentPiece, gameOver, level, isValidMove, mergePieceWithBoard, createNewPiece, nextPiece, onGameOver]);
+  }, [currentPiece, gameOver, level, isValidMove, createNewPiece, nextPiece, onGameOver]);
 
   useEffect(() => {
     onStateChange({
@@ -391,7 +449,12 @@ export function Tetris({ initialState, onStateChange, onGameOver, onSaveScore }:
   };
 
   return (
-    <div className="flex flex-col items-center max-h-[95vh] overflow-hidden">
+    <div
+      className="flex flex-col items-center max-h-[95vh] overflow-hidden"
+      onTouchStart={handleTouchStart}
+      onTouchEnd={handleTouchEnd}
+      onTouchMove={preventDefault}
+    >
       <div
         className="relative grid grid-cols-10 gap-px bg-primary/20 p-2 rounded-lg shadow-lg game-board mb-4"
         style={{
