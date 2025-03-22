@@ -10,7 +10,8 @@ export const users = pgTable("users", {
   score: integer("score").default(0),
   xp: integer("xp").default(0),
   gamesPlayed: integer("games_played").default(0),
-  gamesWon: integer("games_won").default(0)
+  gamesWon: integer("games_won").default(0),
+  lastDailyReward: timestamp("last_daily_reward")
 });
 
 export const gameMatches = pgTable("game_matches", {
@@ -18,6 +19,7 @@ export const gameMatches = pgTable("game_matches", {
   player1Id: integer("player1_id").notNull(),
   player2Id: integer("player2_id"),
   betAmount: text("bet_amount").notNull(),
+  betType: text("bet_type").notNull().default("xp"), // 'xp' or 'crypto'
   status: text("status").notNull(), // 'waiting', 'in_progress', 'completed'
   winnerId: integer("winner_id"),
   startTime: timestamp("start_time"),
@@ -42,12 +44,14 @@ export const insertUserSchema = createInsertSchema(users).pick({
 export const insertGameMatchSchema = createInsertSchema(gameMatches).pick({
   player1Id: true,
   betAmount: true,
+  betType: true,
   gameType: true,
   isPractice: true,
   timeLimit: true
 }).partial({
   isPractice: true,
-  timeLimit: true
+  timeLimit: true,
+  betType: true
 });
 
 export type InsertUser = z.infer<typeof insertUserSchema>;
