@@ -1,0 +1,34 @@
+tetris.tsx:318 Unable to preventDefault inside passive event listener invocation.
+(anonymous)	@	tetris.tsx:318
+
+game-page.tsx:120 Warning: Maximum update depth exceeded. This can happen when a component calls setState inside useEffect, but useEffect either doesn't have a dependency array, or one of the dependencies changes on every render.
+    at Tetris (https://6ccb2a97-9533-42de-84a4-f867550e7fe7-00-w63du7r2u2qr.riker.replit.dev/src/components/game/tetris.tsx:60:26)
+    at div
+    at div
+    at GameBoard (https://6ccb2a97-9533-42de-84a4-f867550e7fe7-00-w63du7r2u2qr.riker.replit.dev/src/components/game/game-board.tsx:18:29)
+    at div
+    at _c9 (https://6ccb2a97-9533-42de-84a4-f867550e7fe7-00-w63du7r2u2qr.riker.replit.dev/src/components/ui/card.tsx:114:12)
+    at div
+    at _c (https://6ccb2a97-9533-42de-84a4-f867550e7fe7-00-w63du7r2u2qr.riker.replit.dev/src/components/ui/card.tsx:20:11)
+    at div
+    at main
+    at div
+    at GamePage (https://6ccb2a97-9533-42de-84a4-f867550e7fe7-00-w63du7r2u2qr.riker.replit.dev/src/pages/game-page.tsx:31:22)
+    at ProtectedRoute (https://6ccb2a97-9533-42de-84a4-f867550e7fe7-00-w63du7r2u2qr.riker.replit.dev/src/lib/protected-route.tsx:22:3)
+    at Switch (https://6ccb2a97-9533-42de-84a4-f867550e7fe7-00-w63du7r2u2qr.riker.replit.d…/home/runner/workspace/node_modules/.vite/deps/wouter.js?v=5ed31a5a:247:17)
+    at Router
+    at AuthProvider (https://6ccb2a97-9533-42de-84a4-f867550e7fe7-00-w63du7r2u2qr.riker.replit.dev/src/hooks/use-auth.tsx:24:32)
+    at QueryClientProvider (https://6ccb2a97-9533-42de-84a4-f867550e7fe7-00-w63du7r2u2qr.riker.replit.d…nner/workspace/node_modules/.vite/deps/chunk-5T6ZDHJF.js?v=5ed31a5a:2805:3)
+    at Hydrate (https://6ccb2a97-9533-42de-84a4-f867550e7fe7-00-w63du7r2u2qr.riker.replit.d…s/home/runner/workspace/node_modules/.vite/deps/wagmi.js?v=5ed31a5a:205:11)
+    at WagmiProvider (https://6ccb2a97-9533-42de-84a4-f867550e7fe7-00-w63du7r2u2qr.riker.replit.d…s/home/runner/workspace/node_modules/.vite/deps/wagmi.js?v=5ed31a5a:229:11)
+    at div
+    at App
+handleGameStateUpdate	@	game-page.tsx:120
+(anonymous)	@	tetris.tsx:479
+queryClient.ts:15 
+ POST https://6ccb2a97-9533-42de-84a4-f867550e7fe7-00-w63du7r2u2qr.riker.replit.dev/api/user/xp 500 (Internal Server Error)
+game-page.tsx:162 Failed to handle game over: Error: 500: {"error":"Failed to update XP"}
+    at throwIfResNotOk (queryClient.ts:6:11)
+    at async apiRequest (queryClient.ts:22:3)
+    at async handleGameOver (game-page.tsx:137:7)
+﻿

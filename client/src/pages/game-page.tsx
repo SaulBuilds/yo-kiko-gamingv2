@@ -130,40 +130,54 @@ export default function GamePage() {
 
   const handleGameOver = async () => {
     try {
-      // First save the score and wait for it to complete
-      await finishGameMutation.mutateAsync(gameState.score);
+      if (!user?.id || !params?.id) return;
 
-      // Send game over message via websocket
-      if (socket?.readyState === WebSocket.OPEN && params?.id) {
-        socket.send(JSON.stringify({
-          type: "gameOver",
-          matchId: parseInt(params.id),
-          userId: user?.id,
-          score: gameState.score
-        }));
+      // Save score first
+      const updatedMatch = await finishGameMutation.mutateAsync(gameState.score);
+
+      if (updatedMatch) {
+        // Calculate and update XP only after score is saved
+        const xpGain = Math.floor(gameState.score / 10);
+        if (xpGain > 0) {
+          await apiRequest("POST", "/api/user/xp", {
+            xp: xpGain,
+            isPractice: match?.isPractice ?? false
+          });
+        }
+
+        // Send final game state via websocket
+        if (socket?.readyState === WebSocket.OPEN) {
+          socket.send(JSON.stringify({
+            type: "gameOver",
+            matchId: parseInt(params.id),
+            userId: user.id,
+            score: gameState.score
+          }));
+        }
+
+        // Invalidate queries to refresh data
+        queryClient.invalidateQueries({ queryKey: ["/api/user"] });
+        queryClient.invalidateQueries({ queryKey: ["/api/matches", params.id] });
+
+        // Clean up
+        if (socket) {
+          socket.close();
+        }
+
+        // Show success message
+        toast({
+          title: "Game Over!",
+          description: `Score saved: ${gameState.score}`,
+        });
+
+        // Navigate back to dashboard
+        setLocation("/");
       }
-
-      // Then update XP
-      await apiRequest("POST", "/api/user/xp", {
-        xp: Math.floor(gameState.score / 10),
-        isPractice: match?.isPractice ?? false
-      });
-
-      // Invalidate queries to refresh data
-      queryClient.invalidateQueries({ queryKey: ["/api/user"] });
-
-      // Close websocket connection
-      if (socket) {
-        socket.close();
-      }
-
-      // Finally navigate back to dashboard
-      setLocation("/");
     } catch (error) {
       console.error("Failed to handle game over:", error);
       toast({
         title: "Error",
-        description: "Failed to save game progress",
+        description: "Failed to save game progress. Please try again.",
         variant: "destructive",
       });
     }
