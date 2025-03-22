@@ -241,19 +241,28 @@ export function Tetris({ initialState, onStateChange, onGameOver, onSaveScore }:
     if (!currentPiece || gameOver) return;
 
     let dropDistance = 0;
+    // Calculate maximum drop distance
     while (isValidMove(currentPiece, currentPiece.x, currentPiece.y + dropDistance + 1)) {
       dropDistance++;
     }
 
     if (dropDistance > 0) {
+      // Award points for hard drop (2 points per cell dropped)
       setScore(prev => prev + (dropDistance * 2));
 
-      setCurrentPiece({
+      // Create a new piece object to trigger proper re-render
+      const newPiece = {
         ...currentPiece,
         y: currentPiece.y + dropDistance
-      });
+      };
+      setCurrentPiece(newPiece);
 
-      setTimeout(mergePieceWithBoard, 0);
+      // Merge piece with board after position update
+      setTimeout(() => {
+        if (!gameOver) {
+          mergePieceWithBoard();
+        }
+      }, 0);
     }
   }, [currentPiece, gameOver, isValidMove, mergePieceWithBoard]);
 
@@ -314,16 +323,19 @@ export function Tetris({ initialState, onStateChange, onGameOver, onSaveScore }:
       touchState.current.isSwiping = true;
 
       if (Math.abs(deltaX) > Math.abs(deltaY)) {
-        // Horizontal swipe
+        // Horizontal swipe - move piece
         moveHorizontally(deltaX > 0 ? 1 : -1);
         touchState.current.startX = touch.clientX;
+      } else if (deltaY < 0 && Math.abs(deltaY) > SWIPE_THRESHOLD) {
+        // Upward swipe - hard drop
+        hardDrop();
       } else if (deltaY > 0) {
         // Downward swipe - soft drop
         moveDown();
         touchState.current.startY = touch.clientY;
       }
     }
-  }, [currentPiece, gameOver, moveHorizontally, moveDown]);
+  }, [currentPiece, gameOver, moveHorizontally, moveDown, hardDrop]);
 
   const handleTouchEnd = useCallback((e: React.TouchEvent) => {
     e.preventDefault();
@@ -332,27 +344,14 @@ export function Tetris({ initialState, onStateChange, onGameOver, onSaveScore }:
     const touch = e.changedTouches[0];
     const deltaX = Math.abs(touch.clientX - touchState.current.startX);
     const deltaY = Math.abs(touch.clientY - touchState.current.startY);
-    const now = Date.now();
-    const timeDiff = now - touchState.current.lastTapTime;
 
-    // If it's not a swipe and the touch was quick
+    // If it wasn't a swipe and the touch was quick, it's a tap for rotation
     if (!touchState.current.isSwiping && deltaX < 10 && deltaY < 10) {
-      if (timeDiff < DOUBLE_TAP_DELAY) {
-        // Double tap - hard drop
-        hardDrop();
-        toast({
-          title: "Hard Drop!",
-          duration: 1000,
-        });
-      } else {
-        // Single tap - rotate
-        rotatePiece();
-      }
+      rotatePiece();
     }
 
-    touchState.current.lastTapTime = now;
     touchState.current.isSwiping = false;
-  }, [currentPiece, gameOver, hardDrop, rotatePiece, toast]);
+  }, [currentPiece, gameOver, rotatePiece]);
 
   // Next piece preview component with fixed 4x4 grid
   const NextPiecePreview = () => {
@@ -373,8 +372,8 @@ export function Tetris({ initialState, onStateChange, onGameOver, onSaveScore }:
               const pieceY = y - Math.floor((4 - nextPiece.shape.length) / 2);
               const pieceX = x - Math.floor((4 - nextPiece.shape[0].length) / 2);
               const isActive = pieceY >= 0 && pieceY < nextPiece.shape.length &&
-                             pieceX >= 0 && pieceX < nextPiece.shape[pieceY].length &&
-                             nextPiece.shape[pieceY][pieceX];
+                               pieceX >= 0 && pieceX < nextPiece.shape[pieceY].length &&
+                               nextPiece.shape[pieceY][pieceX];
 
               return (
                 <div
