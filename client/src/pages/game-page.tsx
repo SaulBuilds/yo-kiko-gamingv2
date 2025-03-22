@@ -67,16 +67,10 @@ export default function GamePage() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/matches"] });
-      toast({
-        title: "Score Saved!",
-        description: "Your game score has been recorded.",
-      });
-      // Close websocket connection
+      // Close websocket connection after successful finish
       if (socket) {
         socket.close();
       }
-      // Navigate back to dashboard
-      setLocation("/");
     },
     onError: (error: Error) => {
       toast({
@@ -136,8 +130,10 @@ export default function GamePage() {
       const updatedMatch = await finishGameMutation.mutateAsync(gameState.score);
 
       if (updatedMatch) {
-        // Calculate XP gain
-        const xpGain = Math.floor(gameState.score / 10);
+        // Calculate XP gain based on match type
+        const xpGain = match?.isPractice 
+          ? Math.floor(gameState.score / 20) // Less XP for practice games
+          : Math.floor(gameState.score / 10); // More XP for wager games
 
         // Only attempt XP update if there are points to award
         if (xpGain > 0) {
