@@ -46,7 +46,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
-      // Set up session
       if (req.session) {
         req.session.userId = user.id;
       }
@@ -87,7 +86,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ error: "User not found" });
       }
 
-      // Update user XP and only update score if it's not a practice game
       await storage.updateUserXP(req.session.userId, xp, !isPractice);
       res.json({ success: true });
     } catch (error) {
@@ -96,7 +94,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-
   // Game match routes
   app.get("/api/matches", async (req, res) => {
     if (!req.session?.userId) return res.status(401).json({ error: "Not authenticated" });
@@ -104,8 +101,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
     res.json(matches);
   });
 
+  app.get("/api/matches/:id", async (req, res) => {
+    if (!req.session?.userId) {
+      return res.status(401).json({ error: "Not authenticated" });
+    }
+
+    try {
+      const match = await storage.getGameMatch(parseInt(req.params.id));
+      if (!match) {
+        return res.status(404).json({ error: "Match not found" });
+      }
+      res.json(match);
+    } catch (error) {
+      console.error("Error fetching match:", error);
+      res.status(500).json({ error: "Failed to fetch match" });
+    }
+  });
+
   app.post("/api/matches", async (req, res) => {
-    console.log("Creating match, session:", req.session);
     if (!req.session?.userId) {
       return res.status(401).json({ error: "Not authenticated" });
     }
@@ -115,12 +128,47 @@ export async function registerRoutes(app: Express): Promise<Server> {
         player1Id: req.session.userId,
         betAmount: req.body.betAmount,
         gameType: "tetris",
-        isPractice: req.body.isPractice || false
+        isPractice: req.body.isPractice || false,
+        timeLimit: req.body.timeLimit
       });
       res.json(match);
     } catch (error) {
       console.error("Error creating match:", error);
       res.status(500).json({ error: "Failed to create match" });
+    }
+  });
+
+  app.post("/api/matches/:id/finish", async (req, res) => {
+    if (!req.session?.userId) {
+      return res.status(401).json({ error: "Not authenticated" });
+    }
+
+    try {
+      const matchId = parseInt(req.params.id);
+      const { score } = req.body;
+      const match = await storage.getGameMatch(matchId);
+
+      if (!match) {
+        return res.status(404).json({ error: "Match not found" });
+      }
+
+      // Update match with score
+      const updates = {
+        status: "completed" as const,
+        endTime: new Date()
+      };
+
+      if (match.player1Id === req.session.userId) {
+        updates.player1Score = score;
+      } else if (match.player2Id === req.session.userId) {
+        updates.player2Score = score;
+      }
+
+      const updatedMatch = await storage.updateGameMatch(matchId, updates);
+      res.json(updatedMatch);
+    } catch (error) {
+      console.error("Error finishing match:", error);
+      res.status(500).json({ error: "Failed to finish match" });
     }
   });
 
@@ -132,29 +180,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // WebSocket handling
   const wss = new WebSocketServer({
     server: httpServer,
-    path: '/game-ws',
-    verifyClient: (info, done) => {
-      log(`WebSocket connection attempt from ${info.req.headers.origin}`, 'websocket');
-      done(true);
-    }
+    path: '/game-ws'
   });
 
   const gameStates = new Map<number, Map<number, GameState>>();
   const clients = new Map<WebSocket, number>();
 
-  wss.on("connection", (ws, req) => {
-    log(`New WebSocket connection established`, 'websocket');
+  wss.on("connection", (ws) => {
+    log("New WebSocket connection established", "websocket");
 
     ws.on("message", async (data) => {
       try {
         const message = JSON.parse(data.toString());
-        log(`Received message: ${JSON.stringify(message)}`, 'websocket');
+        log(`Received message: ${JSON.stringify(message)}`, "websocket");
 
         switch (message.type) {
           case "join": {
             const { matchId, userId } = message;
             clients.set(ws, matchId);
-            log(`User ${userId} joined match ${matchId}`, 'websocket');
+            log(`User ${userId} joined match ${matchId}`, "websocket");
 
             if (!gameStates.has(matchId)) {
               gameStates.set(matchId, new Map());
@@ -189,28 +233,38 @@ export async function registerRoutes(app: Express): Promise<Server> {
           }
 
           case "gameOver": {
-            const { matchId, userId } = message;
-            log(`Game over for match ${matchId}, winner: ${userId}`, 'websocket');
+            const { matchId, userId, score } = message;
+            log(`Game over for match ${matchId}, score: ${score}`, "websocket");
             const match = await storage.getGameMatch(matchId);
             if (match) {
-              await storage.updateGameMatch(matchId, {
+              const updates: any = {
                 status: "completed",
-                winnerId: userId,
                 endTime: new Date()
-              });
-              await storage.updateUserScore(userId, 100);
+              };
+
+              if (match.player1Id === userId) {
+                updates.player1Score = score;
+              } else if (match.player2Id === userId) {
+                updates.player2Score = score;
+              }
+
+              if (updates.player1Score && updates.player2Score) {
+                updates.winnerId = updates.player1Score > updates.player2Score ? match.player1Id : match.player2Id;
+              }
+
+              await storage.updateGameMatch(matchId, updates);
             }
             break;
           }
         }
       } catch (error) {
-        log(`WebSocket error: ${error}`, 'websocket');
+        log(`WebSocket error: ${error}`, "websocket");
       }
     });
 
     ws.on("close", () => {
       const matchId = clients.get(ws);
-      log(`Connection closed for match ${matchId}`, 'websocket');
+      log(`Connection closed for match ${matchId}`, "websocket");
       clients.delete(ws);
     });
   });
