@@ -73,6 +73,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Add XP update function
   app.post("/api/user/xp", async (req, res) => {
     if (!req.session?.userId) {
       return res.status(401).json({ error: "Not authenticated" });
@@ -86,8 +87,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ error: "User not found" });
       }
 
-      await storage.updateUserXP(req.session.userId, xp, !isPractice);
-      res.json({ success: true });
+      // Update both XP and games played/won
+      const updatedUser = await storage.updateUser(req.session.userId, {
+        xp: user.xp + xp,
+        gamesPlayed: user.gamesPlayed + 1,
+        ...(isPractice ? {} : { gamesWon: user.gamesWon + 1 })
+      });
+
+      res.json(updatedUser);
     } catch (error) {
       console.error("Error updating XP:", error);
       res.status(500).json({ error: "Failed to update XP" });

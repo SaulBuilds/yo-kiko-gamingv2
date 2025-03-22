@@ -136,13 +136,20 @@ export default function GamePage() {
       const updatedMatch = await finishGameMutation.mutateAsync(gameState.score);
 
       if (updatedMatch) {
-        // Calculate and update XP only after score is saved
+        // Calculate XP gain
         const xpGain = Math.floor(gameState.score / 10);
+
+        // Only attempt XP update if there are points to award
         if (xpGain > 0) {
-          await apiRequest("POST", "/api/user/xp", {
-            xp: xpGain,
-            isPractice: match?.isPractice ?? false
-          });
+          try {
+            await apiRequest("POST", "/api/user/xp", {
+              xp: xpGain,
+              isPractice: match?.isPractice ?? false
+            });
+          } catch (error) {
+            console.error("Failed to update XP:", error);
+            // Continue with game over even if XP update fails
+          }
         }
 
         // Send final game state via websocket
@@ -155,14 +162,15 @@ export default function GamePage() {
           }));
         }
 
-        // Invalidate queries to refresh data
-        queryClient.invalidateQueries({ queryKey: ["/api/user"] });
-        queryClient.invalidateQueries({ queryKey: ["/api/matches", params.id] });
-
-        // Clean up
+        // Clean up socket connection first
         if (socket) {
           socket.close();
         }
+
+        // Invalidate queries to refresh data
+        queryClient.invalidateQueries({ queryKey: ["/api/user"] });
+        queryClient.invalidateQueries({ queryKey: ["/api/matches"] });
+        queryClient.invalidateQueries({ queryKey: ["/api/leaderboard"] });
 
         // Show success message
         toast({
