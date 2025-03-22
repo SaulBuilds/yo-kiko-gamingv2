@@ -130,14 +130,8 @@ export default function GamePage() {
 
   const handleGameOver = async () => {
     try {
-      // First save the score
+      // First save the score and wait for it to complete
       await finishGameMutation.mutateAsync(gameState.score);
-
-      // Then update XP
-      await apiRequest("POST", "/api/user/xp", {
-        xp: Math.floor(gameState.score / 10),
-        isPractice: match?.isPractice || false
-      });
 
       // Send game over message via websocket
       if (socket?.readyState === WebSocket.OPEN && params?.id) {
@@ -149,6 +143,13 @@ export default function GamePage() {
         }));
       }
 
+      // Then update XP
+      await apiRequest("POST", "/api/user/xp", {
+        xp: Math.floor(gameState.score / 10),
+        isPractice: match?.isPractice ?? false
+      });
+
+      // Invalidate queries to refresh data
       queryClient.invalidateQueries({ queryKey: ["/api/user"] });
 
       // Close websocket connection
@@ -156,13 +157,13 @@ export default function GamePage() {
         socket.close();
       }
 
-      // Navigate back to dashboard
+      // Finally navigate back to dashboard
       setLocation("/");
     } catch (error) {
       console.error("Failed to handle game over:", error);
       toast({
         title: "Error",
-        description: "Failed to save game score",
+        description: "Failed to save game progress",
         variant: "destructive",
       });
     }
