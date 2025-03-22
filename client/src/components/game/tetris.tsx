@@ -8,8 +8,9 @@ import { Button } from '@/components/ui/button';
 const BOARD_WIDTH = 10;
 const BOARD_HEIGHT = 20;
 const CELL_SIZE = 25;
+const PREVIEW_CELL_SIZE = CELL_SIZE / 2; // Make preview 1/4 the size
 const BASE_DROP_SPEED = 800;
-const SWIPE_THRESHOLD = 30; // Reduced threshold for more responsive controls
+const SWIPE_THRESHOLD = 30;
 const DOUBLE_TAP_DELAY = 300;
 
 const TETROMINOS = {
@@ -358,13 +359,13 @@ export function Tetris({ initialState, onStateChange, onGameOver, onSaveScore }:
     if (!nextPiece) return null;
 
     return (
-      <div className="bg-card/80 p-4 rounded-lg shadow-lg">
-        <h3 className="text-sm text-primary font-bold mb-2">Next</h3>
+      <div className="bg-card/80 p-2 rounded-lg shadow-lg">
+        <h3 className="text-xs text-primary font-bold mb-1">Next</h3>
         <div
-          className="grid grid-cols-4 gap-1 bg-primary/20 p-2 rounded"
+          className="grid grid-cols-4 gap-px bg-primary/20 p-1 rounded"
           style={{
-            width: `${CELL_SIZE * 4}px`,
-            height: `${CELL_SIZE * 4}px`
+            width: `${PREVIEW_CELL_SIZE * 4}px`,
+            height: `${PREVIEW_CELL_SIZE * 4}px`
           }}
         >
           {Array(4).fill(null).map((_, y) =>
@@ -381,8 +382,8 @@ export function Tetris({ initialState, onStateChange, onGameOver, onSaveScore }:
                   className="border border-primary/10"
                   style={{
                     backgroundColor: isActive ? nextPiece.color : 'transparent',
-                    width: CELL_SIZE,
-                    height: CELL_SIZE
+                    width: PREVIEW_CELL_SIZE,
+                    height: PREVIEW_CELL_SIZE
                   }}
                 />
               );
@@ -488,100 +489,100 @@ export function Tetris({ initialState, onStateChange, onGameOver, onSaveScore }:
       onTouchMove={handleTouchMove}
       onTouchEnd={handleTouchEnd}
     >
-      <div className="flex gap-4 items-start w-full justify-center mb-4">
-        <div
-          className="relative grid grid-cols-10 gap-px bg-primary/20 p-2 rounded-lg shadow-lg game-board"
-          style={{
-            width: `${BOARD_WIDTH * CELL_SIZE}px`,
-            height: `${(BOARD_HEIGHT + 1) * CELL_SIZE}px`,
-            touchAction: 'none',
-            border: '2px solid rgba(var(--primary), 0.2)'
-          }}
-        >
-          {board.map((row, y) => (
-            row.map((cell, x) => {
-              let backgroundColor = cell.value ? cell.color : 'transparent';
+      <div
+        className="relative grid grid-cols-10 gap-px bg-primary/20 p-2 rounded-lg shadow-lg game-board"
+        style={{
+          width: `${BOARD_WIDTH * CELL_SIZE}px`,
+          height: `${(BOARD_HEIGHT + 1) * CELL_SIZE}px`,
+          touchAction: 'none',
+          border: '2px solid rgba(var(--primary), 0.2)'
+        }}
+      >
+        {board.map((row, y) => (
+          row.map((cell, x) => {
+            let backgroundColor = cell.value ? cell.color : 'transparent';
 
-              if (currentPiece && !gameOver) {
-                const pieceX = x - currentPiece.x;
-                const pieceY = y - currentPiece.y;
+            if (currentPiece && !gameOver) {
+              const pieceX = x - currentPiece.x;
+              const pieceY = y - currentPiece.y;
 
-                if (
-                  pieceY >= 0 &&
-                  pieceY < currentPiece.shape.length &&
-                  pieceX >= 0 &&
-                  pieceX < currentPiece.shape[pieceY].length &&
-                  currentPiece.shape[pieceY][pieceX]
-                ) {
-                  backgroundColor = currentPiece.color;
-                }
+              if (
+                pieceY >= 0 &&
+                pieceY < currentPiece.shape.length &&
+                pieceX >= 0 &&
+                pieceX < currentPiece.shape[pieceY].length &&
+                currentPiece.shape[pieceY][pieceX]
+              ) {
+                backgroundColor = currentPiece.color;
               }
+            }
 
-              return (
-                <motion.div
-                  key={`${y}-${x}`}
-                  className={`border border-primary/10 ${
-                    clearedLines.includes(y) ? 'animate-pulse bg-white' : ''
-                  }`}
-                  style={{
-                    width: `${CELL_SIZE}px`,
-                    height: `${CELL_SIZE}px`,
-                    backgroundColor
-                  }}
-                  animate={{
-                    scale: clearedLines.includes(y) ? [1, 1.1, 1] : 1,
-                    opacity: clearedLines.includes(y) ? [1, 0] : 1
-                  }}
-                  transition={{ duration: 0.5 }}
-                />
-              );
-            })
-          ))}
+            return (
+              <motion.div
+                key={`${y}-${x}`}
+                className={`border border-primary/10 ${
+                  clearedLines.includes(y) ? 'animate-pulse bg-white' : ''
+                }`}
+                style={{
+                  width: `${CELL_SIZE}px`,
+                  height: `${CELL_SIZE}px`,
+                  backgroundColor
+                }}
+                animate={{
+                  scale: clearedLines.includes(y) ? [1, 1.1, 1] : 1,
+                  opacity: clearedLines.includes(y) ? [1, 0] : 1
+                }}
+                transition={{ duration: 0.5 }}
+              />
+            );
+          })
+        ))}
 
-          {scoreAnims.map(anim => (
-            <ScoreAnimation
-              key={anim.id}
-              points={anim.points}
-              isTetris={anim.isTetris}
-              position={anim.position}
-              onComplete={() => {
-                setScoreAnims(prev => prev.filter(a => a.id !== anim.id));
-              }}
-            />
-          ))}
+        {scoreAnims.map(anim => (
+          <ScoreAnimation
+            key={anim.id}
+            points={anim.points}
+            isTetris={anim.isTetris}
+            position={anim.position}
+            onComplete={() => {
+              setScoreAnims(prev => prev.filter(a => a.id !== anim.id));
+            }}
+          />
+        ))}
 
-          {gameOver && (
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              className="absolute inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center"
-            >
-              <div className="text-center bg-background/90 p-6 rounded-lg shadow-xl w-64">
-                <h2 className="text-2xl font-bold pixel-font text-primary mb-4">Game Over!</h2>
-                <p className="text-xl pixel-font mb-6">Final Score: {score}</p>
-                <Button
-                  onClick={onGameOver}
-                  className="w-full pixel-font text-lg"
-                  variant="default"
-                >
-                  Return to Dashboard
-                </Button>
-              </div>
-            </motion.div>
-          )}
-        </div>
-        <NextPiecePreview />
+        {gameOver && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="absolute inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center"
+          >
+            <div className="text-center bg-background/90 p-6 rounded-lg shadow-xl w-64">
+              <h2 className="text-2xl font-bold pixel-font text-primary mb-4">Game Over!</h2>
+              <p className="text-xl pixel-font mb-6">Final Score: {score}</p>
+              <Button
+                onClick={onGameOver}
+                className="w-full pixel-font text-lg"
+                variant="default"
+              >
+                Return to Dashboard
+              </Button>
+            </div>
+          </motion.div>
+        )}
       </div>
 
-      <motion.div
-        className="mt-4 text-center bg-card p-4 rounded-lg shadow-lg"
-        initial={{ y: 20, opacity: 0 }}
-        animate={{ y: 0, opacity: 1 }}
-      >
-        <p className="text-primary text-xl font-bold pixel-font mb-2">Score: {score}</p>
-        <p className="text-muted-foreground pixel-font">Level: {level}</p>
-      </motion.div>
+      <div className="flex justify-between w-full mt-4 gap-4">
+        <motion.div
+          className="flex-1 text-center bg-card p-2 rounded-lg shadow-lg"
+          initial={{ y: 20, opacity: 0 }}
+          animate={{ y: 0, opacity: 1 }}
+        >
+          <p className="text-primary text-lg font-bold pixel-font">Score: {score}</p>
+          <p className="text-muted-foreground text-sm pixel-font">Level: {level}</p>
+        </motion.div>
+        <NextPiecePreview />
+      </div>
     </div>
   );
 }

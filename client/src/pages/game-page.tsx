@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useRoute } from "wouter";
 import { useLocation } from "wouter";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { GameBoard } from "@/components/game/game-board";
 import { useAuth } from "@/hooks/use-auth";
@@ -194,15 +194,10 @@ export default function GamePage() {
   return (
     <div className="min-h-screen bg-background">
       <Navbar />
-      <main className="container mx-auto px-4 py-8">
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-          <Card className="p-6">
-            <CardHeader>
-              <CardTitle className="pixel-font">
-                {match?.isPractice ? "Practice Mode" : "Competitive Mode"}
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
+      <main className="container mx-auto px-4 py-4">
+        <div className="flex justify-center">
+          <Card className="w-full max-w-lg p-4">
+            <CardContent className="p-0">
               <GameBoard
                 initialState={gameState}
                 onStateUpdate={handleGameStateUpdate}
