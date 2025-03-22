@@ -241,6 +241,7 @@ export function Tetris({ initialState, onStateChange, onGameOver, onSaveScore }:
     if (!currentPiece || gameOver) return;
 
     let dropDistance = 0;
+    // Calculate maximum drop distance
     while (isValidMove(currentPiece, currentPiece.x, currentPiece.y + dropDistance + 1)) {
       dropDistance++;
     }
@@ -255,15 +256,15 @@ export function Tetris({ initialState, onStateChange, onGameOver, onSaveScore }:
         y: currentPiece.y + dropDistance
       };
 
-      // Update piece position and merge with board in a single update
+      // Update piece position and merge with board in a separate animation frames
       setCurrentPiece(finalPosition);
 
-      // Use requestAnimationFrame to ensure the position update is rendered
-      // before merging with the board
+      // Wait for the next frame to ensure position is updated
       requestAnimationFrame(() => {
-        if (!gameOver) {
+        // Wait one more frame to ensure the piece is rendered
+        requestAnimationFrame(() => {
           mergePieceWithBoard();
-        }
+        });
       });
     }
   }, [currentPiece, gameOver, isValidMove, mergePieceWithBoard]);
@@ -331,21 +332,14 @@ export function Tetris({ initialState, onStateChange, onGameOver, onSaveScore }:
         // Upward swipe - hard drop
         e.preventDefault();
         e.stopPropagation();
-        // Calculate drop distance before executing hard drop
-        let dropDistance = 0;
-        while (isValidMove(currentPiece, currentPiece.x, currentPiece.y + dropDistance + 1)) {
-          dropDistance++;
-        }
-        if (dropDistance > 0) {
-          hardDrop();
-        }
+        hardDrop();
       } else if (deltaY > SWIPE_THRESHOLD) {
         // Downward swipe - soft drop
         moveDown();
         touchState.current.startY = touch.clientY;
       }
     }
-  }, [currentPiece, gameOver, moveHorizontally, moveDown, hardDrop, isValidMove]);
+  }, [currentPiece, gameOver, moveHorizontally, moveDown, hardDrop]);
 
   const handleTouchEnd = useCallback((e: React.TouchEvent) => {
     if (!currentPiece || gameOver) return;
@@ -489,7 +483,7 @@ export function Tetris({ initialState, onStateChange, onGameOver, onSaveScore }:
         level
       });
     }
-  }, [board, score, level, currentPiece, gameOver]); 
+  }, [board, score, level, currentPiece, gameOver]);
 
   return (
     <div
