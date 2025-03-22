@@ -291,7 +291,7 @@ export function Tetris({ initialState, onStateChange, onGameOver, onSaveScore }:
   }, [currentPiece, gameOver, isValidMove]);
 
   const handleTouchStart = useCallback((e: React.TouchEvent) => {
-    e.preventDefault(); 
+    e.preventDefault();
     const touch = e.touches[0];
     touchState.current = {
       startX: touch.clientX,
@@ -302,7 +302,7 @@ export function Tetris({ initialState, onStateChange, onGameOver, onSaveScore }:
   }, []);
 
   const handleTouchMove = useCallback((e: React.TouchEvent) => {
-    e.preventDefault(); 
+    e.preventDefault();
     if (!currentPiece || gameOver) return;
 
     const touch = e.touches[0];
@@ -313,11 +313,13 @@ export function Tetris({ initialState, onStateChange, onGameOver, onSaveScore }:
       touchState.current.isSwiping = true;
 
       if (Math.abs(deltaX) > Math.abs(deltaY)) {
+        // Horizontal swipe
         moveHorizontally(deltaX > 0 ? 1 : -1);
-        touchState.current.startX = touch.clientX; 
+        touchState.current.startX = touch.clientX;
       } else if (deltaY > 0) {
+        // Downward swipe - soft drop
         moveDown();
-        touchState.current.startY = touch.clientY; 
+        touchState.current.startY = touch.clientY;
       }
     }
   }, [currentPiece, gameOver, moveHorizontally, moveDown]);
@@ -326,23 +328,70 @@ export function Tetris({ initialState, onStateChange, onGameOver, onSaveScore }:
     e.preventDefault();
     if (!currentPiece || gameOver) return;
 
-    const timeDiff = Date.now() - touchState.current.lastTapTime;
+    const touch = e.changedTouches[0];
+    const deltaX = Math.abs(touch.clientX - touchState.current.startX);
+    const deltaY = Math.abs(touch.clientY - touchState.current.startY);
+    const now = Date.now();
+    const timeDiff = now - touchState.current.lastTapTime;
 
-    if (!touchState.current.isSwiping && timeDiff < DOUBLE_TAP_DELAY) {
+    // If it's not a swipe and the touch was quick
+    if (!touchState.current.isSwiping && deltaX < 10 && deltaY < 10) {
       if (timeDiff < DOUBLE_TAP_DELAY) {
+        // Double tap - hard drop
         hardDrop();
         toast({
           title: "Hard Drop!",
           duration: 1000,
         });
       } else {
+        // Single tap - rotate
         rotatePiece();
       }
     }
 
-    touchState.current.lastTapTime = Date.now();
+    touchState.current.lastTapTime = now;
+    touchState.current.isSwiping = false;
   }, [currentPiece, gameOver, hardDrop, rotatePiece, toast]);
 
+  // Next piece preview component with fixed 4x4 grid
+  const NextPiecePreview = () => {
+    if (!nextPiece) return null;
+
+    return (
+      <div className="bg-card/80 p-4 rounded-lg shadow-lg">
+        <h3 className="text-sm text-primary font-bold mb-2">Next</h3>
+        <div
+          className="grid grid-cols-4 gap-1 bg-primary/20 p-2 rounded"
+          style={{
+            width: `${CELL_SIZE * 4}px`,
+            height: `${CELL_SIZE * 4}px`
+          }}
+        >
+          {Array(4).fill(null).map((_, y) =>
+            Array(4).fill(null).map((_, x) => {
+              const pieceY = y - Math.floor((4 - nextPiece.shape.length) / 2);
+              const pieceX = x - Math.floor((4 - nextPiece.shape[0].length) / 2);
+              const isActive = pieceY >= 0 && pieceY < nextPiece.shape.length &&
+                             pieceX >= 0 && pieceX < nextPiece.shape[pieceY].length &&
+                             nextPiece.shape[pieceY][pieceX];
+
+              return (
+                <div
+                  key={`next-${y}-${x}`}
+                  className="border border-primary/10"
+                  style={{
+                    backgroundColor: isActive ? nextPiece.color : 'transparent',
+                    width: CELL_SIZE,
+                    height: CELL_SIZE
+                  }}
+                />
+              );
+            })
+          )}
+        </div>
+      </div>
+    );
+  };
 
   const preventDefault = useCallback((e: React.TouchEvent) => {
     e.preventDefault();
@@ -431,39 +480,6 @@ export function Tetris({ initialState, onStateChange, onGameOver, onSaveScore }:
     });
   }, [board, score, level, onStateChange]);
 
-  const NextPiecePreview = () => {
-    if (!nextPiece) return null;
-
-    const maxWidth = Math.max(...nextPiece.shape[0].map((_, i) =>
-      nextPiece.shape.reduce((sum, row) => sum + (row[i] ? 1 : 0), 0)
-    ));
-    const maxHeight = nextPiece.shape.length;
-
-    return (
-      <div className="fixed right-4 top-20 bg-card/80 p-6 rounded-lg shadow-lg">
-        <h3 className="text-sm text-primary font-bold mb-4">Next Piece</h3>
-        <div
-          className="grid gap-1 bg-primary/20 p-4 rounded"
-          style={{
-            gridTemplateColumns: `repeat(${maxWidth}, 1fr)`,
-            gridTemplateRows: `repeat(${maxHeight}, 1fr)`
-          }}
-        >
-          {nextPiece.shape.map((row, y) =>
-            row.map((cell, x) => (
-              <div
-                key={`next-${y}-${x}`}
-                className="w-8 h-8 border border-primary/10"
-                style={{
-                  backgroundColor: cell ? nextPiece.color : 'transparent'
-                }}
-              />
-            ))
-          )}
-        </div>
-      </div>
-    );
-  };
 
   return (
     <div
@@ -472,91 +488,91 @@ export function Tetris({ initialState, onStateChange, onGameOver, onSaveScore }:
       onTouchMove={handleTouchMove}
       onTouchEnd={handleTouchEnd}
     >
-      <div
-        className="relative grid grid-cols-10 gap-px bg-primary/20 p-2 rounded-lg shadow-lg game-board mb-4"
-        style={{
-          width: `${BOARD_WIDTH * CELL_SIZE}px`,
-          height: `${BOARD_HEIGHT * CELL_SIZE}px`,
-          maxHeight: '95vh',
-          touchAction: 'none',
-          border: '2px solid rgba(var(--primary), 0.2)'
-        }}
-      >
-        {board.map((row, y) => (
-          row.map((cell, x) => {
-            let backgroundColor = cell.value ? cell.color : 'transparent';
+      <div className="flex gap-4 items-start w-full justify-center mb-4">
+        <div
+          className="relative grid grid-cols-10 gap-px bg-primary/20 p-2 rounded-lg shadow-lg game-board"
+          style={{
+            width: `${BOARD_WIDTH * CELL_SIZE}px`,
+            height: `${(BOARD_HEIGHT + 1) * CELL_SIZE}px`,
+            touchAction: 'none',
+            border: '2px solid rgba(var(--primary), 0.2)'
+          }}
+        >
+          {board.map((row, y) => (
+            row.map((cell, x) => {
+              let backgroundColor = cell.value ? cell.color : 'transparent';
 
-            if (currentPiece && !gameOver) {
-              const pieceX = x - currentPiece.x;
-              const pieceY = y - currentPiece.y;
+              if (currentPiece && !gameOver) {
+                const pieceX = x - currentPiece.x;
+                const pieceY = y - currentPiece.y;
 
-              if (
-                pieceY >= 0 &&
-                pieceY < currentPiece.shape.length &&
-                pieceX >= 0 &&
-                pieceX < currentPiece.shape[pieceY].length &&
-                currentPiece.shape[pieceY][pieceX]
-              ) {
-                backgroundColor = currentPiece.color;
+                if (
+                  pieceY >= 0 &&
+                  pieceY < currentPiece.shape.length &&
+                  pieceX >= 0 &&
+                  pieceX < currentPiece.shape[pieceY].length &&
+                  currentPiece.shape[pieceY][pieceX]
+                ) {
+                  backgroundColor = currentPiece.color;
+                }
               }
-            }
 
-            return (
-              <motion.div
-                key={`${y}-${x}`}
-                className={`border border-primary/10 ${
-                  clearedLines.includes(y) ? 'animate-pulse bg-white' : ''
-                }`}
-                style={{
-                  width: `${CELL_SIZE}px`,
-                  height: `${CELL_SIZE}px`,
-                  backgroundColor
-                }}
-                animate={{
-                  scale: clearedLines.includes(y) ? [1, 1.1, 1] : 1,
-                  opacity: clearedLines.includes(y) ? [1, 0] : 1
-                }}
-                transition={{ duration: 0.5 }}
-              />
-            );
-          })
-        ))}
+              return (
+                <motion.div
+                  key={`${y}-${x}`}
+                  className={`border border-primary/10 ${
+                    clearedLines.includes(y) ? 'animate-pulse bg-white' : ''
+                  }`}
+                  style={{
+                    width: `${CELL_SIZE}px`,
+                    height: `${CELL_SIZE}px`,
+                    backgroundColor
+                  }}
+                  animate={{
+                    scale: clearedLines.includes(y) ? [1, 1.1, 1] : 1,
+                    opacity: clearedLines.includes(y) ? [1, 0] : 1
+                  }}
+                  transition={{ duration: 0.5 }}
+                />
+              );
+            })
+          ))}
 
-        {scoreAnims.map(anim => (
-          <ScoreAnimation
-            key={anim.id}
-            points={anim.points}
-            isTetris={anim.isTetris}
-            position={anim.position}
-            onComplete={() => {
-              setScoreAnims(prev => prev.filter(a => a.id !== anim.id));
-            }}
-          />
-        ))}
+          {scoreAnims.map(anim => (
+            <ScoreAnimation
+              key={anim.id}
+              points={anim.points}
+              isTetris={anim.isTetris}
+              position={anim.position}
+              onComplete={() => {
+                setScoreAnims(prev => prev.filter(a => a.id !== anim.id));
+              }}
+            />
+          ))}
 
-        {gameOver && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="absolute inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center"
-          >
-            <div className="text-center bg-background/90 p-6 rounded-lg shadow-xl w-64">
-              <h2 className="text-2xl font-bold pixel-font text-primary mb-4">Game Over!</h2>
-              <p className="text-xl pixel-font mb-6">Final Score: {score}</p>
-              <Button
-                onClick={onGameOver}
-                className="w-full pixel-font text-lg"
-                variant="default"
-              >
-                Return to Dashboard
-              </Button>
-            </div>
-          </motion.div>
-        )}
+          {gameOver && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="absolute inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center"
+            >
+              <div className="text-center bg-background/90 p-6 rounded-lg shadow-xl w-64">
+                <h2 className="text-2xl font-bold pixel-font text-primary mb-4">Game Over!</h2>
+                <p className="text-xl pixel-font mb-6">Final Score: {score}</p>
+                <Button
+                  onClick={onGameOver}
+                  className="w-full pixel-font text-lg"
+                  variant="default"
+                >
+                  Return to Dashboard
+                </Button>
+              </div>
+            </motion.div>
+          )}
+        </div>
+        <NextPiecePreview />
       </div>
-
-      <NextPiecePreview />
 
       <motion.div
         className="mt-4 text-center bg-card p-4 rounded-lg shadow-lg"
