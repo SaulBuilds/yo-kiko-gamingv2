@@ -3,6 +3,7 @@ import { TetrisPiece, GameState } from '@/types/game';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useToast } from '@/hooks/use-toast';
 import { ScoreAnimation } from './score-animation';
+import { Button } from '@/components/ui/button'; // Assuming Button component is imported from here
 
 const BOARD_WIDTH = 10;
 const BOARD_HEIGHT = 20;
@@ -367,7 +368,7 @@ export function Tetris({ initialState, onStateChange, onGameOver }: TetrisProps)
     if (!nextPiece) return null;
 
     // Calculate the size of the preview grid based on piece dimensions
-    const maxWidth = Math.max(...nextPiece.shape[0].map((_, i) => 
+    const maxWidth = Math.max(...nextPiece.shape[0].map((_, i) =>
       nextPiece.shape.reduce((sum, row) => sum + (row[i] ? 1 : 0), 0)
     ));
     const maxHeight = nextPiece.shape.length;
@@ -375,7 +376,7 @@ export function Tetris({ initialState, onStateChange, onGameOver }: TetrisProps)
     return (
       <div className="fixed right-4 top-20 bg-card/80 p-6 rounded-lg shadow-lg">
         <h3 className="text-sm text-primary font-bold mb-4">Next Piece</h3>
-        <div 
+        <div
           className="grid gap-1 bg-primary/20 p-4 rounded"
           style={{
             gridTemplateColumns: `repeat(${maxWidth}, 1fr)`,
@@ -470,8 +471,14 @@ export function Tetris({ initialState, onStateChange, onGameOver }: TetrisProps)
             className="absolute inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center"
           >
             <div className="text-center bg-background/90 p-6 rounded-lg shadow-xl">
-              <h2 className="text-2xl font-bold pixel-font text-primary mb-2">Game Over!</h2>
-              <p className="text-xl pixel-font">Final Score: {score}</p>
+              <h2 className="text-2xl font-bold pixel-font text-primary mb-4">Game Over!</h2>
+              <p className="text-xl pixel-font mb-6">Final Score: {score}</p>
+              <Button
+                onClick={() => onGameOver()}
+                className="w-full pixel-font text-lg"
+              >
+                Save Score & Exit
+              </Button>
             </div>
           </motion.div>
         )}
