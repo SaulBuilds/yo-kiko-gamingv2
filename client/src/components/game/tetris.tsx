@@ -241,7 +241,6 @@ export function Tetris({ initialState, onStateChange, onGameOver, onSaveScore }:
     if (!currentPiece || gameOver) return;
 
     let dropDistance = 0;
-    // Calculate maximum drop distance
     while (isValidMove(currentPiece, currentPiece.x, currentPiece.y + dropDistance + 1)) {
       dropDistance++;
     }
@@ -258,6 +257,9 @@ export function Tetris({ initialState, onStateChange, onGameOver, onSaveScore }:
 
       // Update piece position and merge with board in a single update
       setCurrentPiece(finalPosition);
+
+      // Use requestAnimationFrame to ensure the position update is rendered
+      // before merging with the board
       requestAnimationFrame(() => {
         if (!gameOver) {
           mergePieceWithBoard();
@@ -301,7 +303,7 @@ export function Tetris({ initialState, onStateChange, onGameOver, onSaveScore }:
   }, [currentPiece, gameOver, isValidMove]);
 
   const handleTouchStart = useCallback((e: React.TouchEvent) => {
-    e.preventDefault();
+    // e.preventDefault();
     const touch = e.touches[0];
     touchState.current = {
       startX: touch.clientX,
@@ -329,14 +331,21 @@ export function Tetris({ initialState, onStateChange, onGameOver, onSaveScore }:
         // Upward swipe - hard drop
         e.preventDefault();
         e.stopPropagation();
-        hardDrop();
+        // Calculate drop distance before executing hard drop
+        let dropDistance = 0;
+        while (isValidMove(currentPiece, currentPiece.x, currentPiece.y + dropDistance + 1)) {
+          dropDistance++;
+        }
+        if (dropDistance > 0) {
+          hardDrop();
+        }
       } else if (deltaY > SWIPE_THRESHOLD) {
         // Downward swipe - soft drop
         moveDown();
         touchState.current.startY = touch.clientY;
       }
     }
-  }, [currentPiece, gameOver, moveHorizontally, moveDown, hardDrop]);
+  }, [currentPiece, gameOver, moveHorizontally, moveDown, hardDrop, isValidMove]);
 
   const handleTouchEnd = useCallback((e: React.TouchEvent) => {
     if (!currentPiece || gameOver) return;
@@ -480,8 +489,7 @@ export function Tetris({ initialState, onStateChange, onGameOver, onSaveScore }:
         level
       });
     }
-  }, [board, score, level, currentPiece, gameOver]); // Added proper dependencies
-
+  }, [board, score, level, currentPiece, gameOver]); 
 
   return (
     <div
