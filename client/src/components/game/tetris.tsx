@@ -461,15 +461,15 @@ export function Tetris({ initialState, onStateChange, onGameOver, onSaveScore }:
             exit={{ opacity: 0 }}
             className="absolute inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center"
           >
-            <div className="text-center bg-background/90 p-6 rounded-lg shadow-xl max-w-[80%] w-full">
+            <div className="text-center bg-background/90 p-6 rounded-lg shadow-xl w-64">
               <h2 className="text-2xl font-bold pixel-font text-primary mb-4">Game Over!</h2>
               <p className="text-xl pixel-font mb-6">Final Score: {score}</p>
               <Button
-                onClick={() => onSaveScore ? onSaveScore(score) : onGameOver()}
+                onClick={onGameOver}
                 className="w-full pixel-font text-lg"
                 variant="default"
               >
-                Save Score & Exit
+                Return to Dashboard
               </Button>
             </div>
           </motion.div>

@@ -130,7 +130,10 @@ export default function GamePage() {
 
   const handleGameOver = async () => {
     try {
-      // Update XP
+      // First save the score
+      await finishGameMutation.mutateAsync(gameState.score);
+
+      // Then update XP
       await apiRequest("POST", "/api/user/xp", {
         xp: Math.floor(gameState.score / 10),
         isPractice: match?.isPractice || false
@@ -148,21 +151,20 @@ export default function GamePage() {
 
       queryClient.invalidateQueries({ queryKey: ["/api/user"] });
 
-      toast({
-        title: "Game Over!",
-        description: `You scored ${gameState.score} points!`,
-        action: (
-          <Button
-            onClick={() => finishGameMutation.mutate(gameState.score)}
-            disabled={finishGameMutation.isPending}
-          >
-            Save Score
-          </Button>
-        ),
-        duration: 0, // Don't auto dismiss
-      });
+      // Close websocket connection
+      if (socket) {
+        socket.close();
+      }
+
+      // Navigate back to dashboard
+      setLocation("/");
     } catch (error) {
-      console.error("Failed to update XP:", error);
+      console.error("Failed to handle game over:", error);
+      toast({
+        title: "Error",
+        description: "Failed to save game score",
+        variant: "destructive",
+      });
     }
   };
 
@@ -205,7 +207,6 @@ export default function GamePage() {
                 initialState={gameState}
                 onStateUpdate={handleGameStateUpdate}
                 onGameOver={handleGameOver}
-                onSaveScore={(score) => finishGameMutation.mutate(score)}
               />
             </CardContent>
           </Card>
