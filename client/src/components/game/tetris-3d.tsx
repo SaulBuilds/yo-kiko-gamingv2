@@ -1,73 +1,61 @@
-import { Suspense, useState, useEffect, useCallback } from 'react';
+import { Suspense } from 'react';
 import { Canvas } from '@react-three/fiber';
 import { OrbitControls } from '@react-three/drei';
 import { GameState } from '@/types/game';
+import { ErrorBoundary } from 'react-error-boundary';
 
-// Game constants
+// Base game constants
 const BOARD_WIDTH = 10;
 const BOARD_HEIGHT = 20;
-const BOARD_DEPTH = 1; // For 3D effect
-const COLORS = {
-  I: '#FF61DC',
-  J: '#1FCFF1',
-  L: '#7B61FF',
-  O: '#FFEB3B',
-  S: '#4CAF50',
-  T: '#9C27B0',
-  Z: '#FF4D4D'
-};
 
-// 3D Block Component
-function Block({ position, color }: { position: [number, number, number], color: string }) {
+// Basic board component to establish the play area
+function Board() {
   return (
-    <mesh position={position}>
-      <boxGeometry args={[0.9, 0.9, 0.9]} />
-      <meshPhongMaterial 
-        color={color} 
-        shininess={50}
-        specular="#ffffff"
+    <group>
+      {/* Floor grid */}
+      <gridHelper 
+        args={[BOARD_WIDTH, BOARD_WIDTH, '#666666', '#222222']} 
+        position={[0, -0.5, 0]} 
+        rotation={[0, 0, 0]}
       />
-    </mesh>
-  );
-}
 
-// Game Board Component
-function GameBoard({ board }: { board: number[][] }) {
-  return (
-    <group rotation={[0.5, 0, 0]}>
-      {/* Background board */}
-      <mesh position={[BOARD_WIDTH/2 - 0.5, BOARD_HEIGHT/2 - 0.5, -0.5]} receiveShadow>
-        <boxGeometry args={[BOARD_WIDTH, BOARD_HEIGHT, 0.2]} />
-        <meshPhongMaterial color="#1a1a1a" opacity={0.8} transparent />
+      {/* Back wall */}
+      <mesh position={[0, BOARD_HEIGHT/2 - 0.5, -0.5]} receiveShadow>
+        <planeGeometry args={[BOARD_WIDTH, BOARD_HEIGHT]} />
+        <meshStandardMaterial 
+          color="#1a1a1a" 
+          transparent 
+          opacity={0.8}
+        />
       </mesh>
-
-      {/* Active blocks */}
-      {board.map((row, y) =>
-        row.map((cell, x) =>
-          cell ? (
-            <Block
-              key={`${x}-${y}`}
-              position={[x, y, 0]}
-              color={COLORS.I}
-            />
-          ) : null
-        )
-      )}
     </group>
   );
 }
 
-// Main Scene Component
-function Scene({ gameState }: { gameState: GameState }) {
+// Main game scene setup
+function Scene() {
   return (
     <Suspense fallback={null}>
-      {/* Lighting */}
+      {/* Lighting setup */}
       <ambientLight intensity={0.4} />
-      <pointLight position={[10, 10, 10]} intensity={0.6} />
-      <pointLight position={[-10, -10, -10]} intensity={0.4} color="#ff61dc" />
+      <pointLight 
+        position={[10, 10, 10]} 
+        intensity={0.8} 
+        castShadow
+      />
+      <pointLight 
+        position={[-10, -10, -10]} 
+        intensity={0.4} 
+        color="#ff61dc"
+      />
 
-      {/* Game Elements */}
-      <GameBoard board={gameState.board} />
+      {/* Test cube to verify scene is working */}
+      <mesh position={[0, 0, 0]} castShadow>
+        <boxGeometry args={[1, 1, 1]} />
+        <meshStandardMaterial color="#ff61dc" />
+      </mesh>
+
+      <Board />
     </Suspense>
   );
 }
@@ -80,7 +68,6 @@ function ErrorFallback({error}: {error: Error}) {
   );
 }
 
-// Main Component
 export function Tetris3D({ 
   initialState,
   onStateChange,
@@ -90,44 +77,35 @@ export function Tetris3D({
   onStateChange: (state: GameState) => void;
   onGameOver: () => void;
 }) {
-  const [gameState, setGameState] = useState(initialState);
-
-  // Game update handler
-  const updateGameState = useCallback((newState: GameState) => {
-    setGameState(newState);
-    onStateChange(newState);
-  }, [onStateChange]);
-
   return (
-    <div className="w-full h-[600px] bg-background">
+    <div className="w-full h-[600px]">
       <ErrorBoundary FallbackComponent={ErrorFallback}>
-        <div className="w-full h-full relative">
-          <Canvas
-            camera={{ 
-              position: [0, 0, 20],
-              fov: 50
-            }}
-          >
-            <Scene gameState={gameState} />
-            <OrbitControls
-              enableZoom={false}
-              enablePan={false}
-              maxPolarAngle={Math.PI / 2.5}
-              minPolarAngle={Math.PI / 3}
-            />
-          </Canvas>
-
-          {/* Score Overlay */}
-          <div className="absolute bottom-4 left-4 bg-black/50 p-4 rounded backdrop-blur-sm">
-            <p className="text-primary text-lg font-bold pixel-font">
-              Score: {gameState.score}
-            </p>
-            <p className="text-muted-foreground pixel-font">
-              Level: {gameState.level}
-            </p>
-          </div>
-        </div>
+        <Canvas
+          shadows
+          camera={{ 
+            position: [10, 15, 15],
+            fov: 50 
+          }}
+          className="bg-gradient-to-b from-background to-background/50"
+        >
+          <Scene />
+          <OrbitControls
+            enableZoom={false}
+            enablePan={false}
+            maxPolarAngle={Math.PI / 2}
+            minPolarAngle={Math.PI / 4}
+          />
+        </Canvas>
       </ErrorBoundary>
+
+      <div className="absolute bottom-4 left-4 bg-black/50 p-4 rounded backdrop-blur-sm">
+        <p className="text-primary text-lg font-bold pixel-font">
+          Score: {initialState.score}
+        </p>
+        <p className="text-muted-foreground pixel-font">
+          Level: {initialState.level}
+        </p>
+      </div>
     </div>
   );
 }
