@@ -7,13 +7,15 @@ import {
   MeshBuilder,
   StandardMaterial,
   HemisphericLight,
-  FreeCamera,
   FollowCamera,
   TransformNode,
   Animation,
   Mesh,
   ActionManager,
-  ExecuteCodeAction
+  ExecuteCodeAction,
+  Matrix,
+  Path3D,
+  Space
 } from '@babylonjs/core';
 import { useAuth } from '@/hooks/use-auth';
 import { useMutation } from '@tanstack/react-query';
@@ -37,14 +39,19 @@ interface GameState {
 interface TrackSegment {
   mesh: Mesh;
   coins: Mesh[];
+  obstacles: Mesh[];
   position: number;
+  curve?: Path3D;
 }
 
 const LANE_WIDTH = 2;
-const SEGMENT_LENGTH = 20;
+const SEGMENT_LENGTH = 30;
 const COIN_HEIGHT = 1;
 const COIN_SPACING = 5;
-const NUM_SEGMENTS = 3;
+const NUM_SEGMENTS = 4;
+const INITIAL_SPEED = 10;
+const SPEED_INCREMENT = 0.5;
+const SPEED_INTERVAL = 1000; // Increase speed every 1000 points
 
 export function TempleRunner({ matchId, isPractice = true, onGameOver }: TempleRunnerProps) {
   const { user } = useAuth();
@@ -57,34 +64,127 @@ export function TempleRunner({ matchId, isPractice = true, onGameOver }: TempleR
   const isJumpingRef = useRef(false);
   const isSlidingRef = useRef(false);
   const currentLaneRef = useRef(1); // 0=left, 1=center, 2=right
+  const lastSpeedIncreaseRef = useRef(0);
 
   const [gameState, setGameState] = useState<GameState>({
     score: 0,
     isGameOver: false,
     distance: 0,
-    speed: 10,
+    speed: INITIAL_SPEED,
     coins: 0
   });
 
-  // Create a track segment
-  const createTrackSegment = (scene: Scene, position: number) => {
-    // Create track base
-    const segment = MeshBuilder.CreateBox("track", {
-      width: LANE_WIDTH * 3,
-      height: 0.5,
-      depth: SEGMENT_LENGTH
+  // Create obstacles for a segment
+  const createObstacles = (scene: Scene, position: number, curve?: Path3D) => {
+    const obstacles: Mesh[] = [];
+    const numObstacles = Math.floor(Math.random() * 3) + 1; // 1-3 obstacles per segment
+
+    for (let i = 0; i < numObstacles; i++) {
+      const obstacleType = Math.random() > 0.5 ? 'barrier' : 'gap';
+      const lane = Math.floor(Math.random() * 3) - 1; // -1, 0, or 1
+      const zOffset = (Math.random() * (SEGMENT_LENGTH - 5)) + position + 2;
+
+      if (obstacleType === 'barrier') {
+        const barrier = MeshBuilder.CreateBox("barrier", {
+          height: 2,
+          width: LANE_WIDTH * 0.8,
+          depth: 0.5
+        }, scene);
+        const barrierMaterial = new StandardMaterial("barrierMat", scene);
+        barrierMaterial.diffuseColor = new Color3(0.8, 0.2, 0.2);
+        barrier.material = barrierMaterial;
+
+        // Position on curve if available
+        if (curve) {
+          const curvePoint = curve.getPointAt((zOffset - position) / SEGMENT_LENGTH);
+          const tangent = curve.getTangentAt((zOffset - position) / SEGMENT_LENGTH);
+          barrier.position = curvePoint.add(new Vector3(lane * LANE_WIDTH, 1, 0));
+          barrier.rotation.y = Math.atan2(tangent.x, tangent.z);
+        } else {
+          barrier.position = new Vector3(lane * LANE_WIDTH, 1, zOffset);
+        }
+
+        obstacles.push(barrier);
+      } else {
+        // Create a gap in the track
+        const gap = MeshBuilder.CreateBox("gap", {
+          height: 0.1,
+          width: LANE_WIDTH * 0.8,
+          depth: 2
+        }, scene);
+        const gapMaterial = new StandardMaterial("gapMat", scene);
+        gapMaterial.diffuseColor = new Color3(0, 0, 0);
+        gapMaterial.alpha = 0.5;
+        gap.material = gapMaterial;
+
+        if (curve) {
+          const curvePoint = curve.getPointAt((zOffset - position) / SEGMENT_LENGTH);
+          const tangent = curve.getTangentAt((zOffset - position) / SEGMENT_LENGTH);
+          gap.position = curvePoint.add(new Vector3(lane * LANE_WIDTH, 0, 0));
+          gap.rotation.y = Math.atan2(tangent.x, tangent.z);
+        } else {
+          gap.position = new Vector3(lane * LANE_WIDTH, 0, zOffset);
+        }
+
+        obstacles.push(gap);
+      }
+    }
+
+    return obstacles;
+  };
+
+  // Create a track segment with optional curve
+  const createTrackSegment = (scene: Scene, position: number, shouldCurve: boolean = false) => {
+    let curve: Path3D | undefined;
+    let trackPoints: Vector3[];
+
+    if (shouldCurve) {
+      // Create a curved path
+      const curvePoints = [];
+      const numPoints = 20;
+      const curveRadius = SEGMENT_LENGTH / 2;
+      const turnAngle = Math.PI / 2; // 90-degree turn
+
+      for (let i = 0; i < numPoints; i++) {
+        const t = i / (numPoints - 1);
+        const angle = t * turnAngle;
+        const x = curveRadius * Math.sin(angle);
+        const z = position + t * SEGMENT_LENGTH;
+        curvePoints.push(new Vector3(x, 0, z));
+      }
+
+      curve = new Path3D(curvePoints);
+      trackPoints = curvePoints;
+    } else {
+      // Straight track
+      trackPoints = [
+        new Vector3(0, 0, position),
+        new Vector3(0, 0, position + SEGMENT_LENGTH)
+      ];
+    }
+
+    // Create track mesh
+    const track = MeshBuilder.CreateRibbon("track", {
+      pathArray: [
+        trackPoints.map(p => p.add(new Vector3(-LANE_WIDTH * 1.5, 0, 0))),
+        trackPoints.map(p => p.add(new Vector3(LANE_WIDTH * 1.5, 0, 0)))
+      ],
+      closePath: false
     }, scene);
 
     const material = new StandardMaterial("trackMat", scene);
     material.diffuseColor = new Color3(0.4, 0.4, 0.4);
-    segment.material = material;
-    segment.position = new Vector3(0, -0.25, position);
+    track.material = material;
+    track.position.y = -0.25;
 
-    // Create coins randomly on the track
+    // Create coins and obstacles
     const coins: Mesh[] = [];
+    const obstacles = createObstacles(scene, position, curve);
+
+    // Add coins along the track
     for (let z = 0; z < SEGMENT_LENGTH; z += COIN_SPACING) {
-      if (Math.random() < 0.3) { // 30% chance to spawn coin
-        const lane = Math.floor(Math.random() * 3) - 1; // -1, 0, or 1
+      if (Math.random() < 0.3) {
+        const lane = Math.floor(Math.random() * 3) - 1;
         const coin = MeshBuilder.CreateCylinder("coin", {
           height: 0.2,
           diameter: 0.5
@@ -92,33 +192,35 @@ export function TempleRunner({ matchId, isPractice = true, onGameOver }: TempleR
         const coinMaterial = new StandardMaterial("coinMat", scene);
         coinMaterial.diffuseColor = new Color3(1, 0.8, 0);
         coin.material = coinMaterial;
-        coin.position = new Vector3(
-          lane * LANE_WIDTH,
-          COIN_HEIGHT,
-          position + z
-        );
-        coin.rotation.x = Math.PI / 2;
+
+        if (curve) {
+          const curvePoint = curve.getPointAt(z / SEGMENT_LENGTH);
+          const tangent = curve.getTangentAt(z / SEGMENT_LENGTH);
+          coin.position = curvePoint.add(new Vector3(lane * LANE_WIDTH, COIN_HEIGHT, 0));
+          coin.rotation = new Vector3(Math.PI / 2, Math.atan2(tangent.x, tangent.z), 0);
+        } else {
+          coin.position = new Vector3(lane * LANE_WIDTH, COIN_HEIGHT, position + z);
+          coin.rotation.x = Math.PI / 2;
+        }
+
         coins.push(coin);
       }
     }
 
-    return { mesh: segment, coins, position };
+    return { mesh: track, coins, obstacles, position, curve };
   };
 
   // Initialize Babylon.js scene
   useEffect(() => {
     if (!canvasRef.current) return;
 
-    // Create engine and scene
     const engine = new Engine(canvasRef.current, true);
     const scene = new Scene(engine);
     engineRef.current = engine;
     sceneRef.current = scene;
 
-    // Setup scene
-    scene.clearColor = new Color3(0.5, 0.8, 0.9); // Sky blue background
+    scene.clearColor = new Color3(0.5, 0.8, 0.9);
 
-    // Create lights
     const light = new HemisphericLight("light", new Vector3(0, 1, 0), scene);
     light.intensity = 0.7;
 
@@ -139,26 +241,27 @@ export function TempleRunner({ matchId, isPractice = true, onGameOver }: TempleR
     // Create camera
     const camera = new FollowCamera("camera", new Vector3(0, 5, -10), scene);
     camera.lockedTarget = player;
-    camera.radius = 15; // Distance from target
-    camera.heightOffset = 5; // Height above target
-    camera.rotationOffset = 180; // Rotation around target
+    camera.radius = 15;
+    camera.heightOffset = 5;
+    camera.rotationOffset = 180;
 
     // Initialize track segments
     for (let i = 0; i < NUM_SEGMENTS; i++) {
-      const segment = createTrackSegment(scene, i * SEGMENT_LENGTH);
+      const shouldCurve = Math.random() < 0.3; // 30% chance of curved segment
+      const segment = createTrackSegment(scene, i * SEGMENT_LENGTH, shouldCurve);
       trackSegmentsRef.current.push(segment);
     }
 
     // Input handling
     scene.actionManager = new ActionManager(scene);
 
+    // Jump control
     scene.actionManager.registerAction(
       new ExecuteCodeAction(
         { trigger: ActionManager.OnKeyDownTrigger, parameter: "Space" },
         () => {
           if (!isJumpingRef.current && !isSlidingRef.current) {
             isJumpingRef.current = true;
-            // Jump animation
             Animation.CreateAndStartAnimation(
               "jump",
               playerRef.current!,
@@ -176,7 +279,7 @@ export function TempleRunner({ matchId, isPractice = true, onGameOver }: TempleR
       )
     );
 
-    // Arrow key controls for lane changing
+    // Movement controls
     const handleKeyDown = (evt: KeyboardEvent) => {
       if (gameState.isGameOver) return;
 
@@ -216,7 +319,6 @@ export function TempleRunner({ matchId, isPractice = true, onGameOver }: TempleR
         case "ArrowDown":
           if (!isSlidingRef.current && !isJumpingRef.current) {
             isSlidingRef.current = true;
-            // Slide animation
             Animation.CreateAndStartAnimation(
               "slide",
               playerMesh,
@@ -253,18 +355,28 @@ export function TempleRunner({ matchId, isPractice = true, onGameOver }: TempleR
     scene.registerBeforeRender(() => {
       if (!gameState.isGameOver && playerRef.current) {
         // Move player forward
-        playerRef.current.position.z += gameState.speed * scene.getEngine().getDeltaTime() / 1000;
+        const deltaTime = scene.getEngine().getDeltaTime() / 1000;
+        playerRef.current.position.z += gameState.speed * deltaTime;
 
-        // Update score and speed
+        // Check for speed increase
+        if (gameState.score > lastSpeedIncreaseRef.current + SPEED_INTERVAL) {
+          lastSpeedIncreaseRef.current = gameState.score;
+          setGameState(prev => ({
+            ...prev,
+            speed: prev.speed + SPEED_INCREMENT
+          }));
+        }
+
+        // Update score and distance
         setGameState(prev => ({
           ...prev,
           distance: playerRef.current!.position.z,
-          speed: prev.speed + 0.001,
-          score: prev.score + prev.speed * 0.016
+          score: prev.score + prev.speed * deltaTime
         }));
 
-        // Check coin collisions
+        // Check collisions
         trackSegmentsRef.current.forEach(segment => {
+          // Coin collisions
           segment.coins = segment.coins.filter(coin => {
             const distance = Vector3.Distance(
               playerRef.current!.position,
@@ -281,57 +393,46 @@ export function TempleRunner({ matchId, isPractice = true, onGameOver }: TempleR
             }
             return true;
           });
+
+          // Obstacle collisions
+          segment.obstacles.forEach(obstacle => {
+            const distance = Vector3.Distance(
+              playerRef.current!.position,
+              obstacle.position
+            );
+            if (distance < 1.5 && !isJumpingRef.current) {
+              handleGameOver();
+            }
+          });
         });
 
         // Recycle track segments
         const playerZ = playerRef.current.position.z;
         trackSegmentsRef.current.forEach((segment, index) => {
           if (playerZ - segment.position > SEGMENT_LENGTH) {
-            // Move segment to front
-            const newPosition = segment.position + NUM_SEGMENTS * SEGMENT_LENGTH;
-            segment.mesh.position.z = newPosition;
-            segment.position = newPosition;
-
-            // Remove old coins and create new ones
+            // Dispose old segment
+            segment.mesh.dispose();
             segment.coins.forEach(coin => coin.dispose());
-            segment.coins = [];
+            segment.obstacles.forEach(obstacle => obstacle.dispose());
 
-            // Add new coins
-            for (let z = 0; z < SEGMENT_LENGTH; z += COIN_SPACING) {
-              if (Math.random() < 0.3) {
-                const lane = Math.floor(Math.random() * 3) - 1;
-                const coin = MeshBuilder.CreateCylinder("coin", {
-                  height: 0.2,
-                  diameter: 0.5
-                }, scene);
-                const coinMaterial = new StandardMaterial("coinMat", scene);
-                coinMaterial.diffuseColor = new Color3(1, 0.8, 0);
-                coin.material = coinMaterial;
-                coin.position = new Vector3(
-                  lane * LANE_WIDTH,
-                  COIN_HEIGHT,
-                  newPosition + z
-                );
-                coin.rotation.x = Math.PI / 2;
-                segment.coins.push(coin);
-              }
-            }
+            // Create new segment
+            const newPosition = segment.position + NUM_SEGMENTS * SEGMENT_LENGTH;
+            const shouldCurve = Math.random() < 0.3;
+            const newSegment = createTrackSegment(scene, newPosition, shouldCurve);
+            trackSegmentsRef.current[index] = newSegment;
           }
         });
       }
     });
 
-    // Start the render loop
     engine.runRenderLoop(() => {
       scene.render();
     });
 
-    // Handle window resize
     window.addEventListener('resize', () => {
       engine.resize();
     });
 
-    // Cleanup
     return () => {
       window.removeEventListener("keydown", handleKeyDown);
       scene.dispose();
