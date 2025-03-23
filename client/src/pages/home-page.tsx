@@ -1,16 +1,18 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useLocation } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/use-auth";
 import { GameMatch, User } from "@shared/schema";
-import { Gamepad2, Trophy, Users, ArrowRight } from "lucide-react";
+import { Gamepad2, Trophy, Users, Coins } from "lucide-react";
 import { Navbar } from "@/components/layout/navbar";
+import { BetModal } from "@/components/game/bet-modal";
 
 export default function HomePage() {
   const [_, setLocation] = useLocation();
   const { user } = useAuth();
+  const [isBetModalOpen, setIsBetModalOpen] = useState(false);
 
   const { data: matches } = useQuery<GameMatch[]>({
     queryKey: ["/api/matches"],
@@ -44,6 +46,8 @@ export default function HomePage() {
     }
   ];
 
+  const activeMatches = matches?.filter(match => match.status === "waiting" && match.player1Id !== user?.id) || [];
+
   return (
     <div className="min-h-screen bg-background">
       <Navbar />
@@ -61,8 +65,8 @@ export default function HomePage() {
               </h2>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {games.map((game) => (
-                  <Card 
-                    key={game.id} 
+                  <Card
+                    key={game.id}
                     className={`game-card ${game.background} hover:border-primary transition-all duration-300`}
                   >
                     <CardHeader>
@@ -72,7 +76,7 @@ export default function HomePage() {
                           <span className="pixel-font text-sm">{game.name}</span>
                         </span>
                         <div className="flex gap-2">
-                          <Button 
+                          <Button
                             size="sm"
                             variant="secondary"
                             onClick={() => setLocation("/game/new")}
@@ -81,11 +85,11 @@ export default function HomePage() {
                             Practice
                           </Button>
                           {game.id === "tetris" && (
-                            <Button 
+                            <Button
                               size="sm"
                               variant="default"
                               className="pixel-font text-xs bg-gradient-to-r from-yellow-500 to-amber-500"
-                              onClick={() => setLocation("/game/wager")}
+                              onClick={() => setIsBetModalOpen(true)}
                             >
                               Wager
                             </Button>
@@ -105,33 +109,37 @@ export default function HomePage() {
             <div>
               <h2 className="text-2xl font-bold mb-4 flex items-center gap-2 pixel-font">
                 <Users className="h-6 w-6" />
-                Active Matches
+                Available Wager Matches
               </h2>
               <div className="space-y-4">
-                {matches?.map((match) => (
+                {activeMatches.map((match) => (
                   <Card key={match.id} className="hover:border-primary transition-all duration-300">
                     <CardContent className="flex justify-between items-center p-4">
-                      <div>
-                        <p className="pixel-font text-sm">Prize Pool: {match.betAmount} ETH</p>
+                      <div className="space-y-1">
+                        <div className="flex items-center gap-2">
+                          <Coins className="h-4 w-4" />
+                          <p className="pixel-font text-sm">
+                            {match.betAmount} {match.betType === 'xp' ? 'XP' : 'ETH'}
+                          </p>
+                        </div>
                         <p className="text-sm text-muted-foreground">
-                          Status: {match.status.charAt(0).toUpperCase() + match.status.slice(1)}
+                          Created by Player #{match.player1Id}
                         </p>
                       </div>
-                      {match.status === "waiting" && (
-                        <Button onClick={() => setLocation(`/game/${match.id}`)}>
-                          Join Match
-                        </Button>
-                      )}
+                      <Button 
+                        onClick={() => setLocation(`/game/${match.id}`)}
+                        className="pixel-font"
+                      >
+                        Accept Challenge
+                      </Button>
                     </CardContent>
                   </Card>
                 ))}
-                <Button 
-                  className="w-full pixel-font"
-                  variant="outline"
-                  onClick={() => setLocation("/game/new")}
-                >
-                  Create New Match
-                </Button>
+                {activeMatches.length === 0 && (
+                  <p className="text-center text-muted-foreground">
+                    No active wager matches available
+                  </p>
+                )}
               </div>
             </div>
           </div>
@@ -155,6 +163,10 @@ export default function HomePage() {
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Total Score</span>
                   <span className="font-semibold">{user?.score || 0}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Available XP</span>
+                  <span className="font-semibold">{user?.xp || 0}</span>
                 </div>
               </CardContent>
             </Card>
@@ -186,6 +198,7 @@ export default function HomePage() {
           </div>
         </div>
       </main>
+      <BetModal open={isBetModalOpen} onClose={() => setIsBetModalOpen(false)} />
     </div>
   );
 }
