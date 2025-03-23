@@ -13,7 +13,7 @@ export default function HomePage() {
   const [_, setLocation] = useLocation();
   const { user } = useAuth();
   const [isBetModalOpen, setIsBetModalOpen] = useState(false);
-  const [selectedGame, setSelectedGame] = useState<'tetris' | 'temple-runner' | null>(null);
+  const [selectedGame, setSelectedGame] = useState<'tetris' | 'temple-runner' | 'street-fighter' | null>(null);
 
   // Add refetch interval to keep matches list up to date
   const { data: matches, isLoading: isMatchesLoading } = useQuery<GameMatch[]>({
@@ -43,25 +43,31 @@ export default function HomePage() {
       enabled: true
     },
     {
-      id: "bubble-bop",
-      name: "Bubble Bop",
-      description: "Pop colorful bubbles in this arcade classic",
-      icon: "🫧",
-      background: "bg-gradient-to-r from-blue-500 to-cyan-500",
-      enabled: false
+      id: "street-fighter",
+      name: "Street Fighter",
+      description: "Classic arcade fighting game with original moves and characters",
+      icon: "👊",
+      background: "bg-gradient-to-r from-red-500 to-orange-500",
+      enabled: true
     }
   ];
 
   const handlePractice = (gameId: string) => {
-    if (gameId === 'tetris') {
-      setLocation('/game/new');
-    } else if (gameId === 'temple-runner') {
-      setLocation('/temple-runner');
+    switch (gameId) {
+      case 'tetris':
+        setLocation('/game/new');
+        break;
+      case 'temple-runner':
+        setLocation('/temple-runner');
+        break;
+      case 'street-fighter':
+        setLocation('/street-fighter/practice');
+        break;
     }
   };
 
   const handleWager = (gameId: string) => {
-    setSelectedGame(gameId as 'tetris' | 'temple-runner');
+    setSelectedGame(gameId as 'tetris' | 'temple-runner' | 'street-fighter');
     setIsBetModalOpen(true);
   };
 

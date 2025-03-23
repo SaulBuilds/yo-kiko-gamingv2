@@ -11,6 +11,7 @@ import AuthPage from "@/pages/auth-page";
 import GamePage from "@/pages/game-page";
 import NewGamePage from "@/pages/new-game-page";
 import TempleRunnerPage from "@/pages/temple-runner-page";
+import StreetFighterPage from "@/pages/street-fighter-page";
 import { ProtectedRoute } from "./lib/protected-route";
 
 function Router() {
@@ -21,6 +22,8 @@ function Router() {
       <ProtectedRoute path="/game/new" component={NewGamePage} />
       <ProtectedRoute path="/game/:id" component={GamePage} />
       <ProtectedRoute path="/temple-runner" component={TempleRunnerPage} />
+      <ProtectedRoute path="/street-fighter/practice" component={StreetFighterPage} />
+      <ProtectedRoute path="/street-fighter/:id" component={StreetFighterPage} />
       <Route component={NotFound} />
     </Switch>
   );
