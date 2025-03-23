@@ -1,9 +1,18 @@
 import { useEffect, useRef, useState } from 'react';
-import { Engine, Scene, Vector3, Color3, MeshBuilder, StandardMaterial } from '@babylonjs/core';
+import { 
+  Engine, 
+  Scene, 
+  Vector3, 
+  Color3, 
+  MeshBuilder, 
+  StandardMaterial,
+  FreeCamera
+} from '@babylonjs/core';
 import { useAuth } from '@/hooks/use-auth';
 import { useMutation } from '@tanstack/react-query';
 import { apiRequest } from '@/lib/queryClient';
 import { useToast } from '@/hooks/use-toast';
+import { type CharacterStats } from './character-data';
 
 // Character move definitions
 export interface Move {
@@ -37,19 +46,10 @@ interface StreetFighterProps {
   matchId?: string;
   isPractice?: boolean;
   onGameOver?: (score: number) => void;
+  character: CharacterStats;
 }
 
-// Basic moves available to all characters
-const BASIC_MOVES: Move[] = [
-  { name: 'jab', damage: 5, frames: 3, input: ['punch-light'], isSpecial: false },
-  { name: 'strong', damage: 8, frames: 5, input: ['punch-medium'], isSpecial: false },
-  { name: 'fierce', damage: 12, frames: 7, input: ['punch-heavy'], isSpecial: false },
-  { name: 'short', damage: 5, frames: 4, input: ['kick-light'], isSpecial: false },
-  { name: 'forward', damage: 8, frames: 6, input: ['kick-medium'], isSpecial: false },
-  { name: 'roundhouse', damage: 12, frames: 8, input: ['kick-heavy'], isSpecial: false }
-];
-
-export function StreetFighter({ matchId, isPractice = true, onGameOver }: StreetFighterProps) {
+export function StreetFighter({ matchId, isPractice = true, onGameOver, character }: StreetFighterProps) {
   const { user } = useAuth();
   const { toast } = useToast();
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -58,7 +58,7 @@ export function StreetFighter({ matchId, isPractice = true, onGameOver }: Street
 
   const [gameState, setGameState] = useState<GameState>({
     player1: {
-      health: 100,
+      health: character.health,
       position: { x: -5, y: 0 },
       isBlocking: false,
       isJumping: false,
@@ -174,7 +174,7 @@ export function StreetFighter({ matchId, isPractice = true, onGameOver }: Street
       scene.dispose();
       engine.dispose();
     };
-  }, []);
+  }, [character]); // Add character as dependency to reinitialize when character changes
 
   const handleGameOver = async () => {
     setGameState(prev => ({ ...prev, isGameOver: true }));
@@ -190,7 +190,7 @@ export function StreetFighter({ matchId, isPractice = true, onGameOver }: Street
       {/* Game UI Overlay */}
       <div className="absolute top-4 left-4 right-4 z-10 flex justify-between text-white pixel-font">
         <div className="health-bar">
-          <div>P1: {gameState.player1.health}%</div>
+          <div>{character.name}: {gameState.player1.health}%</div>
         </div>
         <div className="timer">{Math.ceil(gameState.roundTime)}</div>
         <div className="health-bar">
@@ -203,7 +203,7 @@ export function StreetFighter({ matchId, isPractice = true, onGameOver }: Street
         <div className="absolute inset-0 flex items-center justify-center bg-black/50 z-20">
           <div className="bg-background p-6 rounded-lg text-center space-y-4">
             <h2 className="text-2xl font-bold pixel-font">Game Over!</h2>
-            <p>Winner: {gameState.winner === 'player1' ? 'Player 1' : 'Player 2'}</p>
+            <p>Winner: {gameState.winner === 'player1' ? character.name : 'Player 2'}</p>
           </div>
         </div>
       )}
