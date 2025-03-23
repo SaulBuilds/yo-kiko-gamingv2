@@ -41,14 +41,20 @@ function Block({ position, color }: { position: [number, number, number], color:
   return (
     <mesh position={position}>
       <boxGeometry args={[0.9, 0.9, 0.9]} />
-      <meshStandardMaterial color={color} />
+      <meshStandardMaterial 
+        color={color}
+        metalness={0.6}
+        roughness={0.2}
+        emissive={color}
+        emissiveIntensity={0.2}
+      />
     </mesh>
   );
 }
 
 function GameBoard({ board }: { board: number[][] }) {
   return (
-    <group position={[-BOARD_WIDTH / 2, -BOARD_HEIGHT / 2, 0]}>
+    <group position={[-BOARD_WIDTH / 2, -BOARD_HEIGHT / 2, 0]} rotation={[0.3, 0, 0]}>
       {board.map((row, y) =>
         row.map((cell, x) =>
           cell ? (
@@ -90,25 +96,27 @@ export function Tetris3D({ initialState, onStateChange, onGameOver }: {
   const [gameState, setGameState] = useState(initialState);
   const [currentPiece, setCurrentPiece] = useState<TetrisPiece | null>(null);
 
-  // Game logic from original Tetris component will be integrated here
-  // For now, we'll just render the 3D board
-
   return (
     <div className="w-full h-[600px] bg-card rounded-lg overflow-hidden">
       <Canvas shadows>
         <PerspectiveCamera makeDefault position={[0, 0, 20]} />
         <OrbitControls enableZoom={false} enablePan={false} />
-        
+
         <ambientLight intensity={0.5} />
-        <pointLight position={[10, 10, 10]} intensity={0.8} />
-        
+        <pointLight position={[10, 10, 10]} intensity={0.8} castShadow />
+        <pointLight position={[-10, -10, -10]} intensity={0.5} color="#ff61dc" />
+
         <GameBoard board={gameState.board} />
         {currentPiece && <CurrentPiece piece={currentPiece} />}
-        
+
         {/* Grid Helper */}
-        <gridHelper args={[BOARD_WIDTH, BOARD_WIDTH]} position={[0, 0, -0.5]} />
+        <gridHelper 
+          args={[BOARD_WIDTH, BOARD_WIDTH]} 
+          position={[0, 0, -0.5]} 
+          rotation={[0.3, 0, 0]}
+        />
       </Canvas>
-      
+
       <div className="absolute bottom-4 left-4 bg-black/50 p-4 rounded">
         <p className="text-primary text-lg font-bold">Score: {gameState.score}</p>
         <p className="text-muted-foreground">Level: {gameState.level}</p>
