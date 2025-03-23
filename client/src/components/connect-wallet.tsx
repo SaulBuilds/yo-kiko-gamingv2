@@ -19,7 +19,7 @@ export function ConnectWallet() {
         variant="outline"
       >
         <Wallet className="w-4 h-4" />
-        {shortenAddress(address)}
+        Connected with Abstract ({shortenAddress(address)})
       </Button>
     );
   }
