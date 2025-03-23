@@ -1,110 +1,117 @@
-import { Suspense } from 'react';
 import { Canvas } from '@react-three/fiber';
-import { OrbitControls } from '@react-three/drei';
-import { GameState } from '@/types/game';
-import { ErrorBoundary } from 'react-error-boundary';
+import { OrbitControls, PerspectiveCamera } from '@react-three/drei';
+import { useState, useEffect, useRef } from 'react';
+import { GameState, TetrisPiece } from '@/types/game';
+import * as THREE from 'three';
 
-// Base game constants
 const BOARD_WIDTH = 10;
 const BOARD_HEIGHT = 20;
+const TETROMINOS = {
+  I: {
+    shape: [[1, 1, 1, 1]],
+    color: '#FF61DC'
+  },
+  J: {
+    shape: [[1, 0, 0], [1, 1, 1]],
+    color: '#1FCFF1'
+  },
+  L: {
+    shape: [[0, 0, 1], [1, 1, 1]],
+    color: '#7B61FF'
+  },
+  O: {
+    shape: [[1, 1], [1, 1]],
+    color: '#FFEB3B'
+  },
+  S: {
+    shape: [[0, 1, 1], [1, 1, 0]],
+    color: '#4CAF50'
+  },
+  T: {
+    shape: [[0, 1, 0], [1, 1, 1]],
+    color: '#9C27B0'
+  },
+  Z: {
+    shape: [[1, 1, 0], [0, 1, 1]],
+    color: '#FF4D4D'
+  }
+};
 
-// Basic board component to establish the play area
-function Board() {
+function Block({ position, color }: { position: [number, number, number], color: string }) {
   return (
-    <group>
-      {/* Floor grid */}
-      <gridHelper 
-        args={[BOARD_WIDTH, BOARD_WIDTH, '#666666', '#222222']} 
-        position={[0, -0.5, 0]} 
-        rotation={[0, 0, 0]}
-      />
+    <mesh position={position}>
+      <boxGeometry args={[0.9, 0.9, 0.9]} />
+      <meshStandardMaterial color={color} />
+    </mesh>
+  );
+}
 
-      {/* Back wall */}
-      <mesh position={[0, BOARD_HEIGHT/2 - 0.5, -0.5]} receiveShadow>
-        <planeGeometry args={[BOARD_WIDTH, BOARD_HEIGHT]} />
-        <meshStandardMaterial 
-          color="#1a1a1a" 
-          transparent 
-          opacity={0.8}
-        />
-      </mesh>
+function GameBoard({ board }: { board: number[][] }) {
+  return (
+    <group position={[-BOARD_WIDTH / 2, -BOARD_HEIGHT / 2, 0]}>
+      {board.map((row, y) =>
+        row.map((cell, x) =>
+          cell ? (
+            <Block
+              key={`${x}-${y}`}
+              position={[x, y, 0]}
+              color={TETROMINOS.I.color}
+            />
+          ) : null
+        )
+      )}
     </group>
   );
 }
 
-// Main game scene setup
-function Scene() {
+function CurrentPiece({ piece }: { piece: TetrisPiece }) {
   return (
-    <Suspense fallback={null}>
-      {/* Lighting setup */}
-      <ambientLight intensity={0.4} />
-      <pointLight 
-        position={[10, 10, 10]} 
-        intensity={0.8} 
-        castShadow
-      />
-      <pointLight 
-        position={[-10, -10, -10]} 
-        intensity={0.4} 
-        color="#ff61dc"
-      />
-
-      {/* Test cube to verify scene is working */}
-      <mesh position={[0, 0, 0]} castShadow>
-        <boxGeometry args={[1, 1, 1]} />
-        <meshStandardMaterial color="#ff61dc" />
-      </mesh>
-
-      <Board />
-    </Suspense>
+    <group position={[-BOARD_WIDTH / 2 + piece.x, -BOARD_HEIGHT / 2 + piece.y, 0]}>
+      {piece.shape.map((row, y) =>
+        row.map((cell, x) =>
+          cell ? (
+            <Block
+              key={`${x}-${y}`}
+              position={[x, y, 0]}
+              color={piece.color}
+            />
+          ) : null
+        )
+      )}
+    </group>
   );
 }
 
-function ErrorFallback({error}: {error: Error}) {
-  return (
-    <div className="text-center py-4">
-      <p className="text-red-500">Error loading 3D scene: {error.message}</p>
-    </div>
-  );
-}
-
-export function Tetris3D({ 
-  initialState,
-  onStateChange,
-  onGameOver
-}: {
+export function Tetris3D({ initialState, onStateChange, onGameOver }: {
   initialState: GameState;
   onStateChange: (state: GameState) => void;
   onGameOver: () => void;
 }) {
-  return (
-    <div className="w-full h-[600px]">
-      <ErrorBoundary FallbackComponent={ErrorFallback}>
-        <Canvas
-          shadows
-          camera={{ 
-            position: [10, 15, 15],
-            fov: 50 
-          }}
-          className="bg-gradient-to-b from-background to-background/50"
-        >
-          <Scene />
-          <OrbitControls
-            enableZoom={false}
-            enablePan={false}
-            maxPolarAngle={Math.PI / 2}
-            minPolarAngle={Math.PI / 4}
-          />
-        </Canvas>
-      </ErrorBoundary>
+  const [gameState, setGameState] = useState(initialState);
+  const [currentPiece, setCurrentPiece] = useState<TetrisPiece | null>(null);
 
-      <div className="absolute bottom-4 left-4 bg-black/50 p-4 rounded backdrop-blur-sm">
-        <p className="text-primary text-lg font-bold pixel-font">
-          Score: {initialState.score}
-        </p>
-        <p className="text-muted-foreground pixel-font">
-          Level: {initialState.level}
-        </p>
+  // Game logic from original Tetris component will be integrated here
+  // For now, we'll just render the 3D board
+
+  return (
+    <div className="w-full h-[600px] bg-card rounded-lg overflow-hidden">
+      <Canvas shadows>
+        <PerspectiveCamera makeDefault position={[0, 0, 20]} />
+        <OrbitControls enableZoom={false} enablePan={false} />
+        
+        <ambientLight intensity={0.5} />
+        <pointLight position={[10, 10, 10]} intensity={0.8} />
+        
+        <GameBoard board={gameState.board} />
+        {currentPiece && <CurrentPiece piece={currentPiece} />}
+        
+        {/* Grid Helper */}
+        <gridHelper args={[BOARD_WIDTH, BOARD_WIDTH]} position={[0, 0, -0.5]} />
+      </Canvas>
+      
+      <div className="absolute bottom-4 left-4 bg-black/50 p-4 rounded">
+        <p className="text-primary text-lg font-bold">Score: {gameState.score}</p>
+        <p className="text-muted-foreground">Level: {gameState.level}</p>
       </div>
     </div>
   );
