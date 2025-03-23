@@ -27,7 +27,6 @@ export function CharacterSelect({ onSelect }: CharacterSelectProps) {
               }`}
               onClick={() => setSelectedCharacter(character)}
             >
-              {/* Temporary character representation */}
               <div 
                 className="w-full aspect-square mb-2 rounded"
                 style={{ backgroundColor: character.color }}
@@ -36,8 +35,6 @@ export function CharacterSelect({ onSelect }: CharacterSelectProps) {
             </Card>
           ))}
         </div>
-
-        {/* Character Details */}
         <div className="space-y-4">
           {selectedCharacter ? (
             <>
