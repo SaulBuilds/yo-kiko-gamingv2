@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { Canvas } from '@react-three/fiber';
-import { OrbitControls, PerspectiveCamera } from '@react-three/drei';
+import { OrbitControls, PerspectiveCamera, useHelper } from '@react-three/drei';
 import * as THREE from 'three';
 import { useAuth } from '@/hooks/use-auth';
 import { useMutation } from '@tanstack/react-query';
@@ -20,6 +20,41 @@ interface GameState {
   distance: number;
   speed: number;
   coins: number;
+}
+
+// Game scene setup
+function Scene() {
+  const directionalLightRef = useRef<THREE.DirectionalLight>(null);
+  useHelper(directionalLightRef, THREE.DirectionalLightHelper, 5);
+
+  return (
+    <>
+      {/* Lights */}
+      <ambientLight intensity={0.5} />
+      <directionalLight
+        ref={directionalLightRef}
+        position={[10, 10, 5]}
+        intensity={1}
+        castShadow
+      />
+
+      {/* Environment */}
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.5, 0]} receiveShadow>
+        <planeGeometry args={[100, 100]} />
+        <meshStandardMaterial color="#4a9" />
+      </mesh>
+
+      {/* Player character placeholder */}
+      <mesh position={[0, 1, 0]} castShadow>
+        <boxGeometry args={[1, 2, 1]} />
+        <meshStandardMaterial color="brown" />
+      </mesh>
+
+      {/* Development helpers */}
+      <gridHelper args={[100, 100]} />
+      <axesHelper args={[5]} />
+    </>
+  );
 }
 
 export function TempleRunner({ matchId, isPractice = true, onGameOver }: TempleRunnerProps) {
@@ -71,8 +106,8 @@ export function TempleRunner({ matchId, isPractice = true, onGameOver }: TempleR
           setGameState(prev => ({
             ...prev,
             distance: prev.distance + (prev.speed * delta) / 1000,
-            speed: prev.speed + (delta / 1000) * 0.1, // Gradually increase speed
-            score: prev.score + (delta / 1000) * prev.speed // Score based on speed and time
+            speed: prev.speed + (delta / 1000) * 0.1,
+            score: prev.score + (delta / 1000) * prev.speed
           }));
         }
       }
@@ -95,7 +130,6 @@ export function TempleRunner({ matchId, isPractice = true, onGameOver }: TempleR
       onGameOver(gameState.score);
     }
     if (!isPractice && matchId) {
-      // Handle wager match completion
       try {
         await apiRequest("POST", `/api/matches/${matchId}/finish`, {
           score: gameState.score
@@ -104,12 +138,11 @@ export function TempleRunner({ matchId, isPractice = true, onGameOver }: TempleR
         console.error("Failed to save match score:", error);
       }
     }
-    // Update XP
     await updateXpMutation.mutateAsync(gameState.score);
   };
 
   return (
-    <div className="w-full h-screen relative">
+    <div className="w-full h-screen relative bg-black">
       {/* Game UI Overlay */}
       <div className="absolute top-4 left-4 z-10 text-white pixel-font">
         <div>Score: {Math.floor(gameState.score)}</div>
@@ -131,31 +164,13 @@ export function TempleRunner({ matchId, isPractice = true, onGameOver }: TempleR
       )}
 
       {/* 3D Game Canvas */}
-      <Canvas shadows camera={{ position: [0, 5, 10], fov: 75 }}>
-        <ambientLight intensity={0.5} />
-        <directionalLight
-          position={[10, 10, 5]}
-          intensity={1}
-          castShadow
-          shadow-mapSize={[1024, 1024]}
-        />
-
-        {/* Scene elements - these will be replaced with actual game elements */}
-        <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.5, 0]} receiveShadow>
-          <planeGeometry args={[100, 100]} />
-          <meshStandardMaterial color="#4a9" />
-        </mesh>
-
-        {/* Player character placeholder */}
-        <mesh position={[0, 1, 0]} castShadow>
-          <boxGeometry args={[1, 2, 1]} />
-          <meshStandardMaterial color="brown" />
-        </mesh>
-
-        {/* Development helpers */}
-        <gridHelper args={[100, 100]} />
-        <axesHelper args={[5]} />
-        <OrbitControls />
+      <Canvas
+        shadows
+        style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%' }}
+        camera={{ position: [0, 5, 10], fov: 75 }}
+      >
+        <Scene />
+        <OrbitControls enablePan={false} />
       </Canvas>
     </div>
   );
