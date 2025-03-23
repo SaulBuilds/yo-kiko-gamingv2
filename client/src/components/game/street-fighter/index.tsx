@@ -7,7 +7,9 @@ import {
   MeshBuilder, 
   StandardMaterial,
   FreeCamera,
-  TransformNode
+  TransformNode,
+  HemisphericLight,
+  DirectionalLight
 } from '@babylonjs/core';
 import { useAuth } from '@/hooks/use-auth';
 import { useMutation } from '@tanstack/react-query';
@@ -200,8 +202,17 @@ export function StreetFighter({ matchId, isPractice = true, onGameOver, characte
     floor.material = floorMaterial;
 
     // Setup camera
-    const camera = new FreeCamera("camera", new Vector3(0, 5, -15), scene);
-    camera.setTarget(Vector3.Zero());
+    const camera = new FreeCamera("camera", new Vector3(0, 3, -10), scene);
+    camera.setTarget(new Vector3(0, 2, 0));
+
+    // Add hemispheric light for ambient lighting
+    const hemisphericLight = new HemisphericLight("light", new Vector3(0, 1, 0), scene);
+    hemisphericLight.intensity = 0.7;
+
+    // Add directional light for shadows
+    const directionalLight = new DirectionalLight("dir-light", new Vector3(-1, -2, -1), scene);
+    directionalLight.intensity = 0.5;
+
 
     // Setup keyboard controls
     scene.onKeyboardObservable.add((kbInfo) => {
@@ -211,10 +222,12 @@ export function StreetFighter({ matchId, isPractice = true, onGameOver, characte
         case 1: // KeyDown
           switch (kbInfo.event.code) {
             case "ArrowLeft":
-              player1.position.x -= 0.1;
+              player1.position.x -= character.walkSpeed * 0.05;
+              player1.rotation.y = Math.PI; // Face left
               break;
             case "ArrowRight":
-              player1.position.x += 0.1;
+              player1.position.x += character.walkSpeed * 0.05;
+              player1.rotation.y = 0; // Face right
               break;
             case "ArrowUp":
               if (!gameState.player1.isJumping) {
@@ -222,21 +235,39 @@ export function StreetFighter({ matchId, isPractice = true, onGameOver, characte
                   ...prev,
                   player1: { ...prev.player1, isJumping: true }
                 }));
+                // Start jump animation
+                player1.position.y += character.jumpForce * 0.1;
               }
               break;
             case "ArrowDown":
-              setGameState(prev => ({
-                ...prev,
-                player1: { ...prev.player1, isCrouching: true }
-              }));
+              if (!gameState.player1.isCrouching) {
+                setGameState(prev => ({
+                  ...prev,
+                  player1: { ...prev.player1, isCrouching: true }
+                }));
+                // Crouch animation
+                player1.scaling.y = 0.7;
+              }
               break;
             case "KeyX":
-              // Punch
-              console.log("Punch!");
+              // Punch animation
+              const rightArm = player1.getChildMeshes().find(mesh => mesh.name === "rightArm");
+              if (rightArm) {
+                rightArm.rotation.x = -Math.PI / 2;
+                setTimeout(() => {
+                  rightArm.rotation.x = 0;
+                }, 200);
+              }
               break;
             case "KeyC":
-              // Kick
-              console.log("Kick!");
+              // Kick animation
+              const rightLeg = player1.getChildMeshes().find(mesh => mesh.name === "rightLeg");
+              if (rightLeg) {
+                rightLeg.rotation.x = -Math.PI / 2;
+                setTimeout(() => {
+                  rightLeg.rotation.x = 0;
+                }, 200);
+              }
               break;
           }
           break;
@@ -247,6 +278,8 @@ export function StreetFighter({ matchId, isPractice = true, onGameOver, characte
                 ...prev,
                 player1: { ...prev.player1, isCrouching: false }
               }));
+              // Reset crouch animation
+              player1.scaling.y = 1;
               break;
           }
           break;
@@ -262,17 +295,23 @@ export function StreetFighter({ matchId, isPractice = true, onGameOver, characte
           roundTime: Math.max(0, prev.roundTime - scene.getEngine().getDeltaTime() / 1000)
         }));
 
-        // Handle jumping
+        // Handle jumping physics
         if (gameState.player1.isJumping) {
-          player1.position.y += 0.2;
           if (player1.position.y > 3) {
-            setGameState(prev => ({
-              ...prev,
-              player1: { ...prev.player1, isJumping: false }
-            }));
+            // Start falling
+            player1.position.y -= character.jumpForce * 0.05;
+            if (player1.position.y <= 1) {
+              // Landing
+              player1.position.y = 1;
+              setGameState(prev => ({
+                ...prev,
+                player1: { ...prev.player1, isJumping: false }
+              }));
+            }
+          } else {
+            // Rising
+            player1.position.y += character.jumpForce * 0.05;
           }
-        } else if (player1.position.y > 1) {
-          player1.position.y -= 0.2;
         }
 
         // Check win condition
