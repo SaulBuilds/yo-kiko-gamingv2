@@ -2,8 +2,8 @@ import { useState, useRef, useEffect } from 'react';
 import {
   Engine,
   Scene,
-  Color3,
   Vector3,
+  Color3,
   MeshBuilder,
   StandardMaterial,
   HemisphericLight,
@@ -13,8 +13,6 @@ import {
   Mesh,
   ActionManager,
   ExecuteCodeAction,
-  Matrix,
-  Path3D,
   Space
 } from '@babylonjs/core';
 import { useAuth } from '@/hooks/use-auth';
@@ -34,6 +32,9 @@ interface GameState {
   distance: number;
   speed: number;
   coins: number;
+  direction: 'forward' | 'right' | 'left';
+  rightClickCount: number;
+  lastRightClickTime: number;
 }
 
 interface TrackSegment {
@@ -41,7 +42,7 @@ interface TrackSegment {
   coins: Mesh[];
   obstacles: Mesh[];
   position: number;
-  curve?: Path3D;
+  direction: 'forward' | 'right' | 'left';
 }
 
 const LANE_WIDTH = 2;
@@ -50,8 +51,11 @@ const COIN_HEIGHT = 1;
 const COIN_SPACING = 5;
 const NUM_SEGMENTS = 4;
 const INITIAL_SPEED = 10;
-const SPEED_INCREMENT = 0.5;
-const SPEED_INTERVAL = 1000; // Increase speed every 1000 points
+const SPEED_INCREMENT = 0.2;
+const SPEED_INTERVAL = 500; // Increase speed more frequently
+const TURN_TIMEOUT = 300; // Time window for triple-click turn (ms)
+const JUMP_HEIGHT = 3;
+const JUMP_DURATION = 15;
 
 export function TempleRunner({ matchId, isPractice = true, onGameOver }: TempleRunnerProps) {
   const { user } = useAuth();
@@ -71,117 +75,74 @@ export function TempleRunner({ matchId, isPractice = true, onGameOver }: TempleR
     isGameOver: false,
     distance: 0,
     speed: INITIAL_SPEED,
-    coins: 0
+    coins: 0,
+    direction: 'forward',
+    rightClickCount: 0,
+    lastRightClickTime: 0
   });
 
   // Create obstacles for a segment
-  const createObstacles = (scene: Scene, position: number, curve?: Path3D) => {
+  const createObstacles = (scene: Scene, position: number, direction: 'forward' | 'right' | 'left') => {
     const obstacles: Mesh[] = [];
-    const numObstacles = Math.floor(Math.random() * 3) + 1; // 1-3 obstacles per segment
+    const numObstacles = Math.floor(Math.random() * 2) + 1; // 1-2 obstacles per segment
 
     for (let i = 0; i < numObstacles; i++) {
-      const obstacleType = Math.random() > 0.5 ? 'barrier' : 'gap';
       const lane = Math.floor(Math.random() * 3) - 1; // -1, 0, or 1
       const zOffset = (Math.random() * (SEGMENT_LENGTH - 5)) + position + 2;
 
-      if (obstacleType === 'barrier') {
-        const barrier = MeshBuilder.CreateBox("barrier", {
-          height: 2,
-          width: LANE_WIDTH * 0.8,
-          depth: 0.5
-        }, scene);
-        const barrierMaterial = new StandardMaterial("barrierMat", scene);
-        barrierMaterial.diffuseColor = new Color3(0.8, 0.2, 0.2);
-        barrier.material = barrierMaterial;
+      const barrier = MeshBuilder.CreateBox("barrier", {
+        height: 2,
+        width: LANE_WIDTH * 0.8,
+        depth: 0.5
+      }, scene);
+      const barrierMaterial = new StandardMaterial("barrierMat", scene);
+      barrierMaterial.diffuseColor = new Color3(0.8, 0.2, 0.2);
+      barrier.material = barrierMaterial;
 
-        // Position on curve if available
-        if (curve) {
-          const curvePoint = curve.getPointAt((zOffset - position) / SEGMENT_LENGTH);
-          const tangent = curve.getTangentAt((zOffset - position) / SEGMENT_LENGTH);
-          barrier.position = curvePoint.add(new Vector3(lane * LANE_WIDTH, 1, 0));
-          barrier.rotation.y = Math.atan2(tangent.x, tangent.z);
-        } else {
-          barrier.position = new Vector3(lane * LANE_WIDTH, 1, zOffset);
-        }
-
-        obstacles.push(barrier);
+      // Position based on direction
+      if (direction === 'forward') {
+        barrier.position = new Vector3(lane * LANE_WIDTH, 1, zOffset);
+      } else if (direction === 'right') {
+        barrier.position = new Vector3(zOffset, 1, lane * LANE_WIDTH);
+        barrier.rotation.y = Math.PI / 2;
       } else {
-        // Create a gap in the track
-        const gap = MeshBuilder.CreateBox("gap", {
-          height: 0.1,
-          width: LANE_WIDTH * 0.8,
-          depth: 2
-        }, scene);
-        const gapMaterial = new StandardMaterial("gapMat", scene);
-        gapMaterial.diffuseColor = new Color3(0, 0, 0);
-        gapMaterial.alpha = 0.5;
-        gap.material = gapMaterial;
-
-        if (curve) {
-          const curvePoint = curve.getPointAt((zOffset - position) / SEGMENT_LENGTH);
-          const tangent = curve.getTangentAt((zOffset - position) / SEGMENT_LENGTH);
-          gap.position = curvePoint.add(new Vector3(lane * LANE_WIDTH, 0, 0));
-          gap.rotation.y = Math.atan2(tangent.x, tangent.z);
-        } else {
-          gap.position = new Vector3(lane * LANE_WIDTH, 0, zOffset);
-        }
-
-        obstacles.push(gap);
+        barrier.position = new Vector3(-zOffset, 1, lane * LANE_WIDTH);
+        barrier.rotation.y = -Math.PI / 2;
       }
+
+      obstacles.push(barrier);
     }
 
     return obstacles;
   };
 
-  // Create a track segment with optional curve
-  const createTrackSegment = (scene: Scene, position: number, shouldCurve: boolean = false) => {
-    let curve: Path3D | undefined;
-    let trackPoints: Vector3[];
-
-    if (shouldCurve) {
-      // Create a curved path
-      const curvePoints = [];
-      const numPoints = 20;
-      const curveRadius = SEGMENT_LENGTH / 2;
-      const turnAngle = Math.PI / 2; // 90-degree turn
-
-      for (let i = 0; i < numPoints; i++) {
-        const t = i / (numPoints - 1);
-        const angle = t * turnAngle;
-        const x = curveRadius * Math.sin(angle);
-        const z = position + t * SEGMENT_LENGTH;
-        curvePoints.push(new Vector3(x, 0, z));
-      }
-
-      curve = new Path3D(curvePoints);
-      trackPoints = curvePoints;
-    } else {
-      // Straight track
-      trackPoints = [
-        new Vector3(0, 0, position),
-        new Vector3(0, 0, position + SEGMENT_LENGTH)
-      ];
-    }
-
-    // Create track mesh
-    const track = MeshBuilder.CreateRibbon("track", {
-      pathArray: [
-        trackPoints.map(p => p.add(new Vector3(-LANE_WIDTH * 1.5, 0, 0))),
-        trackPoints.map(p => p.add(new Vector3(LANE_WIDTH * 1.5, 0, 0)))
-      ],
-      closePath: false
+  // Create a track segment
+  const createTrackSegment = (scene: Scene, position: number, direction: 'forward' | 'right' | 'left') => {
+    // Create track base
+    const segment = MeshBuilder.CreateBox("track", {
+      width: direction === 'forward' ? LANE_WIDTH * 3 : SEGMENT_LENGTH,
+      height: 0.5,
+      depth: direction === 'forward' ? SEGMENT_LENGTH : LANE_WIDTH * 3
     }, scene);
 
     const material = new StandardMaterial("trackMat", scene);
     material.diffuseColor = new Color3(0.4, 0.4, 0.4);
-    track.material = material;
-    track.position.y = -0.25;
+    segment.material = material;
+
+    // Position based on direction
+    if (direction === 'forward') {
+      segment.position = new Vector3(0, -0.25, position);
+    } else if (direction === 'right') {
+      segment.position = new Vector3(position, -0.25, 0);
+    } else {
+      segment.position = new Vector3(-position, -0.25, 0);
+    }
 
     // Create coins and obstacles
     const coins: Mesh[] = [];
-    const obstacles = createObstacles(scene, position, curve);
+    const obstacles = createObstacles(scene, position, direction);
 
-    // Add coins along the track
+    // Add coins
     for (let z = 0; z < SEGMENT_LENGTH; z += COIN_SPACING) {
       if (Math.random() < 0.3) {
         const lane = Math.floor(Math.random() * 3) - 1;
@@ -193,21 +154,20 @@ export function TempleRunner({ matchId, isPractice = true, onGameOver }: TempleR
         coinMaterial.diffuseColor = new Color3(1, 0.8, 0);
         coin.material = coinMaterial;
 
-        if (curve) {
-          const curvePoint = curve.getPointAt(z / SEGMENT_LENGTH);
-          const tangent = curve.getTangentAt(z / SEGMENT_LENGTH);
-          coin.position = curvePoint.add(new Vector3(lane * LANE_WIDTH, COIN_HEIGHT, 0));
-          coin.rotation = new Vector3(Math.PI / 2, Math.atan2(tangent.x, tangent.z), 0);
-        } else {
+        if (direction === 'forward') {
           coin.position = new Vector3(lane * LANE_WIDTH, COIN_HEIGHT, position + z);
-          coin.rotation.x = Math.PI / 2;
+        } else if (direction === 'right') {
+          coin.position = new Vector3(position + z, COIN_HEIGHT, lane * LANE_WIDTH);
+        } else {
+          coin.position = new Vector3(-(position + z), COIN_HEIGHT, lane * LANE_WIDTH);
         }
+        coin.rotation.x = Math.PI / 2;
 
         coins.push(coin);
       }
     }
 
-    return { mesh: track, coins, obstacles, position, curve };
+    return { mesh: segment, coins, obstacles, position, direction };
   };
 
   // Initialize Babylon.js scene
@@ -247,18 +207,17 @@ export function TempleRunner({ matchId, isPractice = true, onGameOver }: TempleR
 
     // Initialize track segments
     for (let i = 0; i < NUM_SEGMENTS; i++) {
-      const shouldCurve = Math.random() < 0.3; // 30% chance of curved segment
-      const segment = createTrackSegment(scene, i * SEGMENT_LENGTH, shouldCurve);
+      const segment = createTrackSegment(scene, i * SEGMENT_LENGTH, 'forward');
       trackSegmentsRef.current.push(segment);
     }
 
     // Input handling
     scene.actionManager = new ActionManager(scene);
 
-    // Jump control
+    // Jump control (Up Arrow)
     scene.actionManager.registerAction(
       new ExecuteCodeAction(
-        { trigger: ActionManager.OnKeyDownTrigger, parameter: "Space" },
+        { trigger: ActionManager.OnKeyDownTrigger, parameter: "ArrowUp" },
         () => {
           if (!isJumpingRef.current && !isSlidingRef.current) {
             isJumpingRef.current = true;
@@ -267,12 +226,25 @@ export function TempleRunner({ matchId, isPractice = true, onGameOver }: TempleR
               playerRef.current!,
               "position.y",
               60,
-              20,
+              JUMP_DURATION,
               1,
-              3,
+              JUMP_HEIGHT,
               Animation.ANIMATIONLOOPMODE_CONSTANT,
-              null,
-              () => { isJumpingRef.current = false; }
+              undefined,
+              () => {
+                Animation.CreateAndStartAnimation(
+                  "land",
+                  playerRef.current!,
+                  "position.y",
+                  60,
+                  JUMP_DURATION,
+                  JUMP_HEIGHT,
+                  1,
+                  Animation.ANIMATIONLOOPMODE_CONSTANT,
+                  undefined,
+                  () => { isJumpingRef.current = false; }
+                );
+              }
             );
           }
         }
@@ -285,27 +257,52 @@ export function TempleRunner({ matchId, isPractice = true, onGameOver }: TempleR
 
       switch (evt.key) {
         case "ArrowLeft":
-          if (currentLaneRef.current > 0) {
-            currentLaneRef.current--;
-            const targetX = (currentLaneRef.current - 1) * LANE_WIDTH;
-            Animation.CreateAndStartAnimation(
-              "moveLeft",
-              playerRef.current!,
-              "position.x",
-              60,
-              10,
-              playerRef.current!.position.x,
-              targetX,
-              Animation.ANIMATIONLOOPMODE_CONSTANT
-            );
-          }
-          break;
         case "ArrowRight":
-          if (currentLaneRef.current < 2) {
-            currentLaneRef.current++;
+          const isRight = evt.key === "ArrowRight";
+          const currentTime = Date.now();
+
+          if (isRight) {
+            // Handle triple-click turn mechanic
+            if (currentTime - gameState.lastRightClickTime < TURN_TIMEOUT) {
+              setGameState(prev => ({
+                ...prev,
+                rightClickCount: prev.rightClickCount + 1,
+                lastRightClickTime: currentTime
+              }));
+
+              // If three clicks within timeout, perform turn
+              if (gameState.rightClickCount >= 2) {
+                setGameState(prev => ({
+                  ...prev,
+                  direction: 'right',
+                  rightClickCount: 0
+                }));
+
+                // Rotate player and adjust position
+                if (playerRef.current) {
+                  playerRef.current.rotate(Vector3.Up(), Math.PI / 2, Space.WORLD);
+                }
+              }
+            } else {
+              // Reset click count if timeout exceeded
+              setGameState(prev => ({
+                ...prev,
+                rightClickCount: 1,
+                lastRightClickTime: currentTime
+              }));
+            }
+          }
+
+          // Regular lane change
+          const newLane = isRight ?
+            Math.min(currentLaneRef.current + 1, 2) :
+            Math.max(currentLaneRef.current - 1, 0);
+
+          if (newLane !== currentLaneRef.current) {
+            currentLaneRef.current = newLane;
             const targetX = (currentLaneRef.current - 1) * LANE_WIDTH;
             Animation.CreateAndStartAnimation(
-              "moveRight",
+              isRight ? "moveRight" : "moveLeft",
               playerRef.current!,
               "position.x",
               60,
@@ -316,6 +313,7 @@ export function TempleRunner({ matchId, isPractice = true, onGameOver }: TempleR
             );
           }
           break;
+
         case "ArrowDown":
           if (!isSlidingRef.current && !isJumpingRef.current) {
             isSlidingRef.current = true;
@@ -328,7 +326,7 @@ export function TempleRunner({ matchId, isPractice = true, onGameOver }: TempleR
               1,
               0.5,
               Animation.ANIMATIONLOOPMODE_CONSTANT,
-              null,
+              undefined,
               () => {
                 Animation.CreateAndStartAnimation(
                   "slideReturn",
@@ -339,7 +337,7 @@ export function TempleRunner({ matchId, isPractice = true, onGameOver }: TempleR
                   0.5,
                   1,
                   Animation.ANIMATIONLOOPMODE_CONSTANT,
-                  null,
+                  undefined,
                   () => { isSlidingRef.current = false; }
                 );
               }
@@ -354,9 +352,16 @@ export function TempleRunner({ matchId, isPractice = true, onGameOver }: TempleR
     // Game loop
     scene.registerBeforeRender(() => {
       if (!gameState.isGameOver && playerRef.current) {
-        // Move player forward
         const deltaTime = scene.getEngine().getDeltaTime() / 1000;
-        playerRef.current.position.z += gameState.speed * deltaTime;
+
+        // Move player based on current direction
+        if (gameState.direction === 'forward') {
+          playerRef.current.position.z += gameState.speed * deltaTime;
+        } else if (gameState.direction === 'right') {
+          playerRef.current.position.x += gameState.speed * deltaTime;
+        } else {
+          playerRef.current.position.x -= gameState.speed * deltaTime;
+        }
 
         // Check for speed increase
         if (gameState.score > lastSpeedIncreaseRef.current + SPEED_INTERVAL) {
@@ -407,9 +412,12 @@ export function TempleRunner({ matchId, isPractice = true, onGameOver }: TempleR
         });
 
         // Recycle track segments
-        const playerZ = playerRef.current.position.z;
+        const playerPos = playerRef.current.position;
         trackSegmentsRef.current.forEach((segment, index) => {
-          if (playerZ - segment.position > SEGMENT_LENGTH) {
+          const segmentPos = segment.mesh.position;
+          const distance = Vector3.Distance(playerPos, segmentPos);
+
+          if (distance > SEGMENT_LENGTH * 2) {
             // Dispose old segment
             segment.mesh.dispose();
             segment.coins.forEach(coin => coin.dispose());
@@ -417,8 +425,11 @@ export function TempleRunner({ matchId, isPractice = true, onGameOver }: TempleR
 
             // Create new segment
             const newPosition = segment.position + NUM_SEGMENTS * SEGMENT_LENGTH;
-            const shouldCurve = Math.random() < 0.3;
-            const newSegment = createTrackSegment(scene, newPosition, shouldCurve);
+            const newSegment = createTrackSegment(
+              scene,
+              newPosition,
+              gameState.direction
+            );
             trackSegmentsRef.current[index] = newSegment;
           }
         });
