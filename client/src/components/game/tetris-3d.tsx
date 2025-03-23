@@ -35,24 +35,30 @@ export function Tetris3D({ initialState, onStateChange, onGameOver }: {
   return (
     <div className="w-full h-[600px] relative bg-background">
       <ErrorBoundary FallbackComponent={ErrorFallback}>
-        <Canvas
-          camera={{
-            position: [0, 0, 5],
-            fov: 75,
-            near: 0.1,
-            far: 1000
-          }}
-          gl={{ 
-            antialias: true,
-            alpha: false 
-          }}
-        >
-          <TestScene />
-          <OrbitControls 
-            enableZoom={false}
-            enablePan={false}
-          />
-        </Canvas>
+        <div style={{ width: '100%', height: '100%' }}>
+          <Canvas
+            dpr={[1, 2]}
+            gl={{
+              antialias: true,
+              alpha: false,
+              powerPreference: 'default',
+              failIfMajorPerformanceCaveat: false
+            }}
+            camera={{
+              fov: 75,
+              position: [0, 0, 5]
+            }}
+            style={{
+              background: '#000'
+            }}
+          >
+            <TestScene />
+            <OrbitControls 
+              enableZoom={false}
+              enablePan={false}
+            />
+          </Canvas>
+        </div>
       </ErrorBoundary>
 
       <div className="absolute bottom-4 left-4 bg-black/50 p-4 rounded backdrop-blur-sm">
