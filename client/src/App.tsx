@@ -10,6 +10,7 @@ import HomePage from "@/pages/home-page";
 import AuthPage from "@/pages/auth-page";
 import GamePage from "@/pages/game-page";
 import NewGamePage from "@/pages/new-game-page";
+import TempleRunnerPage from "@/pages/temple-runner-page";
 import { ProtectedRoute } from "./lib/protected-route";
 
 function Router() {
@@ -19,6 +20,7 @@ function Router() {
       <Route path="/auth" component={AuthPage} />
       <ProtectedRoute path="/game/new" component={NewGamePage} />
       <ProtectedRoute path="/game/:id" component={GamePage} />
+      <ProtectedRoute path="/temple-runner" component={TempleRunnerPage} />
       <Route component={NotFound} />
     </Switch>
   );
