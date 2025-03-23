@@ -31,7 +31,7 @@ export function ConnectWallet() {
       variant="default"
     >
       <Wallet className="w-4 h-4" />
-      Connect Wallet
+      Connect with Abstract
     </Button>
   );
 }
