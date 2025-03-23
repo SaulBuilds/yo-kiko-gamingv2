@@ -1,4 +1,3 @@
-```tsx
 import { Navbar } from "@/components/layout/navbar";
 import { TempleRunner } from "@/components/game/temple-runner";
 import { Button } from "@/components/ui/button";
@@ -25,4 +24,3 @@ export default function TempleRunnerPage() {
     </div>
   );
 }
-```

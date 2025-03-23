@@ -37,7 +37,8 @@ export default function HomePage() {
       name: "Temple Run",
       description: "Race through ancient temples and collect coins",
       icon: "🏃",
-      background: "bg-gradient-to-r from-yellow-500 to-orange-500"
+      background: "bg-gradient-to-r from-yellow-500 to-orange-500",
+      route: "/temple-runner" // Add specific route
     },
     {
       id: "bubble-bop",
@@ -49,9 +50,9 @@ export default function HomePage() {
   ];
 
   // Filter active matches where the current user is not the creator
-  const activeMatches = matches?.filter(match => 
-    match.status === "waiting" && 
-    match.player1Id !== user?.id && 
+  const activeMatches = matches?.filter(match =>
+    match.status === "waiting" &&
+    match.player1Id !== user?.id &&
     !match.isPractice
   ) || [];
 
@@ -86,7 +87,7 @@ export default function HomePage() {
                           <Button
                             size="sm"
                             variant="secondary"
-                            onClick={() => setLocation("/game/new")}
+                            onClick={() => setLocation(game.id === 'temple-run' ? '/temple-runner' : '/game/new')}
                             className="pixel-font text-xs"
                           >
                             Practice
@@ -136,7 +137,7 @@ export default function HomePage() {
                             Created by Player #{match.player1Id}
                           </p>
                         </div>
-                        <Button 
+                        <Button
                           onClick={() => setLocation(`/game/${match.id}`)}
                           className="pixel-font"
                         >

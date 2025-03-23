@@ -1,7 +1,6 @@
-```tsx
 import { useRef, useState, useEffect } from 'react';
-import { Canvas, useFrame, useThree } from '@react-three/fiber';
-import { useGLTF, OrbitControls, PerspectiveCamera } from '@react-three/drei';
+import { Canvas, useFrame } from '@react-three/fiber';
+import { OrbitControls, PerspectiveCamera } from '@react-three/drei';
 import * as THREE from 'three';
 
 // Track segment for the infinite runner
@@ -16,9 +15,9 @@ function TrackSegment({ position, rotation }: { position: [number, number, numbe
 
 // Collectible item
 function Collectible({ position }: { position: [number, number, number] }) {
-  const ref = useRef<THREE.Mesh>();
-  
-  useFrame((state) => {
+  const ref = useRef<THREE.Mesh>(null);
+
+  useFrame(() => {
     if (ref.current) {
       ref.current.rotation.y += 0.02;
     }
@@ -32,9 +31,9 @@ function Collectible({ position }: { position: [number, number, number] }) {
   );
 }
 
-// Player character (temporary box until we have the model)
+// Player character
 function Player() {
-  const ref = useRef<THREE.Group>();
+  const ref = useRef<THREE.Group>(null);
   const [position, setPosition] = useState([0, 1, 0]);
   const [isJumping, setIsJumping] = useState(false);
   const [isDucking, setIsDucking] = useState(false);
@@ -45,16 +44,16 @@ function Player() {
     if (ref.current) {
       // Basic forward movement
       ref.current.position.z -= speed.current;
-      
+
       // Gradually increase speed
       speed.current += delta * 0.001;
-      
+
       // Jump animation
       if (isJumping) {
         ref.current.position.y = 1 + Math.sin(state.clock.elapsedTime * 5) * 2;
         if (state.clock.elapsedTime % 1 < 0.1) setIsJumping(false);
       }
-      
+
       // Duck animation
       if (isDucking) {
         ref.current.scale.y = 0.5;
@@ -116,12 +115,12 @@ export function TempleRunner() {
         <PerspectiveCamera makeDefault position={[0, 5, 10]} />
         <ambientLight intensity={0.5} />
         <pointLight position={[10, 10, 10]} />
-        
+
         {/* Game elements */}
         <Player />
         <TrackSegment position={[0, 0, 0]} rotation={[0, 0, 0]} />
         <Collectible position={[0, 1, -5]} />
-        
+
         {/* Environment */}
         <gridHelper args={[100, 100]} />
         <OrbitControls />
@@ -129,4 +128,3 @@ export function TempleRunner() {
     </div>
   );
 }
-```
