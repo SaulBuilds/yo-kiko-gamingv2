@@ -1,8 +1,8 @@
 import { Switch, Route } from "wouter";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { queryClient } from "./lib/queryClient";
-import { WagmiConfig } from 'wagmi';
-import { config } from './lib/web3';
+import { AbstractWalletProvider } from "@abstract-foundation/agw-react";
+import { abstractTestnet } from "viem/chains";
 import { Toaster } from "@/components/ui/toaster";
 import { AuthProvider } from "@/hooks/use-auth";
 import NotFound from "@/pages/not-found";
@@ -32,14 +32,16 @@ function Router() {
 function App() {
   return (
     <div className="min-h-screen bg-background">
-      <WagmiConfig config={config}>
+      <AbstractWalletProvider 
+        chain={abstractTestnet}
+      >
         <QueryClientProvider client={queryClient}>
           <AuthProvider>
             <Router />
             <Toaster />
           </AuthProvider>
         </QueryClientProvider>
-      </WagmiConfig>
+      </AbstractWalletProvider>
     </div>
   );
 }
