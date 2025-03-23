@@ -4,15 +4,13 @@ import { OrbitControls } from '@react-three/drei';
 import { GameState } from '@/types/game';
 import { ErrorBoundary } from 'react-error-boundary';
 
-const BOARD_WIDTH = 10;
-const BOARD_HEIGHT = 20;
-
 function TestScene() {
   return (
     <>
-      <ambientLight />
-      <mesh>
-        <boxGeometry />
+      <ambientLight intensity={0.8} />
+      <pointLight position={[10, 10, 10]} intensity={1.5} />
+      <mesh position={[0, 0, 0]}>
+        <boxGeometry args={[1, 1, 1]} />
         <meshStandardMaterial color="hotpink" />
       </mesh>
     </>
@@ -37,9 +35,23 @@ export function Tetris3D({ initialState, onStateChange, onGameOver }: {
   return (
     <div className="w-full h-[600px] relative bg-background">
       <ErrorBoundary FallbackComponent={ErrorFallback}>
-        <Canvas>
+        <Canvas
+          camera={{
+            position: [0, 0, 5],
+            fov: 75,
+            near: 0.1,
+            far: 1000
+          }}
+          gl={{ 
+            antialias: true,
+            alpha: false 
+          }}
+        >
           <TestScene />
-          <OrbitControls />
+          <OrbitControls 
+            enableZoom={false}
+            enablePan={false}
+          />
         </Canvas>
       </ErrorBoundary>
 
