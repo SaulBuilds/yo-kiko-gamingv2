@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useLocation } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -14,8 +14,10 @@ export default function HomePage() {
   const { user } = useAuth();
   const [isBetModalOpen, setIsBetModalOpen] = useState(false);
 
-  const { data: matches } = useQuery<GameMatch[]>({
+  // Add refetch interval to keep matches list up to date
+  const { data: matches, isLoading: isMatchesLoading } = useQuery<GameMatch[]>({
     queryKey: ["/api/matches"],
+    refetchInterval: 5000 // Refetch every 5 seconds
   });
 
   const { data: leaderboard } = useQuery<User[]>({
@@ -46,7 +48,12 @@ export default function HomePage() {
     }
   ];
 
-  const activeMatches = matches?.filter(match => match.status === "waiting" && match.player1Id !== user?.id) || [];
+  // Filter active matches where the current user is not the creator
+  const activeMatches = matches?.filter(match => 
+    match.status === "waiting" && 
+    match.player1Id !== user?.id && 
+    !match.isPractice
+  ) || [];
 
   return (
     <div className="min-h-screen bg-background">
@@ -112,30 +119,33 @@ export default function HomePage() {
                 Available Wager Matches
               </h2>
               <div className="space-y-4">
-                {activeMatches.map((match) => (
-                  <Card key={match.id} className="hover:border-primary transition-all duration-300">
-                    <CardContent className="flex justify-between items-center p-4">
-                      <div className="space-y-1">
-                        <div className="flex items-center gap-2">
-                          <Coins className="h-4 w-4" />
-                          <p className="pixel-font text-sm">
-                            {match.betAmount} {match.betType === 'xp' ? 'XP' : 'ETH'}
+                {isMatchesLoading ? (
+                  <p className="text-center text-muted-foreground">Loading matches...</p>
+                ) : activeMatches.length > 0 ? (
+                  activeMatches.map((match) => (
+                    <Card key={match.id} className="hover:border-primary transition-all duration-300">
+                      <CardContent className="flex justify-between items-center p-4">
+                        <div className="space-y-1">
+                          <div className="flex items-center gap-2">
+                            <Coins className="h-4 w-4" />
+                            <p className="pixel-font text-sm">
+                              {match.betAmount} {match.betType === 'xp' ? 'XP' : 'ETH'}
+                            </p>
+                          </div>
+                          <p className="text-sm text-muted-foreground">
+                            Created by Player #{match.player1Id}
                           </p>
                         </div>
-                        <p className="text-sm text-muted-foreground">
-                          Created by Player #{match.player1Id}
-                        </p>
-                      </div>
-                      <Button 
-                        onClick={() => setLocation(`/game/${match.id}`)}
-                        className="pixel-font"
-                      >
-                        Accept Challenge
-                      </Button>
-                    </CardContent>
-                  </Card>
-                ))}
-                {activeMatches.length === 0 && (
+                        <Button 
+                          onClick={() => setLocation(`/game/${match.id}`)}
+                          className="pixel-font"
+                        >
+                          Accept Challenge
+                        </Button>
+                      </CardContent>
+                    </Card>
+                  ))
+                ) : (
                   <p className="text-center text-muted-foreground">
                     No active wager matches available
                   </p>
@@ -187,7 +197,7 @@ export default function HomePage() {
                         <span className={`font-bold ${index === 0 ? 'text-yellow-500' : index === 1 ? 'text-gray-400' : index === 2 ? 'text-amber-600' : 'text-muted-foreground'}`}>
                           #{index + 1}
                         </span>
-                        <span className="pixel-font text-xs">{player.username || player.walletAddress.slice(0, 6)}</span>
+                        <span className="pixel-font text-xs">{player.username || `Player #${player.id}`}</span>
                       </div>
                       <span className="font-semibold">{player.score} pts</span>
                     </div>
