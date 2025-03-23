@@ -50,10 +50,10 @@ const SEGMENT_LENGTH = 30;
 const COIN_HEIGHT = 1;
 const COIN_SPACING = 5;
 const NUM_SEGMENTS = 4;
-const INITIAL_SPEED = 10;
-const SPEED_INCREMENT = 0.2;
-const SPEED_INTERVAL = 500; // Increase speed more frequently
-const TURN_TIMEOUT = 300; // Time window for triple-click turn (ms)
+const INITIAL_SPEED = 15;
+const SPEED_INCREMENT = 1;
+const SPEED_INTERVAL = 200; // Increase speed more aggressively
+const TURN_TIMEOUT = 300;
 const JUMP_HEIGHT = 3;
 const JUMP_DURATION = 15;
 
@@ -84,11 +84,11 @@ export function TempleRunner({ matchId, isPractice = true, onGameOver }: TempleR
   // Create obstacles for a segment
   const createObstacles = (scene: Scene, position: number, direction: 'forward' | 'right' | 'left') => {
     const obstacles: Mesh[] = [];
-    const numObstacles = Math.floor(Math.random() * 2) + 1; // 1-2 obstacles per segment
+    const numObstacles = Math.floor(Math.random() * 2) + 1;
 
     for (let i = 0; i < numObstacles; i++) {
-      const lane = Math.floor(Math.random() * 3) - 1; // -1, 0, or 1
-      const zOffset = (Math.random() * (SEGMENT_LENGTH - 5)) + position + 2;
+      const lane = Math.floor(Math.random() * 3) - 1;
+      const zOffset = (Math.random() * (SEGMENT_LENGTH - 10)) + position + 5; // Adjusted position
 
       const barrier = MeshBuilder.CreateBox("barrier", {
         height: 2,
@@ -99,7 +99,6 @@ export function TempleRunner({ matchId, isPractice = true, onGameOver }: TempleR
       barrierMaterial.diffuseColor = new Color3(0.8, 0.2, 0.2);
       barrier.material = barrierMaterial;
 
-      // Position based on direction
       if (direction === 'forward') {
         barrier.position = new Vector3(lane * LANE_WIDTH, 1, zOffset);
       } else if (direction === 'right') {
@@ -118,32 +117,32 @@ export function TempleRunner({ matchId, isPractice = true, onGameOver }: TempleR
 
   // Create a track segment
   const createTrackSegment = (scene: Scene, position: number, direction: 'forward' | 'right' | 'left') => {
-    // Create track base
+    // Create track base with slight overlap to prevent gaps
     const segment = MeshBuilder.CreateBox("track", {
-      width: direction === 'forward' ? LANE_WIDTH * 3 : SEGMENT_LENGTH,
+      width: direction === 'forward' ? LANE_WIDTH * 3 : SEGMENT_LENGTH + 1, // Added overlap
       height: 0.5,
-      depth: direction === 'forward' ? SEGMENT_LENGTH : LANE_WIDTH * 3
+      depth: direction === 'forward' ? SEGMENT_LENGTH + 1 : LANE_WIDTH * 3 // Added overlap
     }, scene);
 
     const material = new StandardMaterial("trackMat", scene);
     material.diffuseColor = new Color3(0.4, 0.4, 0.4);
     segment.material = material;
 
-    // Position based on direction
+    // Position with adjusted overlap
     if (direction === 'forward') {
-      segment.position = new Vector3(0, -0.25, position);
+      segment.position = new Vector3(0, -0.25, position + 0.5);
     } else if (direction === 'right') {
-      segment.position = new Vector3(position, -0.25, 0);
+      segment.position = new Vector3(position + 0.5, -0.25, 0);
     } else {
-      segment.position = new Vector3(-position, -0.25, 0);
+      segment.position = new Vector3(-(position + 0.5), -0.25, 0);
     }
 
     // Create coins and obstacles
     const coins: Mesh[] = [];
     const obstacles = createObstacles(scene, position, direction);
 
-    // Add coins
-    for (let z = 0; z < SEGMENT_LENGTH; z += COIN_SPACING) {
+    // Add coins with adjusted positions
+    for (let z = 5; z < SEGMENT_LENGTH - 5; z += COIN_SPACING) {
       if (Math.random() < 0.3) {
         const lane = Math.floor(Math.random() * 3) - 1;
         const coin = MeshBuilder.CreateCylinder("coin", {
@@ -363,7 +362,7 @@ export function TempleRunner({ matchId, isPractice = true, onGameOver }: TempleR
           playerRef.current.position.x -= gameState.speed * deltaTime;
         }
 
-        // Check for speed increase
+        // Aggressive speed increase
         if (gameState.score > lastSpeedIncreaseRef.current + SPEED_INTERVAL) {
           lastSpeedIncreaseRef.current = gameState.score;
           setGameState(prev => ({
@@ -376,7 +375,7 @@ export function TempleRunner({ matchId, isPractice = true, onGameOver }: TempleR
         setGameState(prev => ({
           ...prev,
           distance: playerRef.current!.position.z,
-          score: prev.score + prev.speed * deltaTime
+          score: prev.score + prev.speed * deltaTime * 2 // Doubled score gain
         }));
 
         // Check collisions
@@ -399,14 +398,22 @@ export function TempleRunner({ matchId, isPractice = true, onGameOver }: TempleR
             return true;
           });
 
-          // Obstacle collisions
+          // Obstacle collisions with sliding check
           segment.obstacles.forEach(obstacle => {
             const distance = Vector3.Distance(
               playerRef.current!.position,
               obstacle.position
             );
             if (distance < 1.5 && !isJumpingRef.current) {
-              handleGameOver();
+              if (isSlidingRef.current) {
+                // Check if the obstacle is high enough to require jumping
+                const heightDiff = Math.abs(playerRef.current!.position.y - obstacle.position.y);
+                if (heightDiff > 0.5) { // If the obstacle is too high even when sliding
+                  handleGameOver();
+                }
+              } else {
+                handleGameOver();
+              }
             }
           });
         });
@@ -414,22 +421,21 @@ export function TempleRunner({ matchId, isPractice = true, onGameOver }: TempleR
         // Recycle track segments
         const playerPos = playerRef.current.position;
         trackSegmentsRef.current.forEach((segment, index) => {
-          const segmentPos = segment.mesh.position;
-          const distance = Vector3.Distance(playerPos, segmentPos);
+          const distance = Math.abs(
+            gameState.direction === 'forward'
+              ? playerPos.z - segment.position
+              : playerPos.x - Math.abs(segment.position)
+          );
 
-          if (distance > SEGMENT_LENGTH * 2) {
+          if (distance > SEGMENT_LENGTH * 1.5) {
             // Dispose old segment
             segment.mesh.dispose();
             segment.coins.forEach(coin => coin.dispose());
             segment.obstacles.forEach(obstacle => obstacle.dispose());
 
             // Create new segment
-            const newPosition = segment.position + NUM_SEGMENTS * SEGMENT_LENGTH;
-            const newSegment = createTrackSegment(
-              scene,
-              newPosition,
-              gameState.direction
-            );
+            const newPosition = segment.position + (NUM_SEGMENTS * SEGMENT_LENGTH);
+            const newSegment = createTrackSegment(scene, newPosition, gameState.direction);
             trackSegmentsRef.current[index] = newSegment;
           }
         });
