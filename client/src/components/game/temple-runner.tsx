@@ -1,7 +1,14 @@
 import { useState, useRef, useEffect } from 'react';
-import { Canvas } from '@react-three/fiber';
-import { OrbitControls } from '@react-three/drei';
-import * as THREE from 'three';
+import {
+  Engine,
+  Scene,
+  Color3,
+  Vector3,
+  MeshBuilder,
+  StandardMaterial,
+  HemisphericLight,
+  FreeCamera
+} from '@babylonjs/core';
 import { useAuth } from '@/hooks/use-auth';
 import { useMutation } from '@tanstack/react-query';
 import { apiRequest } from '@/lib/queryClient';
@@ -13,7 +20,6 @@ interface TempleRunnerProps {
   onGameOver?: (score: number) => void;
 }
 
-// Core game state interface
 interface GameState {
   score: number;
   isGameOver: boolean;
@@ -22,39 +28,13 @@ interface GameState {
   coins: number;
 }
 
-// Game scene setup
-function Scene() {
-  return (
-    <>
-      {/* Lights */}
-      <ambientLight intensity={0.5} />
-      <directionalLight
-        position={[10, 10, 5]}
-        intensity={1}
-      />
-
-      {/* Environment */}
-      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.5, 0]}>
-        <planeGeometry args={[100, 100]} />
-        <meshStandardMaterial color="#4a9" />
-      </mesh>
-
-      {/* Player character placeholder */}
-      <mesh position={[0, 1, 0]}>
-        <boxGeometry args={[1, 2, 1]} />
-        <meshStandardMaterial color="brown" />
-      </mesh>
-
-      {/* Development helpers */}
-      <gridHelper args={[100, 100]} />
-      <axesHelper args={[5]} />
-    </>
-  );
-}
-
 export function TempleRunner({ matchId, isPractice = true, onGameOver }: TempleRunnerProps) {
   const { user } = useAuth();
   const { toast } = useToast();
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const engineRef = useRef<Engine | null>(null);
+  const sceneRef = useRef<Scene | null>(null);
+
   const [gameState, setGameState] = useState<GameState>({
     score: 0,
     isGameOver: false,
@@ -63,8 +43,68 @@ export function TempleRunner({ matchId, isPractice = true, onGameOver }: TempleR
     coins: 0
   });
 
-  // Game loop ref
-  const gameLoopRef = useRef<number>();
+  // Initialize Babylon.js scene
+  useEffect(() => {
+    if (!canvasRef.current) return;
+
+    // Create engine and scene
+    const engine = new Engine(canvasRef.current, true);
+    const scene = new Scene(engine);
+    engineRef.current = engine;
+    sceneRef.current = scene;
+
+    // Setup scene
+    scene.clearColor = new Color3(0.5, 0.8, 0.9); // Sky blue background
+
+    // Camera
+    const camera = new FreeCamera("camera1", new Vector3(0, 5, -10), scene);
+    camera.setTarget(Vector3.Zero());
+
+    // Light
+    const light = new HemisphericLight("light", new Vector3(0, 1, 0), scene);
+    light.intensity = 0.7;
+
+    // Ground
+    const ground = MeshBuilder.CreateGround("ground", { width: 100, height: 100 }, scene);
+    const groundMaterial = new StandardMaterial("groundMat", scene);
+    groundMaterial.diffuseColor = new Color3(0.3, 0.6, 0.3);
+    ground.material = groundMaterial;
+
+    // Player
+    const player = MeshBuilder.CreateBox("player", { height: 2, width: 1, depth: 1 }, scene);
+    player.position.y = 1;
+    const playerMaterial = new StandardMaterial("playerMat", scene);
+    playerMaterial.diffuseColor = new Color3(0.4, 0.2, 0);
+    player.material = playerMaterial;
+
+    // Game loop
+    scene.registerBeforeRender(() => {
+      if (!gameState.isGameOver) {
+        setGameState(prev => ({
+          ...prev,
+          distance: prev.distance + (prev.speed * 0.016),
+          speed: prev.speed + 0.001,
+          score: prev.score + prev.speed * 0.016
+        }));
+      }
+    });
+
+    // Start the render loop
+    engine.runRenderLoop(() => {
+      scene.render();
+    });
+
+    // Handle window resize
+    window.addEventListener('resize', () => {
+      engine.resize();
+    });
+
+    // Cleanup
+    return () => {
+      scene.dispose();
+      engine.dispose();
+    };
+  }, []);
 
   // Update XP mutation
   const updateXpMutation = useMutation({
@@ -91,34 +131,6 @@ export function TempleRunner({ matchId, isPractice = true, onGameOver }: TempleR
     },
   });
 
-  // Game loop
-  useEffect(() => {
-    let lastTime = 0;
-    const animate = (time: number) => {
-      if (lastTime !== 0) {
-        const delta = time - lastTime;
-        if (!gameState.isGameOver) {
-          setGameState(prev => ({
-            ...prev,
-            distance: prev.distance + (prev.speed * delta) / 1000,
-            speed: prev.speed + (delta / 1000) * 0.1,
-            score: prev.score + (delta / 1000) * prev.speed
-          }));
-        }
-      }
-      lastTime = time;
-      gameLoopRef.current = requestAnimationFrame(animate);
-    };
-
-    gameLoopRef.current = requestAnimationFrame(animate);
-    return () => {
-      if (gameLoopRef.current) {
-        cancelAnimationFrame(gameLoopRef.current);
-      }
-    };
-  }, [gameState.isGameOver]);
-
-  // Handle game over
   const handleGameOver = async () => {
     setGameState(prev => ({ ...prev, isGameOver: true }));
     if (onGameOver) {
@@ -158,14 +170,12 @@ export function TempleRunner({ matchId, isPractice = true, onGameOver }: TempleR
         </div>
       )}
 
-      {/* 3D Game Canvas */}
-      <Canvas
-        style={{ background: '#87ceeb' }}
-        camera={{ position: [0, 5, 10], fov: 75 }}
-      >
-        <Scene />
-        <OrbitControls enablePan={false} />
-      </Canvas>
+      {/* Babylon.js Canvas */}
+      <canvas
+        ref={canvasRef}
+        className="w-full h-full"
+        style={{ touchAction: 'none' }}
+      />
     </div>
   );
 }
