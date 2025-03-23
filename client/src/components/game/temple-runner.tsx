@@ -45,18 +45,20 @@ const SEGMENT_LENGTH = 30;
 const COIN_HEIGHT = 1;
 const COIN_SPACING = 5;
 const NUM_SEGMENTS = 4;
-const INITIAL_SPEED = 15;
-const MAX_SPEED = 100; // Maximum speed in m/s
-const SPEED_INCREMENT = 5; // Increase by 5 m/s
-const SPEED_INCREASE_DISTANCE = 100; // Increase speed every 100 meters
+const INITIAL_SPEED = 20; // Increased initial speed
+const MAX_SPEED = 100;
+const SPEED_INCREMENT = 10; // Increased speed increment
+const SPEED_INCREASE_DISTANCE = 50; // Decreased distance requirement
+const ACCELERATION_FACTOR = 1.2; // Added acceleration multiplier
 const JUMP_HEIGHT = 3;
 const JUMP_DURATION = 15;
 
 // Obstacle configuration based on speed
 const getObstacleCount = (speed: number): number => {
-  if (speed >= 90) return 4;
-  if (speed >= 70) return 3;
-  if (speed >= 50) return 2;
+  if (speed >= 90) return 5;
+  if (speed >= 70) return 4;
+  if (speed >= 50) return 3;
+  if (speed >= 30) return 2;
   return 1;
 };
 
@@ -300,7 +302,7 @@ export function TempleRunner({ matchId, isPractice = true, onGameOver }: TempleR
         const deltaTime = scene.getEngine().getDeltaTime() / 1000;
 
         // Move player forward
-        playerRef.current.position.z += gameState.speed * deltaTime;
+        playerRef.current.position.z += gameState.speed * deltaTime * ACCELERATION_FACTOR; //Apply acceleration
 
         // Update distance and check for speed increase
         const currentDistance = playerRef.current.position.z;
@@ -324,7 +326,7 @@ export function TempleRunner({ matchId, isPractice = true, onGameOver }: TempleR
         setGameState(prev => ({
           ...prev,
           distance: currentDistance,
-          score: prev.score + prev.speed * deltaTime * 2
+          score: prev.score + prev.speed * deltaTime * 2 * ACCELERATION_FACTOR //Apply acceleration
         }));
 
         // Check collisions

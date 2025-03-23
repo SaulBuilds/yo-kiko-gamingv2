@@ -34,11 +34,12 @@ export default function HomePage() {
     },
     {
       id: "temple-run",
-      name: "Temple Run",
-      description: "Race through ancient temples and collect coins",
+      name: "Temple Runner",
+      description: "Race through ancient temples collecting coins while avoiding obstacles",
       icon: "🏃",
       background: "bg-gradient-to-r from-yellow-500 to-orange-500",
-      route: "/temple-runner" // Add specific route
+      practiceRoute: "/temple-runner/practice",
+      enabled: true
     },
     {
       id: "bubble-bop",
@@ -75,7 +76,7 @@ export default function HomePage() {
                 {games.map((game) => (
                   <Card
                     key={game.id}
-                    className={`game-card ${game.background} hover:border-primary transition-all duration-300`}
+                    className={`game-card ${game.background} hover:border-primary transition-all duration-300 ${!game.enabled ? 'opacity-50' : ''}`}
                   >
                     <CardHeader>
                       <CardTitle className="flex items-center justify-between text-white">
@@ -84,23 +85,27 @@ export default function HomePage() {
                           <span className="pixel-font text-sm">{game.name}</span>
                         </span>
                         <div className="flex gap-2">
-                          <Button
-                            size="sm"
-                            variant="secondary"
-                            onClick={() => setLocation(game.id === 'temple-run' ? '/temple-runner' : '/game/new')}
-                            className="pixel-font text-xs"
-                          >
-                            Practice
-                          </Button>
-                          {game.id === "tetris" && (
-                            <Button
-                              size="sm"
-                              variant="default"
-                              className="pixel-font text-xs bg-gradient-to-r from-yellow-500 to-amber-500"
-                              onClick={() => setIsBetModalOpen(true)}
-                            >
-                              Wager
-                            </Button>
+                          {game.enabled && (
+                            <>
+                              <Button
+                                size="sm"
+                                variant="secondary"
+                                onClick={() => game.id === 'temple-run' ?
+                                  setLocation('/temple-runner/practice') :
+                                  setLocation('/game/new')}
+                                className="pixel-font text-xs"
+                              >
+                                Practice
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="default"
+                                className="pixel-font text-xs bg-gradient-to-r from-yellow-500 to-amber-500"
+                                onClick={() => setIsBetModalOpen(true)}
+                              >
+                                Wager
+                              </Button>
+                            </>
                           )}
                         </div>
                       </CardTitle>
