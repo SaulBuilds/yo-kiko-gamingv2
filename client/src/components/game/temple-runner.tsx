@@ -46,10 +46,19 @@ const COIN_HEIGHT = 1;
 const COIN_SPACING = 5;
 const NUM_SEGMENTS = 4;
 const INITIAL_SPEED = 15;
-const SPEED_INCREMENT = 1;
-const SPEED_INTERVAL = 200;
+const MAX_SPEED = 100; // Maximum speed in m/s
+const SPEED_INCREMENT = 5; // Increase by 5 m/s
+const SPEED_INCREASE_DISTANCE = 100; // Increase speed every 100 meters
 const JUMP_HEIGHT = 3;
 const JUMP_DURATION = 15;
+
+// Obstacle configuration based on speed
+const getObstacleCount = (speed: number): number => {
+  if (speed >= 90) return 4;
+  if (speed >= 70) return 3;
+  if (speed >= 50) return 2;
+  return 1;
+};
 
 export function TempleRunner({ matchId, isPractice = true, onGameOver }: TempleRunnerProps) {
   const { user } = useAuth();
@@ -72,10 +81,10 @@ export function TempleRunner({ matchId, isPractice = true, onGameOver }: TempleR
     coins: 0
   });
 
-  // Create obstacles for a segment
+  // Create obstacles for a segment with dynamic count
   const createObstacles = (scene: Scene, position: number) => {
     const obstacles: Mesh[] = [];
-    const numObstacles = Math.floor(Math.random() * 2) + 1;
+    const numObstacles = getObstacleCount(gameState.speed);
 
     for (let i = 0; i < numObstacles; i++) {
       const lane = Math.floor(Math.random() * 3) - 1;
@@ -293,19 +302,28 @@ export function TempleRunner({ matchId, isPractice = true, onGameOver }: TempleR
         // Move player forward
         playerRef.current.position.z += gameState.speed * deltaTime;
 
-        // Increase speed over time
-        if (gameState.score > lastSpeedIncreaseRef.current + SPEED_INTERVAL) {
-          lastSpeedIncreaseRef.current = gameState.score;
+        // Update distance and check for speed increase
+        const currentDistance = playerRef.current.position.z;
+        const lastSpeedIncreaseDistance = Math.floor(lastSpeedIncreaseRef.current / SPEED_INCREASE_DISTANCE) * SPEED_INCREASE_DISTANCE;
+
+        if (currentDistance > lastSpeedIncreaseDistance + SPEED_INCREASE_DISTANCE && gameState.speed < MAX_SPEED) {
+          lastSpeedIncreaseRef.current = currentDistance;
           setGameState(prev => ({
             ...prev,
-            speed: prev.speed + SPEED_INCREMENT
+            speed: Math.min(prev.speed + SPEED_INCREMENT, MAX_SPEED)
           }));
+
+          // Notify player of speed increase
+          toast({
+            title: "Speed Increased!",
+            description: `Current speed: ${Math.floor(gameState.speed)}m/s`,
+          });
         }
 
-        // Update score and distance
+        // Update game state
         setGameState(prev => ({
           ...prev,
-          distance: playerRef.current!.position.z,
+          distance: currentDistance,
           score: prev.score + prev.speed * deltaTime * 2
         }));
 
