@@ -13,6 +13,7 @@ export default function HomePage() {
   const [_, setLocation] = useLocation();
   const { user } = useAuth();
   const [isBetModalOpen, setIsBetModalOpen] = useState(false);
+  const [selectedGame, setSelectedGame] = useState<'tetris' | 'temple-runner' | null>(null);
 
   // Add refetch interval to keep matches list up to date
   const { data: matches, isLoading: isMatchesLoading } = useQuery<GameMatch[]>({
@@ -30,15 +31,15 @@ export default function HomePage() {
       name: "Tetris Battle",
       description: "Challenge players in real-time Tetris matches",
       icon: "🎮",
-      background: "bg-gradient-to-r from-pink-500 to-purple-500"
+      background: "bg-gradient-to-r from-pink-500 to-purple-500",
+      enabled: true
     },
     {
-      id: "temple-run",
+      id: "temple-runner",
       name: "Temple Runner",
       description: "Race through ancient temples collecting coins while avoiding obstacles",
       icon: "🏃",
       background: "bg-gradient-to-r from-yellow-500 to-orange-500",
-      practiceRoute: "/temple-runner/practice",
       enabled: true
     },
     {
@@ -46,9 +47,23 @@ export default function HomePage() {
       name: "Bubble Bop",
       description: "Pop colorful bubbles in this arcade classic",
       icon: "🫧",
-      background: "bg-gradient-to-r from-blue-500 to-cyan-500"
+      background: "bg-gradient-to-r from-blue-500 to-cyan-500",
+      enabled: false
     }
   ];
+
+  const handlePractice = (gameId: string) => {
+    if (gameId === 'tetris') {
+      setLocation('/game/new');
+    } else if (gameId === 'temple-runner') {
+      setLocation('/temple-runner');
+    }
+  };
+
+  const handleWager = (gameId: string) => {
+    setSelectedGame(gameId as 'tetris' | 'temple-runner');
+    setIsBetModalOpen(true);
+  };
 
   // Filter active matches where the current user is not the creator
   const activeMatches = matches?.filter(match =>
@@ -90,9 +105,7 @@ export default function HomePage() {
                               <Button
                                 size="sm"
                                 variant="secondary"
-                                onClick={() => game.id === 'temple-run' ?
-                                  setLocation('/temple-runner/practice') :
-                                  setLocation('/game/new')}
+                                onClick={() => handlePractice(game.id)}
                                 className="pixel-font text-xs"
                               >
                                 Practice
@@ -101,7 +114,7 @@ export default function HomePage() {
                                 size="sm"
                                 variant="default"
                                 className="pixel-font text-xs bg-gradient-to-r from-yellow-500 to-amber-500"
-                                onClick={() => setIsBetModalOpen(true)}
+                                onClick={() => handleWager(game.id)}
                               >
                                 Wager
                               </Button>
@@ -214,7 +227,14 @@ export default function HomePage() {
           </div>
         </div>
       </main>
-      <BetModal open={isBetModalOpen} onClose={() => setIsBetModalOpen(false)} />
+      <BetModal 
+        open={isBetModalOpen} 
+        onClose={() => {
+          setIsBetModalOpen(false);
+          setSelectedGame(null);
+        }}
+        gameType={selectedGame || 'tetris'}
+      />
     </div>
   );
 }

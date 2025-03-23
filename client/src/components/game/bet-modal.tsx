@@ -13,9 +13,10 @@ import { apiRequest } from "@/lib/queryClient";
 interface BetModalProps {
   open: boolean;
   onClose: () => void;
+  gameType: 'tetris' | 'temple-runner';
 }
 
-export function BetModal({ open, onClose }: BetModalProps) {
+export function BetModal({ open, onClose, gameType }: BetModalProps) {
   const [_, setLocation] = useLocation();
   const { user } = useAuth();
   const { toast } = useToast();
@@ -27,7 +28,7 @@ export function BetModal({ open, onClose }: BetModalProps) {
       const res = await apiRequest("POST", "/api/matches", {
         betAmount,
         betType,
-        gameType: "tetris",
+        gameType,
         isPractice: false
       });
       if (!res.ok) throw new Error("Failed to create match");
@@ -38,7 +39,11 @@ export function BetModal({ open, onClose }: BetModalProps) {
         title: "Match Created",
         description: "Waiting for opponent...",
       });
-      setLocation(`/game/${match.id}`);
+      if (gameType === 'tetris') {
+        setLocation(`/game/${match.id}`);
+      } else {
+        setLocation(`/temple-runner/${match.id}`);
+      }
     },
     onError: (error: Error) => {
       toast({
