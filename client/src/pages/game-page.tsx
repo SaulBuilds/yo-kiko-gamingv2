@@ -30,6 +30,37 @@ export default function GamePage() {
     enabled: !!params?.id,
   });
 
+  const acceptMatchMutation = useMutation({
+    mutationFn: async () => {
+      if (!match) return;
+
+      // For crypto bets, handle contract interaction here
+      if (match.betType === 'crypto') {
+        // TODO: Implement crypto bet acceptance through smart contract
+      }
+
+      const res = await apiRequest("POST", `/api/matches/${match.id}/join`, {
+        playerId: user?.id
+      });
+      if (!res.ok) throw new Error("Failed to join match");
+      return res.json();
+    },
+    onSuccess: () => {
+      toast({
+        title: "Match Joined",
+        description: "Get ready to play!",
+      });
+      queryClient.invalidateQueries({ queryKey: ["/api/matches", params?.id] });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
   const startPracticeMutation = useMutation({
     mutationFn: async () => {
       const res = await apiRequest("POST", "/api/matches", {
@@ -98,6 +129,16 @@ export default function GamePage() {
         matchId: parseInt(params.id!),
         userId: user.id
       }));
+    };
+
+    ws.onmessage = (event) => {
+      const data = JSON.parse(event.data);
+      if (data.type === "gameState" && data.states) {
+        const opponentData = data.states.find(([id]: [number, GameState]) => id !== user.id);
+        if (opponentData) {
+          setOpponentState(opponentData[1]);
+        }
+      }
     };
 
     ws.onclose = () => {
@@ -187,6 +228,33 @@ export default function GamePage() {
     }
   };
 
+  // Show match details and join button for wager matches
+  if (match && !match.isPractice && match.status === "waiting" && match.player1Id !== user?.id) {
+    return (
+      <div className="min-h-screen bg-background">
+        <Navbar />
+        <main className="container mx-auto px-4 py-8">
+          <Card className="max-w-lg mx-auto">
+            <CardContent className="p-6 space-y-4">
+              <h2 className="text-2xl font-bold text-center pixel-font">Wager Match</h2>
+              <div className="space-y-2">
+                <p>Bet Amount: {match.betAmount} {match.betType === 'xp' ? 'XP' : 'ETH'}</p>
+                <p>Created by: Player #{match.player1Id}</p>
+              </div>
+              <Button 
+                className="w-full pixel-font"
+                onClick={() => acceptMatchMutation.mutate()}
+                disabled={acceptMatchMutation.isPending}
+              >
+                Accept Challenge
+              </Button>
+            </CardContent>
+          </Card>
+        </main>
+      </div>
+    );
+  }
+
   // Render practice mode page
   if (!params?.id) {
     return (
@@ -204,6 +272,20 @@ export default function GamePage() {
             >
               Start Practice Game
             </Button>
+          </div>
+        </main>
+      </div>
+    );
+  }
+
+  // Wait for match to load
+  if (isMatchLoading) {
+    return (
+      <div className="min-h-screen bg-background">
+        <Navbar />
+        <main className="container mx-auto px-4 py-8">
+          <div className="text-center">
+            Loading match...
           </div>
         </main>
       </div>
