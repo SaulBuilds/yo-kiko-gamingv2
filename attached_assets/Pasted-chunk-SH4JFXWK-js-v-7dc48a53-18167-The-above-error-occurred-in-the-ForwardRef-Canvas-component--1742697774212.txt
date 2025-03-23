@@ -1,0 +1,64 @@
+chunk-SH4JFXWK.js?v=7dc48a53:18167 The above error occurred in the <ForwardRef(Canvas)> component:
+
+    at Canvas (https://6ccb2a97-9533-42de-84a4-f867550e7fe7-00-w63du7r2u2qr.riker.replit.d…ner/workspace/node_modules/.vite/deps/chunk-SH4JFXWK.js?v=7dc48a53:18236:3)
+    at FiberProvider (https://6ccb2a97-9533-42de-84a4-f867550e7fe7-00-w63du7r2u2qr.riker.replit.d…er/workspace/node_modules/.vite/deps/chunk-SH4JFXWK.js?v=7dc48a53:18170:21)
+    at CanvasWrapper
+    at div
+    at TempleRunner (https://6ccb2a97-9533-42de-84a4-f867550e7fe7-00-w63du7r2u2qr.riker.replit.dev/src/components/game/temple-runner.tsx:107:32)
+    at main
+    at div
+    at TempleRunnerPage (https://6ccb2a97-9533-42de-84a4-f867550e7fe7-00-w63du7r2u2qr.riker.replit.dev/src/pages/temple-runner-page.tsx:26:28)
+    at ProtectedRoute (https://6ccb2a97-9533-42de-84a4-f867550e7fe7-00-w63du7r2u2qr.riker.replit.dev/src/lib/protected-route.tsx:22:3)
+    at Switch (https://6ccb2a97-9533-42de-84a4-f867550e7fe7-00-w63du7r2u2qr.riker.replit.d…/home/runner/workspace/node_modules/.vite/deps/wouter.js?v=7dc48a53:247:17)
+    at Router
+    at AuthProvider (https://6ccb2a97-9533-42de-84a4-f867550e7fe7-00-w63du7r2u2qr.riker.replit.dev/src/hooks/use-auth.tsx:24:32)
+    at QueryClientProvider (https://6ccb2a97-9533-42de-84a4-f867550e7fe7-00-w63du7r2u2qr.riker.replit.d…nner/workspace/node_modules/.vite/deps/chunk-5T6ZDHJF.js?v=7dc48a53:2805:3)
+    at Hydrate (https://6ccb2a97-9533-42de-84a4-f867550e7fe7-00-w63du7r2u2qr.riker.replit.d…s/home/runner/workspace/node_modules/.vite/deps/wagmi.js?v=7dc48a53:126:11)
+    at WagmiProvider (https://6ccb2a97-9533-42de-84a4-f867550e7fe7-00-w63du7r2u2qr.riker.replit.d…s/home/runner/workspace/node_modules/.vite/deps/wagmi.js?v=7dc48a53:150:11)
+    at div
+    at App
+
+Consider adding an error boundary to your tree to customize error handling behavior.
+Visit https://reactjs.org/link/error-boundaries to learn more about error boundaries.
+console.error	@	chunk-SH4JFXWK.js?v=7dc48a53:18167
+logCapturedError	@	chunk-J4NESBNT.js?v=7dc48a53:14032
+update.callback	@	chunk-J4NESBNT.js?v=7dc48a53:14052
+callCallback	@	chunk-J4NESBNT.js?v=7dc48a53:11248
+commitUpdateQueue	@	chunk-J4NESBNT.js?v=7dc48a53:11265
+commitLayoutEffectOnFiber	@	chunk-J4NESBNT.js?v=7dc48a53:17093
+commitLayoutMountEffects_complete	@	chunk-J4NESBNT.js?v=7dc48a53:17980
+commitLayoutEffects_begin	@	chunk-J4NESBNT.js?v=7dc48a53:17969
+commitLayoutEffects	@	chunk-J4NESBNT.js?v=7dc48a53:17920
+commitRootImpl	@	chunk-J4NESBNT.js?v=7dc48a53:19353
+commitRoot	@	chunk-J4NESBNT.js?v=7dc48a53:19277
+finishConcurrentRender	@	chunk-J4NESBNT.js?v=7dc48a53:18760
+performConcurrentWorkOnRoot	@	chunk-J4NESBNT.js?v=7dc48a53:18718
+workLoop	@	chunk-J4NESBNT.js?v=7dc48a53:197
+flushWork	@	chunk-J4NESBNT.js?v=7dc48a53:176
+performWorkUntilDeadline	@	chunk-J4NESBNT.js?v=7dc48a53:384
+chunk-J4NESBNT.js?v=7dc48a53:19413 Uncaught TypeError: Cannot read properties of undefined (reading 'replit')
+    at chunk-SH4JFXWK.js?v=7dc48a53:16714:50
+    at Array.reduce (<anonymous>)
+    at applyProps$1 (chunk-SH4JFXWK.js?v=7dc48a53:16714:25)
+    at createInstance (chunk-SH4JFXWK.js?v=7dc48a53:16222:28)
+    at completeWork (chunk-SH4JFXWK.js?v=7dc48a53:8414:34)
+    at completeUnitOfWork (chunk-SH4JFXWK.js?v=7dc48a53:13690:24)
+    at performUnitOfWork (chunk-SH4JFXWK.js?v=7dc48a53:13672:13)
+    at workLoopSync (chunk-SH4JFXWK.js?v=7dc48a53:13604:13)
+    at renderRootSync (chunk-SH4JFXWK.js?v=7dc48a53:13583:15)
+    at recoverFromConcurrentError (chunk-SH4JFXWK.js?v=7dc48a53:13173:28)
+(anonymous)	@	chunk-SH4JFXWK.js?v=7dc48a53:16714
+applyProps$1	@	chunk-SH4JFXWK.js?v=7dc48a53:16714
+createInstance	@	chunk-SH4JFXWK.js?v=7dc48a53:16222
+completeWork	@	chunk-SH4JFXWK.js?v=7dc48a53:8414
+completeUnitOfWork	@	chunk-SH4JFXWK.js?v=7dc48a53:13690
+performUnitOfWork	@	chunk-SH4JFXWK.js?v=7dc48a53:13672
+workLoopSync	@	chunk-SH4JFXWK.js?v=7dc48a53:13604
+renderRootSync	@	chunk-SH4JFXWK.js?v=7dc48a53:13583
+recoverFromConcurrentError	@	chunk-SH4JFXWK.js?v=7dc48a53:13173
+performConcurrentWorkOnRoot	@	chunk-SH4JFXWK.js?v=7dc48a53:13121
+workLoop	@	chunk-SH4JFXWK.js?v=7dc48a53:274
+flushWork	@	chunk-SH4JFXWK.js?v=7dc48a53:253
+performWorkUntilDeadline	@	chunk-SH4JFXWK.js?v=7dc48a53:461
+chunk-JOM4Y5VK.js?v=7dc48a53:17668 THREE.WebGLRenderer: Context Lost.
+﻿

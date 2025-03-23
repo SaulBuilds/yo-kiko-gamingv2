@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { Canvas } from '@react-three/fiber';
-import { OrbitControls, PerspectiveCamera, useHelper } from '@react-three/drei';
+import { OrbitControls } from '@react-three/drei';
 import * as THREE from 'three';
 import { useAuth } from '@/hooks/use-auth';
 import { useMutation } from '@tanstack/react-query';
@@ -24,28 +24,23 @@ interface GameState {
 
 // Game scene setup
 function Scene() {
-  const directionalLightRef = useRef<THREE.DirectionalLight>(null);
-  useHelper(directionalLightRef, THREE.DirectionalLightHelper, 5);
-
   return (
     <>
       {/* Lights */}
       <ambientLight intensity={0.5} />
       <directionalLight
-        ref={directionalLightRef}
         position={[10, 10, 5]}
         intensity={1}
-        castShadow
       />
 
       {/* Environment */}
-      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.5, 0]} receiveShadow>
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.5, 0]}>
         <planeGeometry args={[100, 100]} />
         <meshStandardMaterial color="#4a9" />
       </mesh>
 
       {/* Player character placeholder */}
-      <mesh position={[0, 1, 0]} castShadow>
+      <mesh position={[0, 1, 0]}>
         <boxGeometry args={[1, 2, 1]} />
         <meshStandardMaterial color="brown" />
       </mesh>
@@ -165,8 +160,7 @@ export function TempleRunner({ matchId, isPractice = true, onGameOver }: TempleR
 
       {/* 3D Game Canvas */}
       <Canvas
-        shadows
-        style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%' }}
+        style={{ background: '#87ceeb' }}
         camera={{ position: [0, 5, 10], fov: 75 }}
       >
         <Scene />
