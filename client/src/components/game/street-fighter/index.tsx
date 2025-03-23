@@ -34,6 +34,7 @@ interface CharacterState {
   currentMove?: Move;
   isJumping: boolean;
   isCrouching: boolean;
+  verticalVelocity?: number; // Added for jump physics
 }
 
 // Game state interface
@@ -221,23 +222,36 @@ export function StreetFighter({ matchId, isPractice = true, onGameOver, characte
     scene.onKeyboardObservable.add((kbInfo) => {
       if (gameState.isGameOver) return;
 
+      const STAGE_BOUNDS = {
+        left: -8,
+        right: 8
+      };
+
       switch (kbInfo.type) {
         case 1: // KeyDown
           switch (kbInfo.event.code) {
             case "ArrowLeft":
-              player1.position.x -= character.walkSpeed * 0.05;
+              const newPosLeft = player1.position.x - character.walkSpeed * 0.05;
+              if (newPosLeft > STAGE_BOUNDS.left) {
+                player1.position.x = newPosLeft;
+              }
               break;
             case "ArrowRight":
-              player1.position.x += character.walkSpeed * 0.05;
+              const newPosRight = player1.position.x + character.walkSpeed * 0.05;
+              if (newPosRight < STAGE_BOUNDS.right) {
+                player1.position.x = newPosRight;
+              }
               break;
             case "ArrowUp":
               if (!gameState.player1.isJumping) {
                 setGameState(prev => ({
                   ...prev,
-                  player1: { ...prev.player1, isJumping: true }
+                  player1: { 
+                    ...prev.player1, 
+                    isJumping: true,
+                    verticalVelocity: character.jumpForce * 0.2 
+                  }
                 }));
-                // Start jump animation
-                player1.position.y += character.jumpForce * 0.1;
               }
               break;
             case "ArrowDown":
@@ -246,29 +260,23 @@ export function StreetFighter({ matchId, isPractice = true, onGameOver, characte
                   ...prev,
                   player1: { ...prev.player1, isCrouching: true }
                 }));
-                // Crouch animation
                 player1.scaling.y = 0.7;
               }
               break;
             case "KeyX":
-              // Punch animation
               const rightArm = player1.getChildMeshes().find(mesh => mesh.name === "rightArm");
               if (rightArm) {
                 rightArm.rotation.z = Math.PI / 2;
 
-                // Check for hit
                 const distance = Math.abs(player1.position.x - player2.position.x);
                 if (distance < 1.5 && !gameState.player2.isBlocking) {
-                  // Apply damage
                   setGameState(prev => ({
                     ...prev,
                     player2: {
                       ...prev.player2,
-                      health: Math.max(0, prev.player2.health - 10) // Ensure health doesn't go below 0
+                      health: Math.max(0, prev.player2.health - 10) 
                     }
                   }));
-
-                  // Knockback effect
                   player2.position.x += 0.5;
                 }
 
@@ -278,24 +286,19 @@ export function StreetFighter({ matchId, isPractice = true, onGameOver, characte
               }
               break;
             case "KeyC":
-              // Kick animation
               const rightLeg = player1.getChildMeshes().find(mesh => mesh.name === "rightLeg");
               if (rightLeg) {
                 rightLeg.rotation.z = -Math.PI / 2;
 
-                // Check for hit
                 const distance = Math.abs(player1.position.x - player2.position.x);
                 if (distance < 2 && !gameState.player2.isBlocking) {
-                  // Apply damage
                   setGameState(prev => ({
                     ...prev,
                     player2: {
                       ...prev.player2,
-                      health: Math.max(0, prev.player2.health - 15) // Ensure health doesn't go below 0
+                      health: Math.max(0, prev.player2.health - 15) 
                     }
                   }));
-
-                  // Knockback effect
                   player2.position.x += 0.8;
                 }
 
@@ -313,7 +316,6 @@ export function StreetFighter({ matchId, isPractice = true, onGameOver, characte
                 ...prev,
                 player1: { ...prev.player1, isCrouching: false }
               }));
-              // Reset crouch animation
               player1.scaling.y = 1;
               break;
           }
@@ -324,88 +326,106 @@ export function StreetFighter({ matchId, isPractice = true, onGameOver, characte
     // Game loop
     scene.registerBeforeRender(() => {
       if (!gameState.isGameOver) {
-        // Update game state
         setGameState(prev => ({
           ...prev,
           roundTime: Math.max(0, prev.roundTime - scene.getEngine().getDeltaTime() / 1000)
         }));
 
-        // Handle jumping physics
+        const GRAVITY = 0.015;
+        const GROUND_Y = 1;
+        const STAGE_BOUNDS = {
+          left: -8,
+          right: 8
+        };
+
         if (gameState.player1.isJumping) {
-          if (player1.position.y > 3) {
-            // Start falling
-            player1.position.y -= character.jumpForce * 0.05;
-            if (player1.position.y <= 1) {
-              // Landing
-              player1.position.y = 1;
-              setGameState(prev => ({
-                ...prev,
-                player1: { ...prev.player1, isJumping: false }
-              }));
-            }
+          const newVelocity = (gameState.player1.verticalVelocity || 0) - GRAVITY;
+          player1.position.y += newVelocity;
+
+          if (player1.position.y <= GROUND_Y) {
+            player1.position.y = GROUND_Y;
+            setGameState(prev => ({
+              ...prev,
+              player1: { 
+                ...prev.player1, 
+                isJumping: false,
+                verticalVelocity: 0
+              }
+            }));
           } else {
-            // Rising
-            player1.position.y += character.jumpForce * 0.05;
+            setGameState(prev => ({
+              ...prev,
+              player1: {
+                ...prev.player1,
+                verticalVelocity: newVelocity
+              }
+            }));
           }
         }
 
-        // Simple AI for player 2 in practice mode
         if (isPractice) {
           const distanceToPlayer = player2.position.x - player1.position.x;
+          const AI_AGGRESSION = 0.75; 
+          const AI_REACTION_TIME = 0.02; 
+
           if (Math.abs(distanceToPlayer) > 3) {
-            // Move towards player
-            player2.position.x -= Math.sign(distanceToPlayer) * 0.03;
-          } else if (Math.random() < 0.02) {
-            // Random attack
-            if (Math.random() < 0.5) {
-              // Punch
-              const rightArm = player2.getChildMeshes().find(mesh => mesh.name === "rightArm");
-              if (rightArm) {
-                rightArm.rotation.z = -Math.PI / 2;
+            const moveDirection = Math.sign(distanceToPlayer) * -1;
+            const newPos = player2.position.x + moveDirection * 0.05;
+            if (newPos > STAGE_BOUNDS.left && newPos < STAGE_BOUNDS.right) {
+              player2.position.x = newPos;
+            }
+          } else if (Math.random() < AI_REACTION_TIME) {
+            const action = Math.random();
+            if (action < AI_AGGRESSION) {
+              if (action < AI_AGGRESSION * 0.6) {
+                const rightArm = player2.getChildMeshes().find(mesh => mesh.name === "rightArm");
+                if (rightArm) {
+                  rightArm.rotation.z = -Math.PI / 2;
 
-                // Check for hit
-                if (Math.abs(distanceToPlayer) < 1.5 && !gameState.player1.isBlocking) {
-                  setGameState(prev => ({
-                    ...prev,
-                    player1: {
-                      ...prev.player1,
-                      health: Math.max(0, prev.player1.health - 10) // Ensure health doesn't go below 0
+                  if (Math.abs(distanceToPlayer) < 1.5 && !gameState.player1.isBlocking) {
+                    setGameState(prev => ({
+                      ...prev,
+                      player1: {
+                        ...prev.player1,
+                        health: Math.max(0, prev.player1.health - 10)
+                      }
+                    }));
+                    if (player1.position.x > STAGE_BOUNDS.left) {
+                      player1.position.x -= 0.5;
                     }
-                  }));
-                  player1.position.x -= 0.5;
+                  }
+
+                  setTimeout(() => {
+                    rightArm.rotation.z = 0;
+                  }, 200);
                 }
+              } else {
+                const rightLeg = player2.getChildMeshes().find(mesh => mesh.name === "rightLeg");
+                if (rightLeg) {
+                  rightLeg.rotation.z = Math.PI / 2;
 
-                setTimeout(() => {
-                  rightArm.rotation.z = 0;
-                }, 200);
-              }
-            } else {
-              // Kick
-              const rightLeg = player2.getChildMeshes().find(mesh => mesh.name === "rightLeg");
-              if (rightLeg) {
-                rightLeg.rotation.z = Math.PI / 2;
-
-                // Check for hit
-                if (Math.abs(distanceToPlayer) < 2 && !gameState.player1.isBlocking) {
-                  setGameState(prev => ({
-                    ...prev,
-                    player1: {
-                      ...prev.player1,
-                      health: Math.max(0, prev.player1.health - 15) // Ensure health doesn't go below 0
+                  if (Math.abs(distanceToPlayer) < 2 && !gameState.player1.isBlocking) {
+                    setGameState(prev => ({
+                      ...prev,
+                      player1: {
+                        ...prev.player1,
+                        health: Math.max(0, prev.player1.health - 15)
+                      }
+                    }));
+                    if (player1.position.x > STAGE_BOUNDS.left) {
+                      player1.position.x -= 0.8;
                     }
-                  }));
-                  player1.position.x -= 0.8;
-                }
+                  }
 
-                setTimeout(() => {
-                  rightLeg.rotation.z = 0;
-                }, 200);
+                  setTimeout(() => {
+                    rightLeg.rotation.z = 0;
+                  }, 200);
+                }
               }
             }
           }
         }
 
-        // Check win condition
         if (gameState.roundTime <= 0 || gameState.player1.health <= 0 || gameState.player2.health <= 0) {
           handleGameOver();
         }
@@ -424,7 +444,7 @@ export function StreetFighter({ matchId, isPractice = true, onGameOver, characte
       scene.dispose();
       engine.dispose();
     };
-  }, [character]); // Add character as dependency to reinitialize when character changes
+  }, [character]); 
 
   const handleGameOver = async () => {
     setGameState(prev => ({ ...prev, isGameOver: true }));
@@ -437,7 +457,6 @@ export function StreetFighter({ matchId, isPractice = true, onGameOver, characte
 
   return (
     <div className="w-full h-screen relative bg-black">
-      {/* Game UI Overlay */}
       <div className="absolute top-4 left-4 right-4 z-10 flex justify-between text-white pixel-font">
         <div className="health-bar">
           <div>{character.name}: {gameState.player1.health}%</div>
@@ -448,7 +467,6 @@ export function StreetFighter({ matchId, isPractice = true, onGameOver, characte
         </div>
       </div>
 
-      {/* Controls Guide */}
       <div className="absolute bottom-4 left-4 z-10 text-white pixel-font text-sm">
         <div>Controls:</div>
         <div>← → : Move</div>
@@ -463,7 +481,6 @@ export function StreetFighter({ matchId, isPractice = true, onGameOver, characte
         ))}
       </div>
 
-      {/* Game Over Screen */}
       {gameState.isGameOver && (
         <div className="absolute inset-0 flex items-center justify-center bg-black/50 z-20">
           <div className="bg-background p-6 rounded-lg text-center space-y-4">
@@ -473,7 +490,6 @@ export function StreetFighter({ matchId, isPractice = true, onGameOver, characte
         </div>
       )}
 
-      {/* Game Canvas */}
       <canvas
         ref={canvasRef}
         className="w-full h-full"
