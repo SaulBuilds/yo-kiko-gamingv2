@@ -43,6 +43,7 @@ interface TrackSegment {
   obstacles: Mesh[];
   position: number;
   direction: 'forward' | 'right' | 'left';
+  cornerPiece?: Mesh; // Added for turn connections
 }
 
 const LANE_WIDTH = 2;
@@ -52,7 +53,7 @@ const COIN_SPACING = 5;
 const NUM_SEGMENTS = 4;
 const INITIAL_SPEED = 15;
 const SPEED_INCREMENT = 1;
-const SPEED_INTERVAL = 200; // Increase speed more aggressively
+const SPEED_INTERVAL = 200;
 const TURN_TIMEOUT = 300;
 const JUMP_HEIGHT = 3;
 const JUMP_DURATION = 15;
@@ -115,33 +116,61 @@ export function TempleRunner({ matchId, isPractice = true, onGameOver }: TempleR
     return obstacles;
   };
 
-  // Create a track segment
-  const createTrackSegment = (scene: Scene, position: number, direction: 'forward' | 'right' | 'left') => {
-    // Create track base with slight overlap to prevent gaps
-    const segment = MeshBuilder.CreateBox("track", {
-      width: direction === 'forward' ? LANE_WIDTH * 3 : SEGMENT_LENGTH + 1, // Added overlap
+  // Create a corner piece to connect segments during turns
+  const createCornerPiece = (scene: Scene, position: Vector3, direction: 'right' | 'left') => {
+    const corner = MeshBuilder.CreateBox("corner", {
+      width: LANE_WIDTH * 3,
       height: 0.5,
-      depth: direction === 'forward' ? SEGMENT_LENGTH + 1 : LANE_WIDTH * 3 // Added overlap
+      depth: LANE_WIDTH * 3
+    }, scene);
+
+    const material = new StandardMaterial("cornerMat", scene);
+    material.diffuseColor = new Color3(0.4, 0.4, 0.4);
+    corner.material = material;
+    corner.position = position.add(new Vector3(0, -0.25, 0));
+
+    return corner;
+  };
+
+  // Create a track segment with improved connections
+  const createTrackSegment = (scene: Scene, position: number, direction: 'forward' | 'right' | 'left') => {
+    // Create track base with extended overlap
+    const segment = MeshBuilder.CreateBox("track", {
+      width: direction === 'forward' ? LANE_WIDTH * 3 : SEGMENT_LENGTH + 2,
+      height: 0.5,
+      depth: direction === 'forward' ? SEGMENT_LENGTH + 2 : LANE_WIDTH * 3
     }, scene);
 
     const material = new StandardMaterial("trackMat", scene);
     material.diffuseColor = new Color3(0.4, 0.4, 0.4);
     segment.material = material;
 
-    // Position with adjusted overlap
+    // Position segments with precise alignment
+    let cornerPiece: Mesh | undefined;
     if (direction === 'forward') {
-      segment.position = new Vector3(0, -0.25, position + 0.5);
+      segment.position = new Vector3(0, -0.25, position + 1);
     } else if (direction === 'right') {
-      segment.position = new Vector3(position + 0.5, -0.25, 0);
+      segment.position = new Vector3(position + 1, -0.25, 0);
+      // Add corner piece for right turn
+      cornerPiece = createCornerPiece(
+        scene,
+        new Vector3(position - LANE_WIDTH * 1.5, 0, 0),
+        'right'
+      );
     } else {
-      segment.position = new Vector3(-(position + 0.5), -0.25, 0);
+      segment.position = new Vector3(-(position + 1), -0.25, 0);
+      // Add corner piece for left turn
+      cornerPiece = createCornerPiece(
+        scene,
+        new Vector3(-(position - LANE_WIDTH * 1.5), 0, 0),
+        'left'
+      );
     }
 
-    // Create coins and obstacles
-    const coins: Mesh[] = [];
+    // Create coins and obstacles as before...
     const obstacles = createObstacles(scene, position, direction);
+    const coins: Mesh[] = [];
 
-    // Add coins with adjusted positions
     for (let z = 5; z < SEGMENT_LENGTH - 5; z += COIN_SPACING) {
       if (Math.random() < 0.3) {
         const lane = Math.floor(Math.random() * 3) - 1;
@@ -166,7 +195,17 @@ export function TempleRunner({ matchId, isPractice = true, onGameOver }: TempleR
       }
     }
 
-    return { mesh: segment, coins, obstacles, position, direction };
+    return { mesh: segment, coins, obstacles, position, direction, cornerPiece };
+  };
+
+  // Cleanup function for track segments
+  const cleanupSegment = (segment: TrackSegment) => {
+    segment.mesh.dispose();
+    segment.coins.forEach(coin => coin.dispose());
+    segment.obstacles.forEach(obstacle => obstacle.dispose());
+    if (segment.cornerPiece) {
+      segment.cornerPiece.dispose();
+    }
   };
 
   // Initialize Babylon.js scene
@@ -428,12 +467,8 @@ export function TempleRunner({ matchId, isPractice = true, onGameOver }: TempleR
           );
 
           if (distance > SEGMENT_LENGTH * 1.5) {
-            // Dispose old segment
-            segment.mesh.dispose();
-            segment.coins.forEach(coin => coin.dispose());
-            segment.obstacles.forEach(obstacle => obstacle.dispose());
+            cleanupSegment(segment);
 
-            // Create new segment
             const newPosition = segment.position + (NUM_SEGMENTS * SEGMENT_LENGTH);
             const newSegment = createTrackSegment(scene, newPosition, gameState.direction);
             trackSegmentsRef.current[index] = newSegment;
