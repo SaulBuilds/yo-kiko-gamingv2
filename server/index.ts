@@ -2,6 +2,19 @@ import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
 
+// Validate required environment variables
+const requiredEnvVars = [
+  'VITE_WALLETCONNECT_PROJECT_ID',
+  'SESSION_SECRET',
+  'DATABASE_URL'
+];
+
+requiredEnvVars.forEach(varName => {
+  if (!process.env[varName]) {
+    console.warn(`Warning: Missing environment variable ${varName}`);
+  }
+});
+
 const app = express();
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
@@ -57,7 +70,7 @@ app.use((req, res, next) => {
   }
 
   // Always use PORT environment variable in production
-  const port = process.env.PORT || 5000;
+  const port = parseInt(process.env.PORT || "5000", 10);
   server.listen(port, "0.0.0.0", () => {
     log(`serving on port ${port}`);
   });
