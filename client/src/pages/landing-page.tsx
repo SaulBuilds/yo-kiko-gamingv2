@@ -9,7 +9,7 @@ import {
   Coins,
   Github,
   Twitter,
-  Discord,
+  MessagesSquare as Discord,
   Mail
 } from "lucide-react";
 import { useState } from "react";
@@ -22,7 +22,6 @@ export default function LandingPage() {
 
   const handleBetaSignup = (e: React.FormEvent) => {
     e.preventDefault();
-    // TODO: Implement beta signup API
     toast({
       title: "Thanks for signing up!",
       description: "We'll notify you when the beta is ready.",
