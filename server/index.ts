@@ -71,7 +71,8 @@ app.use((req, res, next) => {
 
   // Always use PORT environment variable in production
   const port = parseInt(process.env.PORT || "5000", 10);
-  server.listen(port, "0.0.0.0", () => {
-    log(`serving on port ${port}`);
+  const host = process.env.NODE_ENV === 'production' ? '0.0.0.0' : 'localhost';
+  server.listen(port, host, () => {
+    log(`serving on ${host}:${port} in ${process.env.NODE_ENV || 'development'} mode`);
   });
 })();
