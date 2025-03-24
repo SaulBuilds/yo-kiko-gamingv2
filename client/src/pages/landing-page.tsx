@@ -64,7 +64,7 @@ export default function LandingPage() {
                 size="lg"
                 variant="outline"
                 className="pixel-font text-lg"
-                onClick={() => setLocation("/games")}
+                onClick={() => setLocation("/auth")}
               >
                 Explore Games
               </Button>
@@ -143,19 +143,19 @@ export default function LandingPage() {
             <div>
               <h4 className="font-bold mb-4">Platform</h4>
               <ul className="space-y-2 text-sm text-muted-foreground">
-                <li>Games</li>
-                <li>Developer Portal</li>
-                <li>Documentation</li>
-                <li>API Reference</li>
+                <li onClick={() => setLocation("/auth")}>Games</li>
+                <li onClick={() => setLocation("/auth")}>Developer Portal</li>
+                <li onClick={() => setLocation("/auth")}>Documentation</li>
+                <li onClick={() => setLocation("/auth")}>API Reference</li>
               </ul>
             </div>
             <div>
               <h4 className="font-bold mb-4">Company</h4>
               <ul className="space-y-2 text-sm text-muted-foreground">
-                <li>About</li>
-                <li>Careers</li>
-                <li>Press Kit</li>
-                <li>Contact</li>
+                <li onClick={() => setLocation("/auth")}>About</li>
+                <li onClick={() => setLocation("/auth")}>Careers</li>
+                <li onClick={() => setLocation("/auth")}>Press Kit</li>
+                <li onClick={() => setLocation("/auth")}>Contact</li>
               </ul>
             </div>
             <div>

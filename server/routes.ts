@@ -178,7 +178,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // WebSocket handling
   const wss = new WebSocketServer({
     server: httpServer,
-    path: '/game-ws'
+    path: '/ws'  // Changed from '/game-ws' to match client
   });
 
   const gameStates = new Map<number, Map<number, GameState>>();
