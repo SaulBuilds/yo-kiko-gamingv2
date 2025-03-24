@@ -34,18 +34,18 @@ function Router() {
 
 function App() {
   return (
-    <div className="min-h-screen bg-background">
+    <ErrorBoundary>
       <AbstractWalletProvider chain={abstractTestnet}>
         <QueryClientProvider client={queryClient}>
           <AuthProvider>
-            <ErrorBoundary>
+            <div className="min-h-screen bg-background">
               <Router />
               <Toaster />
-            </ErrorBoundary>
+            </div>
           </AuthProvider>
         </QueryClientProvider>
       </AbstractWalletProvider>
-    </div>
+    </ErrorBoundary>
   );
 }
 
