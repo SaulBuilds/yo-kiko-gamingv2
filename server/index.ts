@@ -11,7 +11,8 @@ const requiredEnvVars = [
 
 requiredEnvVars.forEach(varName => {
   if (!process.env[varName]) {
-    console.warn(`Warning: Missing environment variable ${varName}`);
+    console.error(`Error: Missing required environment variable ${varName}`);
+    process.exit(1);
   }
 });
 
@@ -71,7 +72,7 @@ app.use((req, res, next) => {
 
   // Always use PORT environment variable in production
   const port = parseInt(process.env.PORT || "5000", 10);
-  const host = process.env.NODE_ENV === 'production' ? '0.0.0.0' : 'localhost';
+  const host = '0.0.0.0';
   server.listen(port, host, () => {
     log(`serving on ${host}:${port} in ${process.env.NODE_ENV || 'development'} mode`);
   });
