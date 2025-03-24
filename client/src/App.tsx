@@ -5,6 +5,7 @@ import { AbstractWalletProvider } from "@abstract-foundation/agw-react";
 import { abstractTestnet } from "viem/chains";
 import { Toaster } from "@/components/ui/toaster";
 import { AuthProvider } from "@/hooks/use-auth";
+import { ErrorBoundary } from "@/components/error-boundary";
 import NotFound from "@/pages/not-found";
 import HomePage from "@/pages/home-page";
 import AuthPage from "@/pages/auth-page";
@@ -12,18 +13,20 @@ import GamePage from "@/pages/game-page";
 import NewGamePage from "@/pages/new-game-page";
 import TempleRunnerPage from "@/pages/temple-runner-page";
 import StreetFighterPage from "@/pages/street-fighter-page";
+import LandingPage from "@/pages/landing-page";
 import { ProtectedRoute } from "./lib/protected-route";
 
 function Router() {
   return (
     <Switch>
-      <ProtectedRoute path="/" component={HomePage} />
+      <Route path="/" component={LandingPage} />
       <Route path="/auth" component={AuthPage} />
-      <ProtectedRoute path="/game/new" component={NewGamePage} />
-      <ProtectedRoute path="/game/:id" component={GamePage} />
-      <ProtectedRoute path="/temple-runner" component={TempleRunnerPage} />
-      <ProtectedRoute path="/street-fighter/practice" component={StreetFighterPage} />
-      <ProtectedRoute path="/street-fighter/:id" component={StreetFighterPage} />
+      <ProtectedRoute path="/app" component={HomePage} />
+      <ProtectedRoute path="/app/game/new" component={NewGamePage} />
+      <ProtectedRoute path="/app/game/:id" component={GamePage} />
+      <ProtectedRoute path="/app/temple-runner" component={TempleRunnerPage} />
+      <ProtectedRoute path="/app/street-fighter/practice" component={StreetFighterPage} />
+      <ProtectedRoute path="/app/street-fighter/:id" component={StreetFighterPage} />
       <Route component={NotFound} />
     </Switch>
   );
@@ -32,13 +35,13 @@ function Router() {
 function App() {
   return (
     <div className="min-h-screen bg-background">
-      <AbstractWalletProvider 
-        chain={abstractTestnet}
-      >
+      <AbstractWalletProvider chain={abstractTestnet}>
         <QueryClientProvider client={queryClient}>
           <AuthProvider>
-            <Router />
-            <Toaster />
+            <ErrorBoundary>
+              <Router />
+              <Toaster />
+            </ErrorBoundary>
           </AuthProvider>
         </QueryClientProvider>
       </AbstractWalletProvider>

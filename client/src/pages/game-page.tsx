@@ -17,6 +17,7 @@ export default function GamePage() {
   const { user } = useAuth();
   const { toast } = useToast();
   const [socket, setSocket] = useState<WebSocket | null>(null);
+  const [wsError, setWsError] = useState<string | null>(null);
   const [gameState, setGameState] = useState<GameState>({
     board: Array(20).fill(Array(10).fill(0)),
     score: 0,
@@ -29,6 +30,64 @@ export default function GamePage() {
     queryKey: ["/api/matches", params?.id],
     enabled: !!params?.id,
   });
+
+  // WebSocket connection
+  useEffect(() => {
+    if (!user || !params?.id || match?.isPractice) return;
+
+    try {
+      const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
+      const wsUrl = `${protocol}//${window.location.host}/ws`;
+      console.log("Connecting to WebSocket:", wsUrl);
+
+      const ws = new WebSocket(wsUrl);
+
+      ws.onopen = () => {
+        console.log("WebSocket connection established");
+        ws.send(JSON.stringify({
+          type: "join",
+          matchId: parseInt(params.id!),
+          userId: user.id
+        }));
+      };
+
+      ws.onmessage = (event) => {
+        try {
+          const data = JSON.parse(event.data);
+          if (data.type === "gameState" && data.states) {
+            const opponentData = data.states.find(([id]: [number, GameState]) => id !== user.id);
+            if (opponentData) {
+              setOpponentState(opponentData[1]);
+            }
+          }
+        } catch (error) {
+          console.error("Error processing WebSocket message:", error);
+        }
+      };
+
+      ws.onerror = (error) => {
+        console.error("WebSocket error:", error);
+        setWsError("Failed to connect to game server");
+        toast({
+          title: "Connection Error",
+          description: "Failed to connect to game server. You can still play in practice mode.",
+          variant: "destructive",
+        });
+      };
+
+      ws.onclose = () => {
+        console.log("WebSocket connection closed");
+      };
+
+      setSocket(ws);
+      return () => {
+        ws.close();
+      };
+    } catch (error) {
+      console.error("Error setting up WebSocket:", error);
+      setWsError("Failed to initialize game connection");
+    }
+  }, [user, params?.id, match?.isPractice]);
 
   const acceptMatchMutation = useMutation({
     mutationFn: async () => {
@@ -112,45 +171,6 @@ export default function GamePage() {
     },
   });
 
-  // WebSocket connection
-  useEffect(() => {
-    if (!user || !params?.id) return;
-
-    const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
-    const wsUrl = `${protocol}//${window.location.host}/game-ws`;
-    console.log("Connecting to WebSocket:", wsUrl);
-
-    const ws = new WebSocket(wsUrl);
-
-    ws.onopen = () => {
-      console.log("WebSocket connection established");
-      ws.send(JSON.stringify({
-        type: "join",
-        matchId: parseInt(params.id!),
-        userId: user.id
-      }));
-    };
-
-    ws.onmessage = (event) => {
-      const data = JSON.parse(event.data);
-      if (data.type === "gameState" && data.states) {
-        const opponentData = data.states.find(([id]: [number, GameState]) => id !== user.id);
-        if (opponentData) {
-          setOpponentState(opponentData[1]);
-        }
-      }
-    };
-
-    ws.onclose = () => {
-      console.log("WebSocket connection closed");
-    };
-
-    setSocket(ws);
-    return () => {
-      ws.close();
-    };
-  }, [user, params?.id]);
-
   const handleGameStateUpdate = (newState: GameState) => {
     setGameState(newState);
     if (socket?.readyState === WebSocket.OPEN && params?.id) {
@@ -172,7 +192,7 @@ export default function GamePage() {
 
       if (updatedMatch) {
         // Calculate XP gain based on match type
-        const xpGain = match?.isPractice 
+        const xpGain = match?.isPractice
           ? Math.floor(gameState.score / 20) // Less XP for practice games
           : Math.floor(gameState.score / 10); // More XP for wager games
 
@@ -241,7 +261,7 @@ export default function GamePage() {
                 <p>Bet Amount: {match.betAmount} {match.betType === 'xp' ? 'XP' : 'ETH'}</p>
                 <p>Created by: Player #{match.player1Id}</p>
               </div>
-              <Button 
+              <Button
                 className="w-full pixel-font"
                 onClick={() => acceptMatchMutation.mutate()}
                 disabled={acceptMatchMutation.isPending}
@@ -296,6 +316,11 @@ export default function GamePage() {
     <div className="min-h-screen bg-background">
       <Navbar />
       <main className="container mx-auto px-4 py-4">
+        {wsError && !match?.isPractice && (
+          <div className="mb-4 p-4 bg-destructive/10 text-destructive rounded-lg">
+            {wsError}
+          </div>
+        )}
         <div className="flex justify-center">
           <Card className="w-full max-w-lg p-4">
             <CardContent className="p-0">
