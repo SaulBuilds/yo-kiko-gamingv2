@@ -4,7 +4,6 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useAuth } from '@/hooks/use-auth';
-import { useToast } from '@/hooks/use-toast';
 
 interface ChatProps {
   matchId?: string;
@@ -19,7 +18,6 @@ interface ChatMessage {
 
 export function Chat({ matchId }: ChatProps) {
   const { user } = useAuth();
-  const { toast } = useToast();
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [inputMessage, setInputMessage] = useState('');
   const [socket, setSocket] = useState<WebSocket | null>(null);
@@ -28,68 +26,33 @@ export function Chat({ matchId }: ChatProps) {
   useEffect(() => {
     if (!user || !matchId) return;
 
-    let ws: WebSocket | null = null;
-    const connectWebSocket = () => {
-      const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-      const wsUrl = `${protocol}//${window.location.host}/ws`;
+    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    const wsUrl = `${protocol}//${window.location.host}/game-ws`;
+    const ws = new WebSocket(wsUrl);
 
-      try {
-        ws = new WebSocket(wsUrl);
+    ws.onopen = () => {
+      ws.send(JSON.stringify({
+        type: 'chat_join',
+        matchId,
+        userId: user.id
+      }));
+    };
 
-        ws.onopen = () => {
-          console.log('Chat WebSocket Connected');
-          ws?.send(JSON.stringify({
-            type: 'chat_join',
-            matchId,
-            userId: user.id
-          }));
-        };
-
-        ws.onmessage = (event) => {
-          try {
-            const data = JSON.parse(event.data);
-            if (data.type === 'chat_message') {
-              setMessages(prev => [...prev, {
-                id: Date.now(),
-                username: data.username,
-                message: data.message,
-                timestamp: new Date()
-              }]);
-            }
-          } catch (error) {
-            console.error('Error parsing message:', error);
-          }
-        };
-
-        ws.onerror = (error) => {
-          console.error('WebSocket error:', error);
-          toast({
-            title: "Chat Connection Error",
-            description: "Unable to connect to chat. Please try again later.",
-            variant: "destructive"
-          });
-        };
-
-        ws.onclose = () => {
-          console.log('Chat WebSocket Closed');
-          setTimeout(connectWebSocket, 5000); // Reconnect after 5 seconds
-        };
-
-        setSocket(ws);
-      } catch (error) {
-        console.error('WebSocket connection error:', error);
+    ws.onmessage = (event) => {
+      const data = JSON.parse(event.data);
+      if (data.type === 'chat_message') {
+        setMessages(prev => [...prev, {
+          id: Date.now(),
+          username: data.username,
+          message: data.message,
+          timestamp: new Date()
+        }]);
       }
     };
 
-    connectWebSocket();
-
-    return () => {
-      if (ws) {
-        ws.close();
-        setSocket(null);
-      }
-    };
-  }, [user, matchId, toast]);
+    setSocket(ws);
+    return () => ws.close();
+  }, [user, matchId]);
 
   useEffect(() => {
     if (scrollAreaRef.current) {
@@ -100,24 +63,15 @@ export function Chat({ matchId }: ChatProps) {
   const sendMessage = () => {
     if (!inputMessage.trim() || !socket || !user) return;
 
-    try {
-      socket.send(JSON.stringify({
-        type: 'chat_message',
-        matchId,
-        userId: user.id,
-        username: user.username,
-        message: inputMessage
-      }));
+    socket.send(JSON.stringify({
+      type: 'chat_message',
+      matchId,
+      userId: user.id,
+      username: user.username,
+      message: inputMessage
+    }));
 
-      setInputMessage('');
-    } catch (error) {
-      console.error('Error sending message:', error);
-      toast({
-        title: "Error",
-        description: "Failed to send message. Please try again.",
-        variant: "destructive"
-      });
-    }
+    setInputMessage('');
   };
 
   return (
