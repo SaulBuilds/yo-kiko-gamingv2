@@ -14,8 +14,8 @@ export class InputHandler {
     'ArrowDown': 'down',
     'ArrowLeft': 'left',
     'ArrowRight': 'right',
-    'KeyX': 'punch',    // X key for punch
-    'KeyC': 'kick',     // C key for kick
+    'KeyA': 'punch',    // A key for punch
+    'KeyS': 'kick',     // S key for kick
     'KeyD': 'special',  // D key for special
   };
 
@@ -28,10 +28,6 @@ export class InputHandler {
     kick: false,
     special: false,
   };
-
-  private inputBuffer: string[] = [];
-  private lastInputTime: number = 0;
-  private readonly INPUT_BUFFER_TIMEOUT = 500; // Time window for combos in milliseconds
 
   constructor() {
     this.setupEventListeners();
@@ -46,7 +42,6 @@ export class InputHandler {
     const input = this.keyMap[event.code];
     if (input) {
       this.inputState[input] = true;
-      this.addToInputBuffer(input);
     }
   }
 
@@ -57,35 +52,8 @@ export class InputHandler {
     }
   }
 
-  private addToInputBuffer(input: keyof InputMap) {
-    const currentTime = Date.now();
-
-    // Clear buffer if too much time has passed
-    if (currentTime - this.lastInputTime > this.INPUT_BUFFER_TIMEOUT) {
-      this.inputBuffer = [];
-    }
-
-    this.inputBuffer.push(input);
-    this.lastInputTime = currentTime;
-
-    // Keep only last 10 inputs
-    if (this.inputBuffer.length > 10) {
-      this.inputBuffer.shift();
-    }
-  }
-
-  public checkForSpecialMove(moveInputs: string[]): boolean {
-    const bufferString = this.inputBuffer.join(',');
-    const moveString = moveInputs.join(',');
-    return bufferString.includes(moveString);
-  }
-
   public getInputState(): InputMap {
     return { ...this.inputState };
-  }
-
-  public getInputBuffer(): string[] {
-    return [...this.inputBuffer];
   }
 
   public cleanup() {
