@@ -6,8 +6,9 @@ import { abstractTestnet } from "viem/chains";
 import { Toaster } from "@/components/ui/toaster";
 import { AuthProvider } from "@/hooks/use-auth";
 import NotFound from "@/pages/not-found";
-import HomePage from "@/pages/home-page";
+import SplashPage from "@/pages/splash-page";
 import AuthPage from "@/pages/auth-page";
+import DashboardPage from "@/pages/dashboard-page";
 import GamePage from "@/pages/game-page";
 import NewGamePage from "@/pages/new-game-page";
 import TempleRunnerPage from "@/pages/temple-runner-page";
@@ -18,8 +19,9 @@ import { ProtectedRoute } from "./lib/protected-route";
 function Router() {
   return (
     <Switch>
-      <ProtectedRoute path="/" component={HomePage} />
+      <Route path="/" component={SplashPage} />
       <Route path="/auth" component={AuthPage} />
+      <ProtectedRoute path="/dashboard" component={DashboardPage} />
       <ProtectedRoute path="/game/new" component={NewGamePage} />
       <ProtectedRoute path="/game/:id" component={GamePage} />
       <ProtectedRoute path="/temple-runner" component={TempleRunnerPage} />
