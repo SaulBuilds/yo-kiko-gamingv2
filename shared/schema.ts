@@ -32,6 +32,23 @@ export const gameMatches = pgTable("game_matches", {
   expiresAt: timestamp("expires_at")
 });
 
+// New creator applications table
+export const creatorApplications = pgTable("creator_applications", {
+  id: serial("id").primaryKey(),
+  name: text("name").notNull(),
+  email: text("email").notNull(),
+  walletAddress: text("wallet_address").notNull(),
+  experienceLevel: text("experience_level").notNull(), // 'beginner', 'intermediate', 'advanced'
+  gameDevBackground: text("game_dev_background").notNull(),
+  projectProposal: text("project_proposal").notNull(),
+  portfolioLinks: text("portfolio_links"),
+  preferredTechnologies: text("preferred_technologies"),
+  status: text("status").notNull().default("pending"), // 'pending', 'approved', 'rejected'
+  submittedAt: timestamp("submitted_at").defaultNow(),
+  updatedAt: timestamp("updated_at"),
+  userId: integer("user_id").references(() => users.id),
+});
+
 export const insertUserSchema = createInsertSchema(users).pick({
   walletAddress: true,
   username: true,
@@ -54,7 +71,24 @@ export const insertGameMatchSchema = createInsertSchema(gameMatches).pick({
   betType: true
 });
 
+// Create schema for creator applications
+export const insertCreatorApplicationSchema = createInsertSchema(creatorApplications).pick({
+  name: true,
+  email: true,
+  walletAddress: true,
+  experienceLevel: true,
+  gameDevBackground: true,
+  projectProposal: true,
+  portfolioLinks: true,
+  preferredTechnologies: true,
+}).extend({
+  email: z.string().email("Invalid email address"),
+  experienceLevel: z.enum(["beginner", "intermediate", "advanced"]),
+});
+
 export type InsertUser = z.infer<typeof insertUserSchema>;
 export type User = typeof users.$inferSelect;
 export type GameMatch = typeof gameMatches.$inferSelect;
 export type InsertGameMatch = z.infer<typeof insertGameMatchSchema>;
+export type CreatorApplication = typeof creatorApplications.$inferSelect;
+export type InsertCreatorApplication = z.infer<typeof insertCreatorApplicationSchema>;
