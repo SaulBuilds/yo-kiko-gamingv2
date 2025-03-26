@@ -118,42 +118,12 @@ function createCharacterMesh(scene: Scene, position: Vector3, color: Color3) {
   return character;
 }
 
-// Assuming InputHandler class is defined elsewhere
-class InputHandler {
-  private pressedKeys: { [key: string]: boolean } = {};
-
-  constructor() {
-    window.addEventListener('keydown', this.handleKeyDown);
-    window.addEventListener('keyup', this.handleKeyUp);
-  }
-
-  handleKeyDown = (event: KeyboardEvent) => {
-    this.pressedKeys[event.code] = true;
-  };
-
-  handleKeyUp = (event: KeyboardEvent) => {
-    this.pressedKeys[event.code] = false;
-  };
-
-
-  checkForSpecialMove(moveInput: string[]): boolean {
-    return moveInput.every(key => this.pressedKeys[key]);
-  }
-
-  cleanup() {
-    window.removeEventListener('keydown', this.handleKeyDown);
-    window.removeEventListener('keyup', this.handleKeyUp);
-  }
-}
-
-
 export function StreetFighter({ matchId, isPractice = true, onGameOver, character }: StreetFighterProps) {
   const { user } = useAuth();
   const { toast } = useToast();
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const engineRef = useRef<Engine | null>(null);
   const sceneRef = useRef<Scene | null>(null);
-  const inputHandler = useRef(new InputHandler());
 
   const [gameState, setGameState] = useState<GameState>({
     player1: {
@@ -259,40 +229,6 @@ export function StreetFighter({ matchId, isPractice = true, onGameOver, characte
 
       switch (kbInfo.type) {
         case 1: // KeyDown
-          // Check for special moves first
-          character.specialMoves.forEach(move => {
-            if (inputHandler.current.checkForSpecialMove(move.input)) {
-              // Execute special move
-              setGameState(prev => ({
-                ...prev,
-                player1: {
-                  ...prev.player1,
-                  currentMove: {
-                    name: move.name,
-                    damage: move.damage,
-                    frames: 10,
-                    input: move.input,
-                    isSpecial: true
-                  }
-                }
-              }));
-
-              // Apply damage if in range
-              const distance = Math.abs(player1.position.x - player2.position.x);
-              if (distance < 3 && !gameState.player2.isBlocking) {
-                setGameState(prev => ({
-                  ...prev,
-                  player2: {
-                    ...prev.player2,
-                    health: Math.max(0, prev.player2.health - move.damage)
-                  }
-                }));
-                player2.position.x += 1.2; // Bigger knockback for special moves
-              }
-            }
-          });
-
-          // Regular moves handling
           switch (kbInfo.event.code) {
             case "ArrowLeft":
               const newPosLeft = player1.position.x - character.walkSpeed * 0.05;
@@ -388,13 +324,6 @@ export function StreetFighter({ matchId, isPractice = true, onGameOver, characte
     });
 
     // Game loop
-    const GRAVITY = 0.8;
-    const GROUND_Y = 1;
-    const STAGE_BOUNDS = {
-      left: -8,
-      right: 8
-    };
-
     scene.registerBeforeRender(() => {
       if (!gameState.isGameOver) {
         setGameState(prev => ({
@@ -402,15 +331,15 @@ export function StreetFighter({ matchId, isPractice = true, onGameOver, characte
           roundTime: Math.max(0, prev.roundTime - scene.getEngine().getDeltaTime() / 1000)
         }));
 
-        // Enforce screen boundaries for both players
-        if (player1.position.x < STAGE_BOUNDS.left) player1.position.x = STAGE_BOUNDS.left;
-        if (player1.position.x > STAGE_BOUNDS.right) player1.position.x = STAGE_BOUNDS.right;
-        if (player2.position.x < STAGE_BOUNDS.left) player2.position.x = STAGE_BOUNDS.left;
-        if (player2.position.x > STAGE_BOUNDS.right) player2.position.x = STAGE_BOUNDS.right;
+        const GRAVITY = 0.015;
+        const GROUND_Y = 1;
+        const STAGE_BOUNDS = {
+          left: -8,
+          right: 8
+        };
 
-        // Handle jumping physics
         if (gameState.player1.isJumping) {
-          const newVelocity = (gameState.player1.verticalVelocity || 0) - GRAVITY * scene.getEngine().getDeltaTime();
+          const newVelocity = (gameState.player1.verticalVelocity || 0) - GRAVITY;
           player1.position.y += newVelocity;
 
           if (player1.position.y <= GROUND_Y) {
@@ -434,16 +363,14 @@ export function StreetFighter({ matchId, isPractice = true, onGameOver, characte
           }
         }
 
-        // AI Opponent behavior
         if (isPractice) {
           const distanceToPlayer = player2.position.x - player1.position.x;
           const AI_AGGRESSION = 0.75; 
           const AI_REACTION_TIME = 0.02; 
 
           if (Math.abs(distanceToPlayer) > 3) {
-            // Move towards player with proper speed
             const moveDirection = Math.sign(distanceToPlayer) * -1;
-            const newPos = player2.position.x + moveDirection * character.walkSpeed * 0.03;
+            const newPos = player2.position.x + moveDirection * 0.05;
             if (newPos > STAGE_BOUNDS.left && newPos < STAGE_BOUNDS.right) {
               player2.position.x = newPos;
             }
@@ -451,7 +378,6 @@ export function StreetFighter({ matchId, isPractice = true, onGameOver, characte
             const action = Math.random();
             if (action < AI_AGGRESSION) {
               if (action < AI_AGGRESSION * 0.6) {
-                // Punch
                 const rightArm = player2.getChildMeshes().find(mesh => mesh.name === "rightArm");
                 if (rightArm) {
                   rightArm.rotation.z = -Math.PI / 2;
@@ -474,7 +400,6 @@ export function StreetFighter({ matchId, isPractice = true, onGameOver, characte
                   }, 200);
                 }
               } else {
-                // Kick
                 const rightLeg = player2.getChildMeshes().find(mesh => mesh.name === "rightLeg");
                 if (rightLeg) {
                   rightLeg.rotation.z = Math.PI / 2;
@@ -516,7 +441,6 @@ export function StreetFighter({ matchId, isPractice = true, onGameOver, characte
     });
 
     return () => {
-      inputHandler.current.cleanup();
       scene.dispose();
       engine.dispose();
     };
