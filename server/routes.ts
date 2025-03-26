@@ -92,6 +92,64 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Add after user routes and before matches routes
+  app.post("/api/creator-applications", async (req, res) => {
+    try {
+      if (!req.session?.userId) {
+        return res.status(401).json({ error: "Not authenticated" });
+      }
+
+      const creatorApp = await storage.createCreatorApplication({
+        ...req.body,
+        userId: req.session.userId
+      });
+
+      res.status(201).json(creatorApp);
+    } catch (error) {
+      console.error("Error creating creator application:", error);
+      res.status(500).json({ error: "Failed to submit application" });
+    }
+  });
+
+  // Add these routes before setting up WebSocket
+  app.get("/api/creator-applications/:id", async (req, res) => {
+    try {
+      if (!req.session?.userId) {
+        return res.status(401).json({ error: "Not authenticated" });
+      }
+
+      const application = await storage.getCreatorApplication(parseInt(req.params.id));
+      if (!application) {
+        return res.status(404).json({ error: "Application not found" });
+      }
+
+      // Only allow users to view their own applications
+      if (application.userId !== req.session.userId) {
+        return res.status(403).json({ error: "Unauthorized" });
+      }
+
+      res.json(application);
+    } catch (error) {
+      console.error("Error fetching creator application:", error);
+      res.status(500).json({ error: "Failed to fetch application" });
+    }
+  });
+
+  app.get("/api/creator-applications", async (req, res) => {
+    try {
+      if (!req.session?.userId) {
+        return res.status(401).json({ error: "Not authenticated" });
+      }
+
+      const applications = await storage.getCreatorApplicationsByUser(req.session.userId);
+      res.json(applications);
+    } catch (error) {
+      console.error("Error fetching creator applications:", error);
+      res.status(500).json({ error: "Failed to fetch applications" });
+    }
+  });
+
+
   // Game match routes
   app.get("/api/matches", async (req, res) => {
     if (!req.session?.userId) return res.status(401).json({ error: "Not authenticated" });
