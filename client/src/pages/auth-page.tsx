@@ -21,7 +21,7 @@ export default function AuthPage() {
   });
 
   if (user && !showProfile) {
-    setLocation("/app");
+    setLocation("/");
     return null;
   }
 
@@ -55,7 +55,7 @@ export default function AuthPage() {
                   updateProfileMutation.mutate(data, {
                     onSuccess: () => {
                       setShowProfile(false);
-                      setLocation("/app");
+                      setLocation("/");
                     },
                   });
                 })}
@@ -86,7 +86,7 @@ export default function AuthPage() {
                     className="flex-1"
                     onClick={() => {
                       setShowProfile(false);
-                      setLocation("/app");
+                      setLocation("/");
                     }}
                   >
                     Skip

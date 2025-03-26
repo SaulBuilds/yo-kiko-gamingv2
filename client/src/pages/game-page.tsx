@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
-import { useRoute, useLocation } from "wouter";
+import { useRoute } from "wouter";
+import { useLocation } from "wouter";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { GameBoard } from "@/components/game/game-board";
@@ -11,12 +12,11 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 
 export default function GamePage() {
-  const [, params] = useRoute("/app/game/:id");
+  const [, params] = useRoute("/game/:id");
   const [_, setLocation] = useLocation();
   const { user } = useAuth();
   const { toast } = useToast();
   const [socket, setSocket] = useState<WebSocket | null>(null);
-  const [wsError, setWsError] = useState<string | null>(null);
   const [gameState, setGameState] = useState<GameState>({
     board: Array(20).fill(Array(10).fill(0)),
     score: 0,
@@ -29,56 +29,6 @@ export default function GamePage() {
     queryKey: ["/api/matches", params?.id],
     enabled: !!params?.id,
   });
-
-  // WebSocket connection
-  useEffect(() => {
-    if (!user || !params?.id) return;
-
-    const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
-    const wsUrl = `${protocol}//${window.location.host}/ws`;
-    console.log("Connecting to WebSocket:", wsUrl);
-
-    const ws = new WebSocket(wsUrl);
-
-    ws.onopen = () => {
-      console.log("WebSocket connection established");
-      ws.send(JSON.stringify({
-        type: "join",
-        matchId: parseInt(params.id!),
-        userId: user.id
-      }));
-    };
-
-    ws.onmessage = (event) => {
-      try {
-        const data = JSON.parse(event.data);
-        if (data.type === "gameState" && data.states) {
-          const opponentData = data.states.find(([id]: [number, GameState]) => id !== user.id);
-          if (opponentData) {
-            setOpponentState(opponentData[1]);
-          }
-        }
-      } catch (error) {
-        console.error("Error processing WebSocket message:", error);
-      }
-    };
-
-    ws.onerror = (error) => {
-      console.error("WebSocket error:", error);
-      setWsError("Failed to connect to game server");
-    };
-
-    ws.onclose = () => {
-      console.log("WebSocket connection closed");
-    };
-
-    setSocket(ws);
-    return () => {
-      if (ws.readyState === WebSocket.OPEN) {
-        ws.close();
-      }
-    };
-  }, [user, params?.id]);
 
   const acceptMatchMutation = useMutation({
     mutationFn: async () => {
@@ -111,15 +61,12 @@ export default function GamePage() {
     },
   });
 
-  // Update practice game creation
   const startPracticeMutation = useMutation({
     mutationFn: async () => {
       const res = await apiRequest("POST", "/api/matches", {
         betAmount: "0",
         gameType: "tetris",
-        isPractice: true,
-        player1Id: user?.id,
-        status: "in_progress"
+        isPractice: true
       });
       if (!res.ok) throw new Error("Failed to create practice game");
       return res.json();
@@ -129,10 +76,7 @@ export default function GamePage() {
         title: "Practice Game Created",
         description: "Starting practice mode...",
       });
-      // Use the full path and ensure match.id exists
-      if (match?.id) {
-        setLocation(`/app/game/${match.id}`);
-      }
+      setLocation(`/game/${match.id}`);
     },
     onError: (error: Error) => {
       toast({
@@ -168,6 +112,45 @@ export default function GamePage() {
     },
   });
 
+  // WebSocket connection
+  useEffect(() => {
+    if (!user || !params?.id) return;
+
+    const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
+    const wsUrl = `${protocol}//${window.location.host}/game-ws`;
+    console.log("Connecting to WebSocket:", wsUrl);
+
+    const ws = new WebSocket(wsUrl);
+
+    ws.onopen = () => {
+      console.log("WebSocket connection established");
+      ws.send(JSON.stringify({
+        type: "join",
+        matchId: parseInt(params.id!),
+        userId: user.id
+      }));
+    };
+
+    ws.onmessage = (event) => {
+      const data = JSON.parse(event.data);
+      if (data.type === "gameState" && data.states) {
+        const opponentData = data.states.find(([id]: [number, GameState]) => id !== user.id);
+        if (opponentData) {
+          setOpponentState(opponentData[1]);
+        }
+      }
+    };
+
+    ws.onclose = () => {
+      console.log("WebSocket connection closed");
+    };
+
+    setSocket(ws);
+    return () => {
+      ws.close();
+    };
+  }, [user, params?.id]);
+
   const handleGameStateUpdate = (newState: GameState) => {
     setGameState(newState);
     if (socket?.readyState === WebSocket.OPEN && params?.id) {
@@ -189,9 +172,9 @@ export default function GamePage() {
 
       if (updatedMatch) {
         // Calculate XP gain based on match type
-        const xpGain = match?.isPractice
-          ? Math.floor(gameState.score / 20)
-          : Math.floor(gameState.score / 10);
+        const xpGain = match?.isPractice 
+          ? Math.floor(gameState.score / 20) // Less XP for practice games
+          : Math.floor(gameState.score / 10); // More XP for wager games
 
         // Only attempt XP update if there are points to award
         if (xpGain > 0) {
@@ -233,7 +216,7 @@ export default function GamePage() {
         });
 
         // Navigate back to dashboard
-        setLocation("/app");
+        setLocation("/");
       }
     } catch (error) {
       console.error("Failed to handle game over:", error);
@@ -258,7 +241,7 @@ export default function GamePage() {
                 <p>Bet Amount: {match.betAmount} {match.betType === 'xp' ? 'XP' : 'ETH'}</p>
                 <p>Created by: Player #{match.player1Id}</p>
               </div>
-              <Button
+              <Button 
                 className="w-full pixel-font"
                 onClick={() => acceptMatchMutation.mutate()}
                 disabled={acceptMatchMutation.isPending}
@@ -313,11 +296,6 @@ export default function GamePage() {
     <div className="min-h-screen bg-background">
       <Navbar />
       <main className="container mx-auto px-4 py-4">
-        {wsError && !match?.isPractice && (
-          <div className="mb-4 p-4 bg-destructive/10 text-destructive rounded-lg">
-            {wsError}
-          </div>
-        )}
         <div className="flex justify-center">
           <Card className="w-full max-w-lg p-4">
             <CardContent className="p-0">
