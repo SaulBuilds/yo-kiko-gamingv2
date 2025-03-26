@@ -55,13 +55,13 @@ export default function HomePage() {
   const handlePractice = (gameId: string) => {
     switch (gameId) {
       case 'tetris':
-        setLocation('/app/game/new');
+        setLocation('/game/new');
         break;
       case 'temple-runner':
-        setLocation('/app/temple-runner');
+        setLocation('/temple-runner');
         break;
       case 'street-fighter':
-        setLocation('/app/street-fighter/practice');
+        setLocation('/street-fighter/practice');
         break;
     }
   };
@@ -77,10 +77,6 @@ export default function HomePage() {
     match.player1Id !== user?.id &&
     !match.isPractice
   ) || [];
-
-  const handleAcceptChallenge = (matchId: number) => {
-    setLocation(`/app/game/${matchId}`);
-  };
 
   return (
     <div className="min-h-screen bg-background">
@@ -166,7 +162,7 @@ export default function HomePage() {
                           </p>
                         </div>
                         <Button
-                          onClick={() => handleAcceptChallenge(match.id)}
+                          onClick={() => setLocation(`/game/${match.id}`)}
                           className="pixel-font"
                         >
                           Accept Challenge

@@ -7,11 +7,10 @@ channel = "stable-24_05"
 
 [deployment]
 deploymentTarget = "cloudrun"
-run = ["sh", "-c", "PORT=80 NODE_ENV=production node --es-module-specifier-resolution=node dist/index.js"]
-build = ["sh", "-c", "npm run build"]
+run = ["sh", "-c", "npm run dev"]
 
 [[ports]]
-localPort = 80
+localPort = 5000
 externalPort = 80
 
 [workflows]
@@ -39,4 +38,4 @@ task = "packager.installForAll"
 [[workflows.workflow.tasks]]
 task = "shell.exec"
 args = "npm run dev"
-waitForPort = 80
+waitForPort = 5000

@@ -2,10 +2,10 @@ import { createConfig, http } from 'wagmi'
 import { mainnet, sepolia } from 'wagmi/chains'
 import { metaMask, walletConnect } from 'wagmi/connectors'
 
-const projectId = process.env.VITE_WALLETCONNECT_PROJECT_ID || import.meta.env.VITE_WALLETCONNECT_PROJECT_ID || 'development'
+const projectId = import.meta.env.VITE_WALLETCONNECT_PROJECT_ID
 
 if (!projectId) {
-  console.warn('Warning: Missing VITE_WALLETCONNECT_PROJECT_ID - some wallet features may be limited')
+  throw new Error('Missing VITE_WALLETCONNECT_PROJECT_ID')
 }
 
 export const config = createConfig({

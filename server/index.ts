@@ -1,26 +1,6 @@
 import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
-import path from "path";
-import { fileURLToPath } from "url";
-import { dirname } from "path";
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
-
-// Validate required environment variables
-const requiredEnvVars = [
-  'VITE_WALLETCONNECT_PROJECT_ID',
-  'SESSION_SECRET',
-  'DATABASE_URL'
-];
-
-requiredEnvVars.forEach(varName => {
-  if (!process.env[varName]) {
-    console.error(`Error: Missing required environment variable ${varName}`);
-    process.exit(1);
-  }
-});
 
 const app = express();
 app.use(express.json());
@@ -67,27 +47,23 @@ app.use((req, res, next) => {
     throw err;
   });
 
-  // Handle client-side routing in production
-  if (app.get("env") === "production") {
-    const clientDistPath = path.resolve(__dirname, "../dist/public");
-
-    // Serve static files from the client dist directory
-    app.use(express.static(clientDistPath));
-
-    // Serve index.html for all unmatched routes to support client-side routing
-    app.get("*", (_req, res) => {
-      res.sendFile(path.join(clientDistPath, "index.html"));
-    });
-  } else if (app.get("env") === "development") {
+  // importantly only setup vite in development and after
+  // setting up all the other routes so the catch-all route
+  // doesn't interfere with the other routes
+  if (app.get("env") === "development") {
     await setupVite(app, server);
   } else {
     serveStatic(app);
   }
 
-  // Always use PORT environment variable in production
-  const port = parseInt(process.env.PORT || "80", 10);
-  const host = '0.0.0.0';
-  server.listen(port, host, () => {
-    log(`serving on ${host}:${port} in ${process.env.NODE_ENV || 'development'} mode`);
+  // ALWAYS serve the app on port 5000
+  // this serves both the API and the client
+  const port = 5000;
+  server.listen({
+    port,
+    host: "0.0.0.0",
+    reusePort: true,
+  }, () => {
+    log(`serving on port ${port}`);
   });
 })();
