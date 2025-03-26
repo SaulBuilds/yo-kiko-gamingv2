@@ -2,14 +2,10 @@ import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
 
-// Force development mode when running with npm run dev
-process.env.NODE_ENV = process.env.NODE_ENV || "development";
-
 const app = express();
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 
-// Add request logging middleware
 app.use((req, res, next) => {
   const start = Date.now();
   const path = req.path;
@@ -51,18 +47,9 @@ app.use((req, res, next) => {
     throw err;
   });
 
-  // Add health check endpoint first
-  app.get('/', (_req, res) => {
-    res.status(200).send('OK');
-  });
-
-  // Set environment explicitly 
-  app.set("env", process.env.NODE_ENV || "development");
-
-  // Log current environment mode
-  log(`Starting server in ${app.get("env")} mode`);
-
-  // In development mode, use Vite middleware
+  // importantly only setup vite in development and after
+  // setting up all the other routes so the catch-all route
+  // doesn't interfere with the other routes
   if (app.get("env") === "development") {
     await setupVite(app, server);
   } else {
@@ -77,6 +64,6 @@ app.use((req, res, next) => {
     host: "0.0.0.0",
     reusePort: true,
   }, () => {
-    log(`serving on port ${port} in ${app.get("env")} mode`);
+    log(`serving on port ${port}`);
   });
 })();

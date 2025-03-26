@@ -30,15 +30,15 @@ export default function SplashPage() {
             transition={{ duration: 0.8 }}
             className="text-center"
           >
-            <div className="w-120 h-48 mx-auto mb-8">
+            <div className="w-48 h-48 mx-auto mb-8">
               <img 
-                src="/assets/yo-kiko_lettermark.svg"
+                src="/yokiko_logo.png" 
                 alt="Yokiko Logo"
                 className="w-full h-full object-contain"
               />
             </div>
-            <h1 className="text-5xl md:text-6xl font-bold mb-6 pixel-font bg-clip-text text-transparent bg-gradient-to-r from-primary to-primary-foreground">
-              Calling all Gamers and Vibe Coders!!!
+            <h1 className="text-6xl md:text-8xl font-bold mb-6 pixel-font bg-clip-text text-transparent bg-gradient-to-r from-primary to-primary-foreground">
+              sumthn.fun
             </h1>
             <p className="text-2xl md:text-3xl mb-8 text-primary/80 pixel-font max-w-3xl mx-auto leading-relaxed">
               Level Up Your Gaming: Create, Play, and Earn in the First Decentralized Skill-Based Gaming Arena
@@ -127,26 +127,20 @@ export default function SplashPage() {
               whileHover={{ scale: 1.1 }}
               transition={{ type: "spring", stiffness: 300 }}
             >
-              <div className="w-60 h-60 bg-black/40  flex items-center justify-center mb-4">
-                <img 
-                  src="/assets/abstract.svg"
-                  alt="Yokiko Logo"
-                  className="w-full h-full object-contain"
-                />
+              <div className="w-40 h-40 bg-black/40 backdrop-blur-sm border border-primary/20 rounded-full flex items-center justify-center mb-4">
+                <span className="text-3xl font-bold pixel-font text-primary">Abstract</span>
               </div>
+              <p className="text-xl text-gray-300 pixel-font">Abstract Chain</p>
             </motion.div>
             <motion.div 
               className="flex flex-col items-center"
               whileHover={{ scale: 1.1 }}
               transition={{ type: "spring", stiffness: 300 }}
             >
-              <div className="w-60 h-60 bg-black/40  flex items-center justify-center mb-4">
-                <img 
-                  src="/assets/icp_logo.svg"
-                  alt="Yokiko Logo"
-                  className="w-full h-full object-contain"
-                />
+              <div className="w-40 h-40 bg-black/40 backdrop-blur-sm border border-primary/20 rounded-full flex items-center justify-center mb-4">
+                <span className="text-3xl font-bold pixel-font text-primary">ICP</span>
               </div>
+              <p className="text-xl text-gray-300 pixel-font">Internet Computer</p>
             </motion.div>
           </div>
         </div>
@@ -209,6 +203,14 @@ export default function SplashPage() {
           </div>
         </div>
       </footer>
+
+      <style jsx global>{`
+        @keyframes float {
+          0% { transform: translateY(0px) }
+          50% { transform: translateY(-20px) }
+          100% { transform: translateY(0px) }
+        }
+      `}</style>
     </div>
   );
 }
