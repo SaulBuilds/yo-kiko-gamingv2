@@ -103,8 +103,46 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* Beta Signup Section */}
+      {/* Deployed On Section */}
       <section className="py-24 bg-primary/5">
+        <div className="container mx-auto px-4">
+          <h2 className="text-3xl font-bold text-center mb-16 pixel-font">
+            Deployed On
+          </h2>
+          <div className="flex justify-center items-center gap-16 mb-16">
+            <div className="text-center">
+              <Image
+                src="/assets/abstract_logo.svg"
+                alt="Abstract"
+                className="h-16 w-auto mb-4"
+              />
+              <p className="text-sm text-muted-foreground">Abstract Protocol</p>
+            </div>
+            <div className="text-center">
+              <Image
+                src="/assets/icp_logo.svg"
+                alt="Internet Computer Protocol"
+                className="h-16 w-auto mb-4"
+              />
+              <p className="text-sm text-muted-foreground">Internet Computer Protocol</p>
+            </div>
+          </div>
+          <div className="max-w-3xl mx-auto text-center space-y-6">
+            <p className="text-lg text-muted-foreground">
+              Yo-kiko leverages Abstract Protocol's ZK rollup technology through the Abstract Global Wallet, 
+              enabling secure and efficient betting mechanisms with minimal gas fees.
+            </p>
+            <p className="text-lg text-muted-foreground">
+              Our platform is hosted and deployed on the Internet Computer Protocol, 
+              ensuring a truly decentralized infrastructure that provides seamless 
+              scalability and unmatched reliability for your gaming experience.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      {/* Beta Signup Section */}
+      <section className="py-24">
         <div className="container mx-auto px-4 max-w-3xl text-center">
           <h2 className="text-3xl font-bold mb-8 pixel-font">
             Join the Beta Program
