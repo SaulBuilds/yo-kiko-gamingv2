@@ -52,7 +52,7 @@ export default function StreetFighterPage() {
               </Button>
               <Button
                 variant="outline"
-                onClick={() => setLocation("/")}
+                onClick={() => setLocation("/app")}
                 className="pixel-font ml-4"
               >
                 Back to Menu

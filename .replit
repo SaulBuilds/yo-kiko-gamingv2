@@ -11,9 +11,8 @@ run = ["sh", "-c", "PORT=80 NODE_ENV=production node --es-module-specifier-resol
 build = ["sh", "-c", "npm run build"]
 
 [[ports]]
-localPort = 5000
+localPort = 80
 externalPort = 80
-exposeLocalhost = true
 
 [workflows]
 runButton = "Project"
@@ -40,4 +39,4 @@ task = "packager.installForAll"
 [[workflows.workflow.tasks]]
 task = "shell.exec"
 args = "npm run dev"
-waitForPort = 5000
+waitForPort = 80

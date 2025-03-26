@@ -55,13 +55,13 @@ export default function HomePage() {
   const handlePractice = (gameId: string) => {
     switch (gameId) {
       case 'tetris':
-        setLocation('/game/new');
+        setLocation('/app/game/new');
         break;
       case 'temple-runner':
-        setLocation('/temple-runner');
+        setLocation('/app/temple-runner');
         break;
       case 'street-fighter':
-        setLocation('/street-fighter/practice');
+        setLocation('/app/street-fighter/practice');
         break;
     }
   };
@@ -162,7 +162,7 @@ export default function HomePage() {
                           </p>
                         </div>
                         <Button
-                          onClick={() => setLocation(`/game/${match.id}`)}
+                          onClick={() => setLocation(`/app/game/${match.id}`)}
                           className="pixel-font"
                         >
                           Accept Challenge

@@ -1,6 +1,12 @@
 import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
+import path from "path";
+import { fileURLToPath } from "url";
+import { dirname } from "path";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
 
 // Validate required environment variables
 const requiredEnvVars = [
@@ -61,17 +67,25 @@ app.use((req, res, next) => {
     throw err;
   });
 
-  // importantly only setup vite in development and after
-  // setting up all the other routes so the catch-all route
-  // doesn't interfere with the other routes
-  if (app.get("env") === "development") {
+  // Handle client-side routing in production
+  if (app.get("env") === "production") {
+    const clientDistPath = path.resolve(__dirname, "../dist/public");
+
+    // Serve static files from the client dist directory
+    app.use(express.static(clientDistPath));
+
+    // Serve index.html for all unmatched routes to support client-side routing
+    app.get("*", (_req, res) => {
+      res.sendFile(path.join(clientDistPath, "index.html"));
+    });
+  } else if (app.get("env") === "development") {
     await setupVite(app, server);
   } else {
     serveStatic(app);
   }
 
   // Always use PORT environment variable in production
-  const port = parseInt(process.env.PORT || "5000", 10);
+  const port = parseInt(process.env.PORT || "80", 10);
   const host = '0.0.0.0';
   server.listen(port, host, () => {
     log(`serving on ${host}:${port} in ${process.env.NODE_ENV || 'development'} mode`);
