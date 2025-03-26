@@ -124,15 +124,46 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const match = await storage.createGameMatch({
         player1Id: req.session.userId,
-        betAmount: req.body.betAmount,
-        gameType: "tetris",
+        betAmount: req.body.betAmount || "0",
+        gameType: req.body.gameType || "tetris",
         isPractice: req.body.isPractice || false,
-        timeLimit: req.body.timeLimit
+        status: req.body.isPractice ? "in_progress" : "waiting",
+        startTime: req.body.isPractice ? new Date() : null
       });
       res.json(match);
     } catch (error) {
       console.error("Error creating match:", error);
       res.status(500).json({ error: "Failed to create match" });
+    }
+  });
+
+  app.post("/api/matches/:id/join", async (req, res) => {
+    if (!req.session?.userId) {
+      return res.status(401).json({ error: "Not authenticated" });
+    }
+
+    try {
+      const matchId = parseInt(req.params.id);
+      const match = await storage.getGameMatch(matchId);
+
+      if (!match) {
+        return res.status(404).json({ error: "Match not found" });
+      }
+
+      if (match.status !== "waiting") {
+        return res.status(400).json({ error: "Match is not available for joining" });
+      }
+
+      const updatedMatch = await storage.updateGameMatch(matchId, {
+        player2Id: req.session.userId,
+        status: "in_progress",
+        startTime: new Date()
+      });
+
+      res.json(updatedMatch);
+    } catch (error) {
+      console.error("Error joining match:", error);
+      res.status(500).json({ error: "Failed to join match" });
     }
   });
 
@@ -178,7 +209,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // WebSocket handling
   const wss = new WebSocketServer({
     server: httpServer,
-    path: '/game-ws'
+    path: '/ws'  // Match the client-side WebSocket path
   });
 
   const gameStates = new Map<number, Map<number, GameState>>();
