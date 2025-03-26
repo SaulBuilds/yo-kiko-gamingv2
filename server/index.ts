@@ -9,6 +9,7 @@ const app = express();
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 
+// Add request logging middleware
 app.use((req, res, next) => {
   const start = Date.now();
   const path = req.path;
@@ -57,6 +58,9 @@ app.use((req, res, next) => {
 
   // Set environment explicitly 
   app.set("env", process.env.NODE_ENV || "development");
+
+  // Log current environment mode
+  log(`Starting server in ${app.get("env")} mode`);
 
   // In development mode, use Vite middleware
   if (app.get("env") === "development") {
