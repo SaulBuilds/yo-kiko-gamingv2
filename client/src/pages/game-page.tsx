@@ -32,61 +32,53 @@ export default function GamePage() {
 
   // WebSocket connection
   useEffect(() => {
-    if (!user || !params?.id || match?.isPractice) return;
+    if (!user || !params?.id) return;
 
-    try {
-      const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
-      const wsUrl = `${protocol}//${window.location.host}/ws`;
-      console.log("Connecting to WebSocket:", wsUrl);
+    const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
+    const wsUrl = `${protocol}//${window.location.host}/ws`;
+    console.log("Connecting to WebSocket:", wsUrl);
 
-      const ws = new WebSocket(wsUrl);
+    const ws = new WebSocket(wsUrl);
 
-      ws.onopen = () => {
-        console.log("WebSocket connection established");
-        ws.send(JSON.stringify({
-          type: "join",
-          matchId: parseInt(params.id!),
-          userId: user.id
-        }));
-      };
+    ws.onopen = () => {
+      console.log("WebSocket connection established");
+      ws.send(JSON.stringify({
+        type: "join",
+        matchId: parseInt(params.id!),
+        userId: user.id
+      }));
+    };
 
-      ws.onmessage = (event) => {
-        try {
-          const data = JSON.parse(event.data);
-          if (data.type === "gameState" && data.states) {
-            const opponentData = data.states.find(([id]: [number, GameState]) => id !== user.id);
-            if (opponentData) {
-              setOpponentState(opponentData[1]);
-            }
+    ws.onmessage = (event) => {
+      try {
+        const data = JSON.parse(event.data);
+        if (data.type === "gameState" && data.states) {
+          const opponentData = data.states.find(([id]: [number, GameState]) => id !== user.id);
+          if (opponentData) {
+            setOpponentState(opponentData[1]);
           }
-        } catch (error) {
-          console.error("Error processing WebSocket message:", error);
         }
-      };
+      } catch (error) {
+        console.error("Error processing WebSocket message:", error);
+      }
+    };
 
-      ws.onerror = (error) => {
-        console.error("WebSocket error:", error);
-        setWsError("Failed to connect to game server");
-        toast({
-          title: "Connection Error",
-          description: "Failed to connect to game server. You can still play in practice mode.",
-          variant: "destructive",
-        });
-      };
+    ws.onerror = (error) => {
+      console.error("WebSocket error:", error);
+      setWsError("Failed to connect to game server");
+    };
 
-      ws.onclose = () => {
-        console.log("WebSocket connection closed");
-      };
+    ws.onclose = () => {
+      console.log("WebSocket connection closed");
+    };
 
-      setSocket(ws);
-      return () => {
+    setSocket(ws);
+    return () => {
+      if (ws.readyState === WebSocket.OPEN) {
         ws.close();
-      };
-    } catch (error) {
-      console.error("Error setting up WebSocket:", error);
-      setWsError("Failed to initialize game connection");
-    }
-  }, [user, params?.id, match?.isPractice]);
+      }
+    };
+  }, [user, params?.id]);
 
   const acceptMatchMutation = useMutation({
     mutationFn: async () => {
@@ -119,13 +111,15 @@ export default function GamePage() {
     },
   });
 
+  // Update practice game creation
   const startPracticeMutation = useMutation({
     mutationFn: async () => {
       const res = await apiRequest("POST", "/api/matches", {
         betAmount: "0",
         gameType: "tetris",
         isPractice: true,
-        player1Id: user?.id // Add player1Id to ensure proper game creation
+        player1Id: user?.id,
+        status: "in_progress"
       });
       if (!res.ok) throw new Error("Failed to create practice game");
       return res.json();
@@ -135,8 +129,10 @@ export default function GamePage() {
         title: "Practice Game Created",
         description: "Starting practice mode...",
       });
-      // Ensure we're using the full path
-      setLocation(`/app/game/${match.id}`);
+      // Use the full path and ensure match.id exists
+      if (match?.id) {
+        setLocation(`/app/game/${match.id}`);
+      }
     },
     onError: (error: Error) => {
       toast({
