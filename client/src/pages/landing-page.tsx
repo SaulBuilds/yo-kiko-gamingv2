@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -12,7 +13,6 @@ import {
   MessagesSquare as Discord,
   Mail
 } from "lucide-react";
-import { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 
 export default function LandingPage() {
@@ -103,7 +103,7 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* How It Works Section (New) */}
+      {/* How It Works Section */}
       <section className="py-24 bg-primary/5">
         <div className="container mx-auto px-4">
           <div className="max-w-3xl mx-auto text-center space-y-8">
