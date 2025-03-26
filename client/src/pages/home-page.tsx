@@ -78,6 +78,10 @@ export default function HomePage() {
     !match.isPractice
   ) || [];
 
+  const handleAcceptChallenge = (matchId: number) => {
+    setLocation(`/app/game/${matchId}`);
+  };
+
   return (
     <div className="min-h-screen bg-background">
       <Navbar />
@@ -162,7 +166,7 @@ export default function HomePage() {
                           </p>
                         </div>
                         <Button
-                          onClick={() => setLocation(`/app/game/${match.id}`)}
+                          onClick={() => handleAcceptChallenge(match.id)}
                           className="pixel-font"
                         >
                           Accept Challenge

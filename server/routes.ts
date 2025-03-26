@@ -127,9 +127,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
         betAmount: req.body.betAmount || "0",
         gameType: req.body.gameType || "tetris",
         isPractice: req.body.isPractice || false,
-        status: req.body.isPractice ? "in_progress" : "waiting",
-        startTime: req.body.isPractice ? new Date() : null
+        betType: req.body.betType || 'xp',
+        timeLimit: req.body.timeLimit || null
       });
+
+      // If it's a practice game, automatically set it to in_progress
+      if (match.isPractice) {
+        await storage.updateGameMatch(match.id, {
+          status: "in_progress",
+          startTime: new Date()
+        });
+      }
+
       res.json(match);
     } catch (error) {
       console.error("Error creating match:", error);
