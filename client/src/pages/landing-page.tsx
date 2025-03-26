@@ -3,9 +3,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
 import { Image } from "@/components/ui/image";
-import { 
-  Trophy, 
-  Gamepad2, 
+import {
+  Trophy,
+  Gamepad2,
   Coins,
   Github,
   Twitter,
@@ -43,15 +43,15 @@ export default function LandingPage() {
                 Deploy your games on Yo-kiko, enable player wagering, and earn fees from every match. Built on Abstract and the Internet Computer Protocol.
               </p>
               <div className="flex gap-4">
-                <Button 
-                  size="lg" 
+                <Button
+                  size="lg"
                   onClick={() => setLocation("/auth")}
                   className="pixel-font"
                 >
                   Start Building
                 </Button>
-                <Button 
-                  size="lg" 
+                <Button
+                  size="lg"
                   variant="outline"
                   onClick={() => setLocation("/auth")}
                   className="pixel-font"
@@ -103,40 +103,50 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* Deployed On Section */}
+      {/* How It Works Section (New) */}
       <section className="py-24 bg-primary/5">
         <div className="container mx-auto px-4">
-          <h2 className="text-3xl font-bold text-center mb-16 pixel-font">
-            Deployed On
-          </h2>
-          <div className="flex justify-center items-center gap-16 mb-16">
-            <div className="text-center">
-              <Image
-                src="/assets/abstract_logo.svg"
-                alt="Abstract"
-                className="h-16 w-auto mb-4"
-              />
-              <p className="text-sm text-muted-foreground">Abstract Protocol</p>
-            </div>
-            <div className="text-center">
-              <Image
-                src="/assets/icp_logo.svg"
-                alt="Internet Computer Protocol"
-                className="h-16 w-auto mb-4"
-              />
-              <p className="text-sm text-muted-foreground">Internet Computer Protocol</p>
-            </div>
+          <div className="max-w-3xl mx-auto text-center space-y-8">
+            <h2 className="text-3xl font-bold mb-8 pixel-font">How It Works</h2>
+            <p className="text-xl text-muted-foreground mb-12">
+              Yo-kiko is revolutionizing blockchain gaming by combining classic arcade fun with modern web3 technology.
+              Deploy your own games, enable player wagering, and earn fees from every match.
+            </p>
           </div>
-          <div className="max-w-3xl mx-auto text-center space-y-6">
-            <p className="text-lg text-muted-foreground">
-              Yo-kiko leverages Abstract Protocol's ZK rollup technology through the Abstract Global Wallet, 
-              enabling secure and efficient betting mechanisms with minimal gas fees.
-            </p>
-            <p className="text-lg text-muted-foreground">
-              Our platform is hosted and deployed on the Internet Computer Protocol, 
-              ensuring a truly decentralized infrastructure that provides seamless 
-              scalability and unmatched reliability for your gaming experience.
-            </p>
+
+          <div className="mt-16">
+            <h3 className="text-2xl font-bold text-center mb-16 pixel-font">
+              Deployed On
+            </h3>
+            <div className="flex justify-center items-center gap-16 mb-16">
+              <div className="text-center">
+                <Image
+                  src="/assets/abstract_logo.svg"
+                  alt="Abstract"
+                  className="h-16 w-auto mb-4"
+                />
+                <p className="text-sm text-muted-foreground">Abstract Protocol</p>
+              </div>
+              <div className="text-center">
+                <Image
+                  src="/assets/icp_logo.svg"
+                  alt="Internet Computer Protocol"
+                  className="h-16 w-auto mb-4"
+                />
+                <p className="text-sm text-muted-foreground">Internet Computer Protocol</p>
+              </div>
+            </div>
+            <div className="max-w-3xl mx-auto text-center space-y-6">
+              <p className="text-lg text-muted-foreground">
+                Yo-kiko leverages Abstract Protocol's ZK rollup technology through the Abstract Global Wallet,
+                enabling secure and efficient betting mechanisms with minimal gas fees.
+              </p>
+              <p className="text-lg text-muted-foreground">
+                Our platform is hosted and deployed on the Internet Computer Protocol,
+                ensuring a truly decentralized infrastructure that provides seamless
+                scalability and unmatched reliability for your gaming experience.
+              </p>
+            </div>
           </div>
         </div>
       </section>
