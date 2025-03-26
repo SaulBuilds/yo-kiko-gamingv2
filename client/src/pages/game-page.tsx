@@ -124,7 +124,8 @@ export default function GamePage() {
       const res = await apiRequest("POST", "/api/matches", {
         betAmount: "0",
         gameType: "tetris",
-        isPractice: true
+        isPractice: true,
+        player1Id: user?.id // Add player1Id to ensure proper game creation
       });
       if (!res.ok) throw new Error("Failed to create practice game");
       return res.json();
@@ -134,6 +135,7 @@ export default function GamePage() {
         title: "Practice Game Created",
         description: "Starting practice mode...",
       });
+      // Ensure we're using the full path
       setLocation(`/app/game/${match.id}`);
     },
     onError: (error: Error) => {
