@@ -1,6 +1,5 @@
 import { useEffect, useState } from "react";
-import { useRoute } from "wouter";
-import { useLocation } from "wouter";
+import { useRoute, useLocation } from "wouter";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { GameBoard } from "@/components/game/game-board";
@@ -12,7 +11,7 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 
 export default function GamePage() {
-  const [, params] = useRoute("/game/:id");
+  const [, params] = useRoute("/app/game/:id");
   const [_, setLocation] = useLocation();
   const { user } = useAuth();
   const { toast } = useToast();
@@ -135,7 +134,7 @@ export default function GamePage() {
         title: "Practice Game Created",
         description: "Starting practice mode...",
       });
-      setLocation(`/game/${match.id}`);
+      setLocation(`/app/game/${match.id}`);
     },
     onError: (error: Error) => {
       toast({
@@ -193,8 +192,8 @@ export default function GamePage() {
       if (updatedMatch) {
         // Calculate XP gain based on match type
         const xpGain = match?.isPractice
-          ? Math.floor(gameState.score / 20) // Less XP for practice games
-          : Math.floor(gameState.score / 10); // More XP for wager games
+          ? Math.floor(gameState.score / 20)
+          : Math.floor(gameState.score / 10);
 
         // Only attempt XP update if there are points to award
         if (xpGain > 0) {
@@ -236,7 +235,7 @@ export default function GamePage() {
         });
 
         // Navigate back to dashboard
-        setLocation("/");
+        setLocation("/app");
       }
     } catch (error) {
       console.error("Failed to handle game over:", error);
