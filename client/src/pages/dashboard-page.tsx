@@ -5,9 +5,10 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/use-auth";
 import { GameMatch, User } from "@shared/schema";
-import { Gamepad2, Trophy, Users, Coins } from "lucide-react";
+import { Gamepad2, Trophy, Users, Coins, Clock } from "lucide-react";
 import { Navbar } from "@/components/layout/navbar";
 import { BetModal } from "@/components/game/bet-modal";
+import { Badge } from "@/components/ui/badge";
 
 export default function DashboardPage() {
   const [_, setLocation] = useLocation();
@@ -49,6 +50,34 @@ export default function DashboardPage() {
       icon: "👊",
       background: "bg-gradient-to-r from-red-500 to-orange-500",
       enabled: true
+    },
+    // Coming Soon Games
+    {
+      id: "chess",
+      name: "Crypto Chess",
+      description: "Strategic chess gameplay with blockchain-based tournaments and ratings",
+      icon: "♟️",
+      background: "bg-gradient-to-r from-blue-500 to-indigo-500",
+      enabled: false,
+      comingSoon: true
+    },
+    {
+      id: "poker",
+      name: "Web3 Poker",
+      description: "Texas Hold'em poker with decentralized card shuffling and secure betting",
+      icon: "🃏",
+      background: "bg-gradient-to-r from-green-500 to-emerald-500",
+      enabled: false,
+      comingSoon: true
+    },
+    {
+      id: "racing",
+      name: "Blockchain Racing",
+      description: "High-octane racing with NFT vehicles and customizable tracks",
+      icon: "🏎️",
+      background: "bg-gradient-to-r from-cyan-500 to-blue-500",
+      enabled: false,
+      comingSoon: true
     }
   ];
 
@@ -106,7 +135,7 @@ export default function DashboardPage() {
                           <span className="pixel-font text-sm">{game.name}</span>
                         </span>
                         <div className="flex gap-2">
-                          {game.enabled && (
+                          {game.enabled ? (
                             <>
                               <Button
                                 size="sm"
@@ -125,6 +154,14 @@ export default function DashboardPage() {
                                 Wager
                               </Button>
                             </>
+                          ) : game.comingSoon && (
+                            <Badge 
+                              variant="outline" 
+                              className="bg-black/30 text-white border border-white/30 flex items-center gap-1 pixel-font"
+                            >
+                              <Clock className="h-3 w-3" />
+                              Coming Soon
+                            </Badge>
                           )}
                         </div>
                       </CardTitle>
