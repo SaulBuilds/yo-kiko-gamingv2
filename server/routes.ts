@@ -234,101 +234,106 @@ export async function registerRoutes(app: Express): Promise<Server> {
     res.json(leaderboard);
   });
 
-  // WebSocket handling with distinct path and improved error handling
-  const wss = new WebSocketServer({
-    server: httpServer,
-    path: '/game-ws' // Distinct path from Vite's HMR
-  });
-
-  const gameStates = new Map<number, Map<number, GameState>>();
-  const clients = new Map<WebSocket, number>();
-
-  wss.on("connection", (ws) => {
-    log("New WebSocket connection established", "websocket");
-
-    ws.on("error", (error) => {
-      log(`WebSocket error: ${error}`, "websocket");
+  // Only initialize WebSocket server in production mode
+  if (process.env.NODE_ENV !== "development") {
+    log("Initializing WebSocket server for production...", "websocket");
+    const wss = new WebSocketServer({
+      server: httpServer,
+      path: '/game-ws' // Distinct path from Vite's HMR
     });
 
-    ws.on("message", async (data) => {
-      try {
-        const message = JSON.parse(data.toString());
-        log(`Received message: ${JSON.stringify(message)}`, "websocket");
+    const gameStates = new Map<number, Map<number, GameState>>();
+    const clients = new Map<WebSocket, number>();
 
-        switch (message.type) {
-          case "join": {
-            const { matchId, userId } = message;
-            clients.set(ws, matchId);
-            log(`User ${userId} joined match ${matchId}`, "websocket");
+    wss.on("connection", (ws) => {
+      log("New WebSocket connection established", "websocket");
 
-            if (!gameStates.has(matchId)) {
-              gameStates.set(matchId, new Map());
+      ws.on("error", (error) => {
+        log(`WebSocket error: ${error}`, "websocket");
+      });
+
+      ws.on("message", async (data) => {
+        try {
+          const message = JSON.parse(data.toString());
+          log(`Received message: ${JSON.stringify(message)}`, "websocket");
+
+          switch (message.type) {
+            case "join": {
+              const { matchId, userId } = message;
+              clients.set(ws, matchId);
+              log(`User ${userId} joined match ${matchId}`, "websocket");
+
+              if (!gameStates.has(matchId)) {
+                gameStates.set(matchId, new Map());
+              }
+              const match = await storage.getGameMatch(matchId);
+
+              if (match?.status === "waiting") {
+                await storage.updateGameMatch(matchId, {
+                  player2Id: userId,
+                  status: "in_progress",
+                  startTime: new Date()
+                });
+              }
+              break;
             }
-            const match = await storage.getGameMatch(matchId);
 
-            if (match?.status === "waiting") {
-              await storage.updateGameMatch(matchId, {
-                player2Id: userId,
-                status: "in_progress",
-                startTime: new Date()
-              });
+            case "gameState": {
+              const { matchId, userId, state } = message;
+              const matchStates = gameStates.get(matchId);
+              if (matchStates) {
+                matchStates.set(userId, state);
+                wss.clients.forEach((client) => {
+                  if (client.readyState === WebSocket.OPEN && clients.get(client) === matchId) {
+                    client.send(JSON.stringify({
+                      type: "gameState",
+                      states: Array.from(matchStates.entries())
+                    }));
+                  }
+                });
+              }
+              break;
             }
-            break;
-          }
 
-          case "gameState": {
-            const { matchId, userId, state } = message;
-            const matchStates = gameStates.get(matchId);
-            if (matchStates) {
-              matchStates.set(userId, state);
-              wss.clients.forEach((client) => {
-                if (client.readyState === WebSocket.OPEN && clients.get(client) === matchId) {
-                  client.send(JSON.stringify({
-                    type: "gameState",
-                    states: Array.from(matchStates.entries())
-                  }));
+            case "gameOver": {
+              const { matchId, userId, score } = message;
+              log(`Game over for match ${matchId}, score: ${score}`, "websocket");
+              const match = await storage.getGameMatch(matchId);
+              if (match) {
+                const updates: any = {
+                  status: "completed",
+                  endTime: new Date()
+                };
+
+                if (match.player1Id === userId) {
+                  updates.player1Score = score;
+                } else if (match.player2Id === userId) {
+                  updates.player2Score = score;
                 }
-              });
-            }
-            break;
-          }
 
-          case "gameOver": {
-            const { matchId, userId, score } = message;
-            log(`Game over for match ${matchId}, score: ${score}`, "websocket");
-            const match = await storage.getGameMatch(matchId);
-            if (match) {
-              const updates: any = {
-                status: "completed",
-                endTime: new Date()
-              };
+                if (updates.player1Score && updates.player2Score) {
+                  updates.winnerId = updates.player1Score > updates.player2Score ? match.player1Id : match.player2Id;
+                }
 
-              if (match.player1Id === userId) {
-                updates.player1Score = score;
-              } else if (match.player2Id === userId) {
-                updates.player2Score = score;
+                await storage.updateGameMatch(matchId, updates);
               }
-
-              if (updates.player1Score && updates.player2Score) {
-                updates.winnerId = updates.player1Score > updates.player2Score ? match.player1Id : match.player2Id;
-              }
-
-              await storage.updateGameMatch(matchId, updates);
+              break;
             }
-            break;
           }
+        } catch (error) {
+          log(`WebSocket message handling error: ${error}`, "websocket");
         }
-      } catch (error) {
-        log(`WebSocket message handling error: ${error}`, "websocket");
-      }
-    });
+      });
 
-    ws.on("close", () => {
-      const matchId = clients.get(ws);
-      log(`Connection closed for match ${matchId}`, "websocket");
-      clients.delete(ws);
+      ws.on("close", () => {
+        const matchId = clients.get(ws);
+        log(`Connection closed for match ${matchId}`, "websocket");
+        clients.delete(ws);
+      });
     });
-  });
+  } else {
+    log("Skipping WebSocket initialization in development mode", "websocket");
+  }
 
   setupAuth(app);
 
