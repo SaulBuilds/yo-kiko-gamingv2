@@ -1,4 +1,6 @@
 process.env.NODE_ENV = process.env.NODE_ENV || 'development';
+// Prevent Cartographer plugin from loading during startup
+process.env.REPL_ID = undefined;
 
 import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
@@ -41,12 +43,13 @@ app.use((req, res, next) => {
 (async () => {
   const server = await registerRoutes(app);
 
+  // Improved error handling - log error but don't throw after response
   app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
     const status = err.status || err.statusCode || 500;
     const message = err.message || "Internal Server Error";
 
+    log(`Error: ${message}`, "error");
     res.status(status).json({ message });
-    throw err;
   });
 
   if (app.get("env") === "development") {
