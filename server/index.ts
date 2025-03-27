@@ -1,8 +1,3 @@
-// Force development mode and disable optional plugins
-process.env.NODE_ENV = 'development';
-// Prevent Cartographer plugin from loading during startup
-process.env.REPL_ID = undefined;
-
 import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
@@ -42,38 +37,33 @@ app.use((req, res, next) => {
 });
 
 (async () => {
-  log("Starting server initialization...", "startup");
-  log(`Environment checks - NODE_ENV: ${process.env.NODE_ENV}, app.get("env"): ${app.get("env")}`, "startup");
+  const server = await registerRoutes(app);
 
-  try {
-    log("Registering routes...", "startup");
-    const server = await registerRoutes(app);
-    log("Routes registered successfully", "startup");
+  app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
+    const status = err.status || err.statusCode || 500;
+    const message = err.message || "Internal Server Error";
 
-    // Improved error handling - log error but don't throw after response
-    app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
-      const status = err.status || err.statusCode || 500;
-      const message = err.message || "Internal Server Error";
+    res.status(status).json({ message });
+    throw err;
+  });
 
-      log(`Error: ${message}`, "error");
-      res.status(status).json({ message });
-    });
-
-    // Only serve Vite middleware in development
-    log("Setting up Vite in development mode...", "startup");
+  // importantly only setup vite in development and after
+  // setting up all the other routes so the catch-all route
+  // doesn't interfere with the other routes
+  if (app.get("env") === "development") {
     await setupVite(app, server);
-    log("Vite setup complete", "startup");
-
-    const port = 5000;
-    server.listen({
-      port,
-      host: "0.0.0.0",
-      reusePort: true,
-    }, () => {
-      log(`Server initialized and listening on port ${port}`, "startup");
-    });
-  } catch (error) {
-    log(`Server initialization failed: ${error}`, "error");
-    process.exit(1);
+  } else {
+    serveStatic(app);
   }
+
+  // ALWAYS serve the app on port 5000
+  // this serves both the API and the client
+  const port = 5000;
+  server.listen({
+    port,
+    host: "0.0.0.0",
+    reusePort: true,
+  }, () => {
+    log(`serving on port ${port}`);
+  });
 })();
