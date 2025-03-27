@@ -1,3 +1,4 @@
+// Force development mode and disable optional plugins
 process.env.NODE_ENV = process.env.NODE_ENV || 'development';
 // Prevent Cartographer plugin from loading during startup
 process.env.REPL_ID = undefined;
@@ -42,6 +43,7 @@ app.use((req, res, next) => {
 
 (async () => {
   log("Starting server initialization...", "startup");
+  log(`Environment checks - NODE_ENV: ${process.env.NODE_ENV}, app.get("env"): ${app.get("env")}`, "startup");
 
   try {
     log("Registering routes...", "startup");
@@ -57,12 +59,12 @@ app.use((req, res, next) => {
       res.status(status).json({ message });
     });
 
-    if (app.get("env") === "development") {
+    if (process.env.NODE_ENV === "development") {
       log("Setting up Vite in development mode...", "startup");
       await setupVite(app, server);
       log("Vite setup complete", "startup");
     } else {
-      log("Setting up static file serving...", "startup");
+      log("Warning: Not in development mode (NODE_ENV=" + process.env.NODE_ENV + "), falling back to static serving", "startup");
       serveStatic(app);
       log("Static file serving setup complete", "startup");
     }
