@@ -13,7 +13,7 @@ import { apiRequest } from "@/lib/queryClient";
 interface BetModalProps {
   open: boolean;
   onClose: () => void;
-  gameType: 'tetris' | 'temple-runner';
+  gameType: 'tetris' | 'temple-runner' | 'street-fighter';
 }
 
 export function BetModal({ open, onClose, gameType }: BetModalProps) {
@@ -39,10 +39,19 @@ export function BetModal({ open, onClose, gameType }: BetModalProps) {
         title: "Match Created",
         description: "Waiting for opponent...",
       });
-      if (gameType === 'tetris') {
-        setLocation(`/game/${match.id}`);
-      } else {
-        setLocation(`/temple-runner/${match.id}`);
+      
+      switch (gameType) {
+        case 'tetris':
+          setLocation(`/game/${match.id}`);
+          break;
+        case 'temple-runner':
+          setLocation(`/temple-runner/${match.id}`);
+          break;
+        case 'street-fighter':
+          setLocation(`/street-fighter/match/${match.id}`);
+          break;
+        default:
+          setLocation(`/game/${match.id}`);
       }
     },
     onError: (error: Error) => {
