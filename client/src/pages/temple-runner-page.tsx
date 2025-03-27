@@ -4,6 +4,7 @@ import { Navbar } from "@/components/layout/navbar";
 import { TempleRunner } from "@/components/game/temple-runner";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
+import { SEO } from "@/components/seo";
 
 export default function TempleRunnerPage() {
   const [_, setLocation] = useLocation();
@@ -20,6 +21,13 @@ export default function TempleRunnerPage() {
 
   return (
     <div className="min-h-screen bg-background">
+      {/* Temple Runner SEO Meta Tags */}
+      <SEO 
+        title="Temple Runner - Endless Runner Game" 
+        description="Race through ancient temples, collect coins, avoid obstacles, and set high scores in this fast-paced endless runner game on the Yokiko Gaming Platform."
+        type="game"
+      />
+      
       <Navbar />
       <main className="relative">
         {isPlaying ? (
