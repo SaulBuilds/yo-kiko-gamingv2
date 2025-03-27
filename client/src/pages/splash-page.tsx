@@ -30,18 +30,18 @@ export default function SplashPage() {
             transition={{ duration: 0.8 }}
             className="text-center"
           >
-            <div className="w-48 h-48 mx-auto mb-8">
+            <div className="w-100 h-100 mx-auto mb-8">
               <img 
-                src="/yokiko_logo.png" 
+                src="/assets/yo-kiko_lettermark.svg" 
                 alt="Yokiko Logo"
                 className="w-full h-full object-contain"
               />
             </div>
-            <h1 className="text-6xl md:text-8xl font-bold mb-6 pixel-font bg-clip-text text-transparent bg-gradient-to-r from-primary to-primary-foreground">
-              sumthn.fun
+            <h1 className="text-4xl md:text-5xl font-bold mb-6 pixel-font bg-clip-text text-transparent bg-gradient-to-r from-primary to-primary-foreground">
+              Vibe Coders, Degens, Gamers
             </h1>
-            <p className="text-2xl md:text-3xl mb-8 text-primary/80 pixel-font max-w-3xl mx-auto leading-relaxed">
-              Level Up Your Gaming: Create, Play, and Earn in the First Decentralized Skill-Based Gaming Arena
+            <p className="text-2xl md:text-3xl mb-8 text-primary/20 pixel-font max-w-3xl mx-auto leading-relaxed">
+              Level Up Your Gaming: Create, Play, and Earn in ETH
             </p>
             <Button 
               size="lg" 
@@ -77,7 +77,7 @@ export default function SplashPage() {
       {/* About Section */}
       <section className="py-32 bg-black/50">
         <div className="container mx-auto px-4">
-          <h2 className="text-5xl font-bold text-center mb-16 pixel-font text-primary">Why Choose sumthn.fun?</h2>
+          <h2 className="text-5xl font-bold text-center mb-16 pixel-font text-primary">Why Choose Yo-Kiko?</h2>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-12">
             <motion.div 
               className="p-8 rounded-lg bg-black/40 backdrop-blur-sm border border-primary/20"
@@ -127,20 +127,26 @@ export default function SplashPage() {
               whileHover={{ scale: 1.1 }}
               transition={{ type: "spring", stiffness: 300 }}
             >
-              <div className="w-40 h-40 bg-black/40 backdrop-blur-sm border border-primary/20 rounded-full flex items-center justify-center mb-4">
-                <span className="text-3xl font-bold pixel-font text-primary">Abstract</span>
+              <div className="w-40 h-40 mx-auto mb-8">
+                <img 
+                  src="/assets/abstract.svg" 
+                  alt="Yokiko Logo"
+                  className="w-full h-full object-contain"
+                />
               </div>
-              <p className="text-xl text-gray-300 pixel-font">Abstract Chain</p>
             </motion.div>
             <motion.div 
               className="flex flex-col items-center"
               whileHover={{ scale: 1.1 }}
               transition={{ type: "spring", stiffness: 300 }}
             >
-              <div className="w-40 h-40 bg-black/40 backdrop-blur-sm border border-primary/20 rounded-full flex items-center justify-center mb-4">
-                <span className="text-3xl font-bold pixel-font text-primary">ICP</span>
+              <div className="w-50 h-50 mx-auto mb-8">
+                <img 
+                  src="/assets/IC_logo_horizontal_white.svg" 
+                  alt="Yokiko Logo"
+                  className="w-full h-full object-contain"
+                />
               </div>
-              <p className="text-xl text-gray-300 pixel-font">Internet Computer</p>
             </motion.div>
           </div>
         </div>
