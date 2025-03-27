@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Gamepad2, Code2, Trophy, Github, Twitter, Linkedin } from "lucide-react";
 import { SiTiktok } from "react-icons/si";
 import { motion } from "framer-motion";
+import { SEO } from "@/components/seo";
 
 export default function SplashPage() {
   const [_, setLocation] = useLocation();
@@ -20,6 +21,14 @@ export default function SplashPage() {
 
   return (
     <div className="min-h-screen bg-black text-white overflow-hidden">
+      {/* SEO Meta Tags */}
+      <SEO 
+        title="Yokiko: Web3 Gaming Platform" 
+        description="Play competitive blockchain games, place skill-based wagers, and earn ETH on the Yokiko gaming platform. Join our community of vibe coders, degens, and gamers!"
+        image="/assets/yo.png"
+        type="website"
+      />
+      
       {/* Hero Section */}
       <section className="relative h-screen flex items-center justify-center">
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,_var(--primary)_0%,_transparent_100%)] opacity-20" />

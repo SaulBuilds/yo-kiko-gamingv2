@@ -9,6 +9,7 @@ import { Gamepad2, Trophy, Users, Coins, Clock } from "lucide-react";
 import { Navbar } from "@/components/layout/navbar";
 import { BetModal } from "@/components/game/bet-modal";
 import { Badge } from "@/components/ui/badge";
+import { SEO } from "@/components/seo";
 
 export default function DashboardPage() {
   const [_, setLocation] = useLocation();
@@ -109,6 +110,13 @@ export default function DashboardPage() {
 
   return (
     <div className="min-h-screen bg-background">
+      {/* Dashboard SEO Meta Tags */}
+      <SEO 
+        title="Game Dashboard" 
+        description="Play and wager on games including Tetris, Temple Runner, and Street Fighter. View your stats, join active matches, and check the leaderboard."
+        type="website"
+      />
+      
       <Navbar />
       <main className="container mx-auto px-4 py-8">
         <h1 className="pixel-font text-4xl text-center mb-8 text-primary">

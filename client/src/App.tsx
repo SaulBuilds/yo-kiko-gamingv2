@@ -5,6 +5,7 @@ import { AbstractWalletProvider } from "@abstract-foundation/agw-react";
 import { abstractTestnet } from "viem/chains";
 import { Toaster } from "@/components/ui/toaster";
 import { AuthProvider } from "@/hooks/use-auth";
+import { SEO } from "@/components/seo";
 import NotFound from "@/pages/not-found";
 import SplashPage from "@/pages/splash-page";
 import AuthPage from "@/pages/auth-page";
@@ -36,6 +37,9 @@ function Router() {
 function App() {
   return (
     <div className="min-h-screen bg-background">
+      {/* Global SEO configuration */}
+      <SEO />
+      
       <AbstractWalletProvider 
         chain={abstractTestnet}
       >
