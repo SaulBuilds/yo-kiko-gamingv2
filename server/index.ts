@@ -41,29 +41,42 @@ app.use((req, res, next) => {
 });
 
 (async () => {
-  const server = await registerRoutes(app);
+  log("Starting server initialization...", "startup");
 
-  // Improved error handling - log error but don't throw after response
-  app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
-    const status = err.status || err.statusCode || 500;
-    const message = err.message || "Internal Server Error";
+  try {
+    log("Registering routes...", "startup");
+    const server = await registerRoutes(app);
+    log("Routes registered successfully", "startup");
 
-    log(`Error: ${message}`, "error");
-    res.status(status).json({ message });
-  });
+    // Improved error handling - log error but don't throw after response
+    app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
+      const status = err.status || err.statusCode || 500;
+      const message = err.message || "Internal Server Error";
 
-  if (app.get("env") === "development") {
-    await setupVite(app, server);
-  } else {
-    serveStatic(app);
+      log(`Error: ${message}`, "error");
+      res.status(status).json({ message });
+    });
+
+    if (app.get("env") === "development") {
+      log("Setting up Vite in development mode...", "startup");
+      await setupVite(app, server);
+      log("Vite setup complete", "startup");
+    } else {
+      log("Setting up static file serving...", "startup");
+      serveStatic(app);
+      log("Static file serving setup complete", "startup");
+    }
+
+    const port = 5000;
+    server.listen({
+      port,
+      host: "0.0.0.0",
+      reusePort: true,
+    }, () => {
+      log(`Server initialized and listening on port ${port}`, "startup");
+    });
+  } catch (error) {
+    log(`Server initialization failed: ${error}`, "error");
+    process.exit(1);
   }
-
-  const port = 5000;
-  server.listen({
-    port,
-    host: "0.0.0.0",
-    reusePort: true,
-  }, () => {
-    log(`serving on port ${port}`);
-  });
 })();
