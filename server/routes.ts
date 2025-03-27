@@ -15,7 +15,7 @@ interface GameState {
 export async function registerRoutes(app: Express): Promise<Server> {
   const httpServer = createServer(app);
 
-  // Session middleware setup
+  // Session middleware setup with explicit configuration
   app.use(
     session({
       secret: process.env.SESSION_SECRET || 'your-secret-key',
@@ -24,7 +24,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       store: storage.sessionStore,
       cookie: {
         secure: process.env.NODE_ENV === 'production',
-        maxAge: 24 * 60 * 60 * 1000 // 24 hours
+        maxAge: 24 * 60 * 60 * 1000, // 24 hours
+        sameSite: 'lax'
       }
     })
   );
@@ -233,10 +234,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
     res.json(leaderboard);
   });
 
-  // WebSocket handling
+  // WebSocket handling with distinct path and improved error handling
   const wss = new WebSocketServer({
     server: httpServer,
-    path: '/game-ws'
+    path: '/game-ws' // Distinct path from Vite's HMR
   });
 
   const gameStates = new Map<number, Map<number, GameState>>();
@@ -244,6 +245,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   wss.on("connection", (ws) => {
     log("New WebSocket connection established", "websocket");
+
+    ws.on("error", (error) => {
+      log(`WebSocket error: ${error}`, "websocket");
+    });
 
     ws.on("message", async (data) => {
       try {
@@ -314,7 +319,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           }
         }
       } catch (error) {
-        log(`WebSocket error: ${error}`, "websocket");
+        log(`WebSocket message handling error: ${error}`, "websocket");
       }
     });
 
