@@ -26,7 +26,6 @@ export default function SplashPage() {
         title="Yokiko: Web3 Gaming Platform" 
         description="Play competitive blockchain games, place skill-based wagers, and earn ETH on the Yokiko gaming platform. Join our community of vibe coders, degens, and gamers!"
         image="/assets/yo.png"
-        type="website"
       />
       
       {/* Hero Section */}
