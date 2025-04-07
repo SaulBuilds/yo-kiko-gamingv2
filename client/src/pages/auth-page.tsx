@@ -30,7 +30,7 @@ export default function AuthPage() {
     setIsModalOpen(true);
   };
 
-  const handleCloseModal = async () => {
+  const handleCloseModal = () => {
     setIsModalOpen(false);
     return Promise.resolve();
   };

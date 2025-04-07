@@ -73,10 +73,7 @@ export function ConnectWallet() {
 
       <WalletSelectModal
         isOpen={isModalOpen}
-        onClose={() => {
-          setIsModalOpen(false);
-          return Promise.resolve();
-        }}
+        onClose={handleCloseModal}
         useAbstractWalletConnect={abstractLogin}
         isAbstractConnecting={isAbstractConnecting}
       />

@@ -3,6 +3,7 @@ import { abstractTestnet } from "viem/chains";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { AuthProvider } from "@/hooks/use-auth";
 import { Toaster } from "@/components/ui/toaster";
+import { NFIDProvider } from "@/components/providers/nfid-provider";
 
 const queryClient = new QueryClient();
 
@@ -16,10 +17,12 @@ export function Providers({ children }: ProvidersProps) {
       <AbstractWalletProvider 
         chain={abstractTestnet} // Use abstract for mainnet
       >
-        <AuthProvider>
-          {children}
-          <Toaster />
-        </AuthProvider>
+        <NFIDProvider>
+          <AuthProvider>
+            {children}
+            <Toaster />
+          </AuthProvider>
+        </NFIDProvider>
       </AbstractWalletProvider>
     </QueryClientProvider>
   );
