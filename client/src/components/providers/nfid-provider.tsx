@@ -1,6 +1,14 @@
 import { ReactNode, useEffect } from 'react';
 import { IdentityKitProvider, IdentityKitTheme } from '@nfid/identitykit/react';
 
+// Extend the Window interface to include our global functions
+declare global {
+  interface Window {
+    showNFIDContainer?: () => void;
+    hideNFIDContainer?: () => void;
+  }
+}
+
 interface NFIDProviderProps {
   children: ReactNode;
 }
@@ -13,88 +21,76 @@ interface NFIDProviderProps {
  * @returns {JSX.Element} - The wrapped component with NFID context
  */
 export function NFIDProvider({ children }: NFIDProviderProps) {
-  // Add custom styles to the NFID UI elements after they're rendered
   useEffect(() => {
-    // Create a style element to contain our custom CSS
-    const styleElement = document.createElement('style');
-    styleElement.innerHTML = `
-      /* Hide ALL NFID UI elements by default - more aggressive approach */
-      h2:contains("Select signer"), 
-      h3:contains("Select signer"),
-      div:has(> h2:contains("Select signer")),
-      div:has(> h3:contains("Select signer")),
-      div:has(> div > h2:contains("Select signer")),
-      div:has(> div > h3:contains("Select signer")) {
-        display: none !important;
+    // Expose functions to show/hide NFID container for global access
+    window.showNFIDContainer = () => {
+      const container = document.getElementById('nfid-container');
+      if (container) {
+        container.classList.add('visible');
       }
-
-      /* Target wallet selection headings */
-      div:has(> img[src*="NFID"]),
-      div:has(> img[src*="Identity"]) {
-        display: none !important;
-      }
-
-      /* Target by content */
-      div:contains("Connect your wallet") {
-        display: none !important;
-      }
-
-      /* Make this even more aggressive - hide everything at the bottom after the real content */
-      body > div:nth-last-child(-n+3) {
-        display: none !important;
-      }
-
-      /* Only show when explicitly set */
-      .nfid-modal-visible {
-        display: block !important;
-        position: fixed !important;
-        z-index: 9999 !important;
-        top: 50% !important;
-        left: 50% !important;
-        transform: translate(-50%, -50%) !important;
-        max-width: 400px !important;
-        width: 100% !important;
-        background-color: rgba(0, 0, 0, 0.85) !important;
-        border-radius: 8px !important;
-        padding: 20px !important;
-        box-shadow: 0 4px 30px rgba(0, 0, 0, 0.3) !important;
-      }
-    `;
+    };
     
-    // Add the style to the document head
-    document.head.appendChild(styleElement);
-
-    // Create a mutation observer to hide new NFID elements that might get added to the DOM
+    window.hideNFIDContainer = () => {
+      const container = document.getElementById('nfid-container');
+      if (container) {
+        container.classList.remove('visible');
+      }
+    };
+    
+    // Create a MutationObserver to detect when the NFID UI is rendered
     const observer = new MutationObserver((mutations) => {
-      mutations.forEach(mutation => {
+      // Check if any mutations contain NFID-related content
+      const hasSigner = mutations.some(mutation => {
         if (mutation.type === 'childList' && mutation.addedNodes.length > 0) {
-          mutation.addedNodes.forEach(node => {
+          return Array.from(mutation.addedNodes).some(node => {
             if (node instanceof HTMLElement) {
-              // Check if this is likely an NFID element (look for telltale signs)
-              if (
-                (node.innerText && node.innerText.includes('Select signer')) ||
-                (node.innerText && node.innerText.includes('Connect your wallet')) ||
-                (node.innerHTML && node.innerHTML.includes('NFID Wallet')) ||
-                (node.innerHTML && node.innerHTML.includes('Internet Identity'))
-              ) {
-                // Hide it unless it's explicitly marked as visible
-                if (!node.classList.contains('nfid-modal-visible')) {
-                  node.style.display = 'none';
-                }
-              }
+              // Use textContent instead of innerText for broader compatibility
+              const text = node.textContent || '';
+              return (
+                text.includes('Select signer') || 
+                text.includes('Connect your wallet') || 
+                text.includes('NFID Wallet') || 
+                text.includes('Internet Identity')
+              );
+            }
+            return false;
+          });
+        }
+        return false;
+      });
+      
+      if (hasSigner) {
+        // Force move any NFID elements to our container
+        const nfidContainer = document.getElementById('nfid-container');
+        if (nfidContainer) {
+          document.querySelectorAll('body > div:not(#root):not(#nfid-container)').forEach(el => {
+            // Use textContent instead of innerText for broader compatibility
+            const text = el.textContent || '';
+            if (
+              text.includes('Select signer') || 
+              text.includes('Connect your wallet') ||
+              text.includes('NFID Wallet') ||
+              text.includes('Internet Identity')
+            ) {
+              nfidContainer.appendChild(el);
             }
           });
         }
-      });
+      }
     });
-
-    // Start observing the document body for added nodes
-    observer.observe(document.body, { childList: true, subtree: true });
     
-    // Clean up function
+    // Observe the entire document
+    observer.observe(document.documentElement, { 
+      childList: true, 
+      subtree: true,
+      characterData: true
+    });
+    
     return () => {
-      document.head.removeChild(styleElement);
       observer.disconnect();
+      // Clean up global functions
+      delete window.showNFIDContainer;
+      delete window.hideNFIDContainer;
     };
   }, []);
 
@@ -104,6 +100,7 @@ export function NFIDProvider({ children }: NFIDProviderProps) {
       featuredSigner={false}
       // Specify the theme to match our app's design
       theme={IdentityKitTheme.DARK}
+      // Note: providerUrl is not a valid prop for IdentityKitProvider, removing it
     >
       {children}
     </IdentityKitProvider>

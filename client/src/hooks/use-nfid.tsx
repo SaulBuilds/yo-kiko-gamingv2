@@ -1,6 +1,14 @@
 import { useState, useCallback, useEffect } from "react";
 import { useIdentityKit } from "@nfid/identitykit/react";
 
+// Extend the Window interface to include our global functions
+declare global {
+  interface Window {
+    showNFIDContainer?: () => void;
+    hideNFIDContainer?: () => void;
+  }
+}
+
 /**
  * Custom hook to interact with NFID wallet
  * 
@@ -11,106 +19,20 @@ export function useNFID() {
   const [error, setError] = useState<Error | null>(null);
   const nfidIdentityKit = useIdentityKit();
 
-  // Function to properly show the NFID UI during connection
+  // Simple function to show the NFID UI using our global container
   const showNFIDModal = useCallback(() => {
-    // Find ALL possible NFID elements using a more aggressive approach
-    setTimeout(() => {
-      // Method 1: Find elements by text content
-      const findElementsByText = (text: string) => {
-        const elements: HTMLElement[] = [];
-        const walker = document.createTreeWalker(
-          document.body,
-          NodeFilter.SHOW_ELEMENT,
-          {
-            acceptNode: (node) => {
-              if (node instanceof HTMLElement) {
-                if (node.innerText && node.innerText.includes(text)) {
-                  return NodeFilter.FILTER_ACCEPT;
-                }
-              }
-              return NodeFilter.FILTER_SKIP;
-            }
-          }
-        );
-        
-        let currentNode: Node | null;
-        while (currentNode = walker.nextNode()) {
-          if (currentNode instanceof HTMLElement) {
-            elements.push(currentNode);
-          }
-        }
-        
-        return elements;
-      };
-      
-      // Find all potential NFID elements
-      const signerElements = findElementsByText('Select signer');
-      const walletElements = findElementsByText('Connect your wallet');
-      const nfidElements = findElementsByText('NFID Wallet');
-      const identityElements = findElementsByText('Internet Identity');
-      
-      // Combine all elements
-      const allElements = [
-        ...signerElements,
-        ...walletElements,
-        ...nfidElements,
-        ...identityElements
-      ];
-      
-      // Get parent elements to capture the whole modal
-      const parentElements: HTMLElement[] = [];
-      allElements.forEach(el => {
-        let parent = el.parentElement;
-        while (parent) {
-          // Add parent to our list if it's not already included
-          if (parent instanceof HTMLElement && !parentElements.includes(parent)) {
-            parentElements.push(parent);
-          }
-          parent = parent.parentElement;
-          
-          // Limit to 3 levels up to avoid affecting too much of the DOM
-          if (parentElements.length > 3) break;
-        }
-      });
-      
-      // Show all potential parent elements by marking them as explicitly visible
-      const allTargetElements = [...allElements, ...parentElements];
-      allTargetElements.forEach(el => {
-        if (el instanceof HTMLElement) {
-          el.classList.add('nfid-modal-visible');
-          // Remove any inline display: none
-          el.style.removeProperty('display');
-        }
-      });
-    }, 200); // Increase delay to ensure elements are rendered
+    // Use the global function we defined in NFIDProvider
+    if (typeof window.showNFIDContainer === 'function') {
+      window.showNFIDContainer();
+    }
   }, []);
 
-  // Function to hide the NFID UI after connection is complete or failed
+  // Simple function to hide the NFID UI using our global container
   const hideNFIDModal = useCallback(() => {
-    // Remove the visible class from any elements that have it
-    const visibleElements = document.querySelectorAll('.nfid-modal-visible');
-    visibleElements.forEach(el => {
-      if (el instanceof HTMLElement) {
-        el.classList.remove('nfid-modal-visible');
-        el.style.display = 'none';
-      }
-    });
-    
-    // Also hide any elements that might be related to NFID
-    const potentialNFIDElements = document.querySelectorAll('div:has(h2), div:has(h3)');
-    potentialNFIDElements.forEach(el => {
-      if (el instanceof HTMLElement) {
-        const textContent = el.innerText || '';
-        if (
-          textContent.includes('Select signer') ||
-          textContent.includes('Connect your wallet') ||
-          textContent.includes('NFID Wallet') ||
-          textContent.includes('Internet Identity')
-        ) {
-          el.style.display = 'none';
-        }
-      }
-    });
+    // Use the global function we defined in NFIDProvider
+    if (typeof window.hideNFIDContainer === 'function') {
+      window.hideNFIDContainer();
+    }
   }, []);
 
   // Cleanup function to ensure the modal is hidden when the component unmounts
