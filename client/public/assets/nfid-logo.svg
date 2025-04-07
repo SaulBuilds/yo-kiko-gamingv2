@@ -1,8 +1,4 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<svg width="250" height="250" viewBox="0 0 250 250" fill="none" xmlns="http://www.w3.org/2000/svg">
-  <circle cx="125" cy="125" r="125" fill="#3B00B9"/>
-  <path d="M107.5 64.5L122 70L60 172.5L45.5 167L107.5 64.5Z" fill="white"/>
-  <path d="M141.5 64.5L127 70L189 172.5L203.5 167L141.5 64.5Z" fill="white"/>
-  <path d="M60 172.5H189L185 188H64L60 172.5Z" fill="white"/>
-  <path d="M107.5 64.5H141.5L193 147.5L185 167L125 61L65 167L57 147.5L107.5 64.5Z" fill="white"/>
+<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect x="3" y="3" width="18" height="18" rx="3" stroke="#7928CA" stroke-width="1.5"/>
+  <path d="M7 12L10 15L17 8" stroke="#7928CA" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
 </svg>
