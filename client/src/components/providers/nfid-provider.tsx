@@ -18,40 +18,83 @@ export function NFIDProvider({ children }: NFIDProviderProps) {
     // Create a style element to contain our custom CSS
     const styleElement = document.createElement('style');
     styleElement.innerHTML = `
-      /* Hide NFID UI by default */
-      .identitykit-dialog {
-        display: none;
-        position: fixed;
-        z-index: 9999;
-        max-width: 400px;
-        width: 100%;
-        background-color: rgba(0, 0, 0, 0.75);
-        border-radius: 8px;
-        padding: 20px;
-        box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1);
-        margin: 0 auto;
-        top: 50%;
-        left: 50%;
-        transform: translate(-50%, -50%);
-      }
-
-      /* Apply a data attribute for JS targeting */
-      .identitykit-dialog[data-nfid-container] {
-        display: none;
-      }
-
-      /* Remove any fixed position elements added by NFID */
-      div[style*="position: fixed"] {
+      /* Hide ALL NFID UI elements by default - more aggressive approach */
+      h2:contains("Select signer"), 
+      h3:contains("Select signer"),
+      div:has(> h2:contains("Select signer")),
+      div:has(> h3:contains("Select signer")),
+      div:has(> div > h2:contains("Select signer")),
+      div:has(> div > h3:contains("Select signer")) {
         display: none !important;
+      }
+
+      /* Target wallet selection headings */
+      div:has(> img[src*="NFID"]),
+      div:has(> img[src*="Identity"]) {
+        display: none !important;
+      }
+
+      /* Target by content */
+      div:contains("Connect your wallet") {
+        display: none !important;
+      }
+
+      /* Make this even more aggressive - hide everything at the bottom after the real content */
+      body > div:nth-last-child(-n+3) {
+        display: none !important;
+      }
+
+      /* Only show when explicitly set */
+      .nfid-modal-visible {
+        display: block !important;
+        position: fixed !important;
+        z-index: 9999 !important;
+        top: 50% !important;
+        left: 50% !important;
+        transform: translate(-50%, -50%) !important;
+        max-width: 400px !important;
+        width: 100% !important;
+        background-color: rgba(0, 0, 0, 0.85) !important;
+        border-radius: 8px !important;
+        padding: 20px !important;
+        box-shadow: 0 4px 30px rgba(0, 0, 0, 0.3) !important;
       }
     `;
     
     // Add the style to the document head
     document.head.appendChild(styleElement);
+
+    // Create a mutation observer to hide new NFID elements that might get added to the DOM
+    const observer = new MutationObserver((mutations) => {
+      mutations.forEach(mutation => {
+        if (mutation.type === 'childList' && mutation.addedNodes.length > 0) {
+          mutation.addedNodes.forEach(node => {
+            if (node instanceof HTMLElement) {
+              // Check if this is likely an NFID element (look for telltale signs)
+              if (
+                (node.innerText && node.innerText.includes('Select signer')) ||
+                (node.innerText && node.innerText.includes('Connect your wallet')) ||
+                (node.innerHTML && node.innerHTML.includes('NFID Wallet')) ||
+                (node.innerHTML && node.innerHTML.includes('Internet Identity'))
+              ) {
+                // Hide it unless it's explicitly marked as visible
+                if (!node.classList.contains('nfid-modal-visible')) {
+                  node.style.display = 'none';
+                }
+              }
+            }
+          });
+        }
+      });
+    });
+
+    // Start observing the document body for added nodes
+    observer.observe(document.body, { childList: true, subtree: true });
     
     // Clean up function
     return () => {
       document.head.removeChild(styleElement);
+      observer.disconnect();
     };
   }, []);
 

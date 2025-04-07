@@ -6,6 +6,28 @@
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <link rel="icon" type="image/x-icon" href="/favicon.ico" />
     <title>sumthn.fun - Crypto Gaming Platform</title>
+    <style>
+      /* Immediate hiding of NFID elements - this runs before any JavaScript */
+      body > div:last-child {
+        display: none !important; /* Hide the last div in the body which is likely the NFID signer container */
+      }
+
+      /* Hide elements that look like NFID/wallet dialogs */
+      div:has(> h2:contains("Select signer")),
+      div:has(> h3:contains("Select signer")),
+      div:has(> div > h2:contains("Select signer")),
+      div:has(> div > h3:contains("Select signer")),
+      div:contains("Connect your wallet"),
+      div:has(> img[alt*="NFID"]),
+      div:has(> img[alt*="Identity"]) {
+        display: none !important;
+      }
+      
+      /* The NFID dialog is often appended directly to the body as one of the last elements */
+      body > div:nth-last-child(-n+5) {
+        display: none !important; 
+      }
+    </style>
   </head>
   <body>
     <div id="root"></div>
