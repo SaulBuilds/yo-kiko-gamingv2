@@ -18,8 +18,14 @@ export function ConnectWallet() {
   
   // Wrap the Abstract login function to return a Promise
   const abstractLogin = async (): Promise<void> => {
-    rawAbstractLogin();
-    return Promise.resolve();
+    try {
+      console.log("Starting Abstract login...");
+      rawAbstractLogin();
+      return Promise.resolve();
+    } catch (error) {
+      console.error("Abstract login error:", error);
+      return Promise.reject(error);
+    }
   };
   
   const {
@@ -46,10 +52,12 @@ export function ConnectWallet() {
   };
 
   const handleOpenModal = () => {
+    console.log("Opening wallet modal from ConnectWallet component");
     setIsModalOpen(true);
   };
 
   const handleCloseModal = async (): Promise<void> => {
+    console.log("Closing wallet modal from ConnectWallet component");
     setIsModalOpen(false);
     return Promise.resolve();
   };
@@ -73,7 +81,7 @@ export function ConnectWallet() {
           variant="default"
         >
           <Wallet className="w-4 h-4" />
-          Connect Wallet
+          Connect to Play
         </Button>
       )}
 
