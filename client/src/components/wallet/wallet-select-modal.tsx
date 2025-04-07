@@ -1,158 +1,128 @@
-import { 
-  Dialog, 
-  DialogContent, 
-  DialogDescription, 
-  DialogFooter,
-  DialogHeader, 
-  DialogTitle 
-} from "@/components/ui/dialog";
+import React from 'react';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import { useState } from "react";
 import { useNFID } from "@/hooks/use-nfid";
+import { Spinner } from "../ui/spinner";
+import { ExternalLink } from "lucide-react";
 
-/**
- * Props for the WalletSelectModal component
- */
 interface WalletSelectModalProps {
-  /**
-   * Determines if the modal is open
-   */
   isOpen: boolean;
-  /**
-   * Function to call when the modal is closed
-   */
   onClose: () => Promise<void>;
-  /**
-   * Function to use for Abstract wallet connection
-   */
   useAbstractWalletConnect: () => Promise<void>;
-  /**
-   * Boolean indicating if Abstract wallet is connecting
-   */
   isAbstractConnecting: boolean;
 }
 
 /**
- * WalletSelectModal component that displays a modal with wallet connection options
+ * Modal for selecting between different wallet types
  * 
  * @param {WalletSelectModalProps} props - Component props
- * @returns {JSX.Element} The rendered component
+ * @returns {JSX.Element} The wallet selection modal
  */
-export function WalletSelectModal({ 
-  isOpen, 
+export function WalletSelectModal({
+  isOpen,
   onClose,
   useAbstractWalletConnect,
   isAbstractConnecting
 }: WalletSelectModalProps) {
-  const [isLoading, setIsLoading] = useState(false);
-  const { connect: connectNFID, isConnecting: isNFIDConnecting } = useNFID();
+  const { connect: connectNFID, isConnecting: isNFIDConnecting, error: nfidError } = useNFID();
+  const [error, setError] = React.useState<string | null>(null);
 
+  // Handle Abstract wallet connection
   const handleAbstractConnect = async () => {
-    setIsLoading(true);
     try {
+      setError(null);
       await useAbstractWalletConnect();
-      // Modal will be closed by auth handler in useAuth after successful connection
-    } catch (error) {
-      console.error("Error connecting with Abstract:", error);
-      setIsLoading(false);
+      await onClose();
+    } catch (err: any) {
+      console.error("Error connecting to Abstract wallet:", err);
+      setError(err?.message || "Failed to connect to Abstract wallet");
     }
   };
 
+  // Handle NFID wallet connection
   const handleNFIDConnect = async () => {
-    setIsLoading(true);
     try {
+      setError(null);
       await connectNFID();
-      // Modal will be closed by auth handler in useAuth after successful connection
-    } catch (error) {
-      console.error("Error connecting with NFID:", error);
-      setIsLoading(false);
+      await onClose();
+    } catch (err: any) {
+      console.error("Error connecting to NFID wallet:", err);
+      setError(err?.message || "Failed to connect to NFID wallet");
     }
   };
 
   return (
-    <Dialog open={isOpen} onOpenChange={(open) => {
-      if (!open) {
-        void onClose();
-      }
-    }}>
-      <DialogContent className="sm:max-w-2xl">
+    <Dialog open={isOpen} onOpenChange={() => onClose()}>
+      <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>Connect Your Wallet</DialogTitle>
+          <DialogTitle className="text-xl font-bold">Connect Your Wallet</DialogTitle>
           <DialogDescription>
-            Choose your preferred wallet to connect and start playing
+            Choose a wallet to connect with and start playing
           </DialogDescription>
         </DialogHeader>
+        
+        <div className="grid gap-4 py-4">
+          {error && (
+            <div className="bg-destructive/20 border border-destructive text-destructive px-4 py-2 rounded-md">
+              {error}
+            </div>
+          )}
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 py-4">
-          <Card className="cursor-pointer hover:border-primary transition-all" onClick={handleAbstractConnect}>
-            <CardHeader className="pb-2">
-              <CardTitle>Abstract Wallet</CardTitle>
-              <CardDescription>Connect with Ethereum</CardDescription>
-            </CardHeader>
-            <CardContent className="pb-2">
-              <div className="h-24 flex items-center justify-center">
-                <img 
-                  src="/assets/abstract_logo.svg" 
-                  alt="Abstract Wallet" 
-                  className="h-12 w-auto object-contain" 
-                />
-              </div>
-            </CardContent>
-            <CardFooter>
-              <Button 
-                className="w-full" 
-                variant="outline"
-                disabled={isAbstractConnecting || isLoading}
-              >
-                {isAbstractConnecting ? "Connecting..." : "Connect"}
-              </Button>
-            </CardFooter>
-          </Card>
-
-          <Card className="cursor-pointer hover:border-primary transition-all" onClick={handleNFIDConnect}>
-            <CardHeader className="pb-2">
-              <CardTitle>NFID Wallet</CardTitle>
-              <CardDescription>Connect with Internet Computer</CardDescription>
-            </CardHeader>
-            <CardContent className="pb-2">
-              <div className="h-24 flex items-center justify-center">
-                <img 
-                  src="/assets/IC_logo_horizontal_white.svg" 
-                  alt="NFID Wallet" 
-                  className="h-12 w-auto object-contain" 
-                />
-              </div>
-            </CardContent>
-            <CardFooter>
-              <Button 
-                className="w-full" 
-                variant="outline"
-                disabled={isNFIDConnecting || isLoading}
-              >
-                {isNFIDConnecting ? "Connecting..." : "Connect"}
-              </Button>
-            </CardFooter>
-          </Card>
-        </div>
-
-        <DialogFooter>
-          <Button variant="ghost" onClick={() => {
-            const result = onClose();
-            if (result instanceof Promise) {
-              void result;
-            }
-          }}>
-            Cancel
+          {/* Abstract Wallet Option */}
+          <Button
+            onClick={handleAbstractConnect}
+            disabled={isAbstractConnecting || isNFIDConnecting}
+            className="w-full py-6 relative"
+            variant="outline"
+          >
+            {isAbstractConnecting ? (
+              <Spinner className="mr-2" />
+            ) : (
+              <img 
+                src="/assets/abstract-logo.svg" 
+                alt="Abstract Wallet" 
+                className="w-6 h-6 mr-2"
+              />
+            )}
+            <div className="flex flex-col items-start">
+              <span className="font-semibold">Abstract Wallet</span>
+              <span className="text-xs text-muted-foreground">Connect with your EVM wallet</span>
+            </div>
           </Button>
-        </DialogFooter>
+
+          {/* NFID Wallet Option */}
+          <Button
+            onClick={handleNFIDConnect}
+            disabled={isNFIDConnecting || isAbstractConnecting}
+            className="w-full py-6 relative"
+            variant="outline"
+          >
+            {isNFIDConnecting ? (
+              <Spinner className="mr-2" />
+            ) : (
+              <img 
+                src="/assets/nfid-logo.svg" 
+                alt="NFID" 
+                className="w-6 h-6 mr-2"
+              />
+            )}
+            <div className="flex flex-col items-start">
+              <span className="font-semibold">NFID</span>
+              <span className="text-xs text-muted-foreground">Connect with Internet Computer</span>
+            </div>
+          </Button>
+
+          <div className="text-xs text-center text-muted-foreground mt-2">
+            <a 
+              href="https://docs.y-kiko.com/wallets" 
+              target="_blank" 
+              rel="noopener noreferrer"
+              className="flex items-center justify-center gap-1 hover:underline"
+            >
+              Learn more about our supported wallets <ExternalLink className="w-3 h-3" />
+            </a>
+          </div>
+        </div>
       </DialogContent>
     </Dialog>
   );

@@ -1,131 +1,102 @@
-import { useState, useCallback } from 'react';
-import { useAuth as useAbstractAuth } from '@/hooks/use-auth';
-import { useAuth as useNFIDAuth } from '@nfid/identitykit/react';
+import { useState, useCallback, useEffect } from 'react';
+import { useAuth } from '@/hooks/use-auth';
+import { useNFID } from '@/hooks/use-nfid';
+import { useLoginWithAbstract } from '@abstract-foundation/agw-react';
 
 type WalletType = 'abstract' | 'nfid' | null;
 
 /**
  * Custom hook to handle multiple wallet types
  * Provides a unified interface for working with both Abstract Global Wallet and NFID
+ * 
+ * @returns {Object} Object containing wallet connection state and methods
  */
 export function useMultiWallet() {
   const [activeWalletType, setActiveWalletType] = useState<WalletType>(null);
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  
-  // Abstract wallet hooks
+  const [walletAddress, setWalletAddress] = useState<string | undefined>(undefined);
+  const [isConnected, setIsConnected] = useState<boolean>(false);
+  const [error, setError] = useState<Error | null>(null);
+
+  // Get auth and wallet hooks
+  const { user, updateProfileMutation } = useAuth();
+  const { connect: nfidConnect, disconnect: nfidDisconnect, getPrincipal } = useNFID();
   const { 
-    user: abstractUser, 
-    connect: abstractConnect, 
-    disconnect: abstractDisconnect,
-    isConnecting: isAbstractConnecting,
-    address: abstractAddress
-  } = useAbstractAuth();
-  
-  // NFID wallet hooks
-  const { 
-    user: nfidUser, 
-    connect: nfidConnect, 
-    disconnect: nfidDisconnect,
-    isConnecting: isNFIDConnecting
-  } = useNFIDAuth();
-
-  /**
-   * Opens the wallet selection modal
-   */
-  const openWalletModal = useCallback(() => {
-    setIsModalOpen(true);
-  }, []);
-
-  /**
-   * Closes the wallet selection modal
-   */
-  const closeWalletModal = useCallback(() => {
-    setIsModalOpen(false);
-  }, []);
-
-  /**
-   * Handle Abstract wallet connection
-   */
-  const handleAbstractConnect = useCallback(async () => {
-    try {
-      await abstractConnect();
-      setActiveWalletType('abstract');
-      return true;
-    } catch (error) {
-      console.error('Failed to connect to Abstract wallet', error);
-      return false;
-    }
-  }, [abstractConnect]);
-
-  /**
-   * Handle NFID wallet connection
-   */
-  const handleNFIDConnect = useCallback(async () => {
-    try {
-      await nfidConnect();
-      setActiveWalletType('nfid');
-      return true;
-    } catch (error) {
-      console.error('Failed to connect to NFID wallet', error);
-      return false;
-    }
-  }, [nfidConnect]);
+    isLoggedIn: isAbstractLoggedIn, 
+    address: abstractAddress,
+    logout: abstractLogout,
+    isLoggingIn: isAbstractLoggingIn 
+  } = useLoginWithAbstract();
 
   /**
    * Disconnect from the active wallet
+   * 
+   * @returns {Promise<void>} Promise that resolves when disconnection is complete
    */
   const disconnect = useCallback(async () => {
-    if (activeWalletType === 'abstract') {
-      await abstractDisconnect();
-    } else if (activeWalletType === 'nfid') {
-      await nfidDisconnect();
+    try {
+      setError(null);
+      if (activeWalletType === 'abstract') {
+        abstractLogout();
+      } else if (activeWalletType === 'nfid') {
+        await nfidDisconnect();
+      }
+      
+      setActiveWalletType(null);
+      setWalletAddress(undefined);
+      setIsConnected(false);
+    } catch (err) {
+      console.error("Error disconnecting from wallet:", err);
+      setError(err instanceof Error ? err : new Error("Failed to disconnect from wallet"));
     }
+  }, [activeWalletType, abstractLogout, nfidDisconnect]);
+
+  // Effect to update connection status when Abstract wallet status changes
+  useEffect(() => {
+    if (isAbstractLoggedIn && abstractAddress) {
+      setWalletAddress(abstractAddress);
+      setIsConnected(true);
+      setActiveWalletType('abstract');
+      
+      // Update the user profile if we're connected but don't have a wallet saved yet
+      if (user && !user.walletAddress) {
+        updateProfileMutation.mutate({
+          walletAddress: abstractAddress
+        });
+      }
+    }
+  }, [isAbstractLoggedIn, abstractAddress, user, updateProfileMutation]);
+
+  // Effect to check NFID connection status on mount
+  useEffect(() => {
+    const checkNFIDConnection = async () => {
+      try {
+        const principal = getPrincipal();
+        if (principal) {
+          setWalletAddress(principal);
+          setIsConnected(true);
+          setActiveWalletType('nfid');
+          
+          // Update the user profile if we're connected but don't have a wallet saved yet
+          if (user && !user.walletAddress) {
+            await updateProfileMutation.mutateAsync({
+              walletAddress: principal
+            });
+          }
+        }
+      } catch (err) {
+        console.error("Error checking NFID connection:", err);
+      }
+    };
     
-    setActiveWalletType(null);
-  }, [activeWalletType, abstractDisconnect, nfidDisconnect]);
-
-  // Determine the currently active user
-  const currentUser = activeWalletType === 'abstract' 
-    ? abstractUser 
-    : activeWalletType === 'nfid' 
-      ? nfidUser 
-      : null;
-
-  // Get current wallet address
-  const getWalletAddress = useCallback(() => {
-    if (activeWalletType === 'abstract') {
-      return abstractAddress;
-    } else if (activeWalletType === 'nfid' && nfidUser) {
-      return nfidUser.principal.toString();
-    }
-    return undefined;
-  }, [activeWalletType, abstractAddress, nfidUser]);
-
-  // Check if any wallet is connected
-  const isConnected = Boolean(currentUser);
-
-  // Combine connecting states
-  const isConnecting = isAbstractConnecting || isNFIDConnecting;
+    checkNFIDConnection();
+  }, [getPrincipal, user, updateProfileMutation]);
 
   return {
-    isConnected,
-    isConnecting,
-    currentUser,
     activeWalletType,
-    walletAddress: getWalletAddress(),
-    connect: {
-      abstract: handleAbstractConnect,
-      nfid: handleNFIDConnect
-    },
+    walletAddress,
+    isConnected,
     disconnect,
-    modal: {
-      isOpen: isModalOpen,
-      open: openWalletModal,
-      close: closeWalletModal
-    },
-    abstractUser,
-    nfidUser,
-    isAbstractConnecting,
-    isNFIDConnecting,
+    error,
+    isAbstractConnecting: isAbstractLoggingIn
   };
 }

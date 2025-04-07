@@ -1,9 +1,21 @@
-import { useLoginWithAbstract, useGlobalWalletSignerAccount } from "@abstract-foundation/agw-react";
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Wallet } from "lucide-react";
-import { useState } from "react";
-import { WalletSelectModal } from "@/components/wallet/wallet-select-modal";
 import { useMultiWallet } from "@/hooks/use-multi-wallet";
+import { useLoginWithAbstract } from "@abstract-foundation/agw-react";
+import { WalletSelectModal } from "./wallet/wallet-select-modal";
+
+/**
+ * Shortens a wallet address for display purposes
+ * 
+ * @param {string} address - The wallet address to shorten
+ * @returns {string} - The shortened address
+ */
+function shortenAddress(address: string): string {
+  if (!address) return "";
+  if (address.length < 12) return address;
+  return `${address.slice(0, 6)}...${address.slice(-4)}`;
+}
 
 /**
  * ConnectWallet component that provides a unified interface for connecting to
@@ -12,33 +24,26 @@ import { useMultiWallet } from "@/hooks/use-multi-wallet";
  * @returns {JSX.Element} - The rendered component
  */
 export function ConnectWallet() {
-  const { login: rawAbstractLogin, logout: abstractLogout } = useLoginWithAbstract();
-  const { address: abstractAddress } = useGlobalWalletSignerAccount();
   const [isModalOpen, setIsModalOpen] = useState(false);
-  
+  const { login: rawAbstractLogin, logout: abstractLogout } = useLoginWithAbstract();
+  const { 
+    isConnected,
+    walletAddress,
+    activeWalletType,
+    disconnect,
+    isAbstractConnecting
+  } = useMultiWallet();
+
   // Wrap the Abstract login function to return a Promise
   const abstractLogin = async (): Promise<void> => {
     try {
-      console.log("Starting Abstract login...");
+      console.log("Starting Abstract login from ConnectWallet component...");
       rawAbstractLogin();
       return Promise.resolve();
     } catch (error) {
       console.error("Abstract login error:", error);
       return Promise.reject(error);
     }
-  };
-  
-  const {
-    isConnected,
-    walletAddress,
-    disconnect,
-    activeWalletType,
-    isAbstractConnecting
-  } = useMultiWallet();
-
-  const shortenAddress = (addr: string) => {
-    if (!addr) return '';
-    return `${addr.slice(0, 6)}...${addr.slice(-4)}`;
   };
 
   const handleDisconnect = async () => {
