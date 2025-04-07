@@ -14,6 +14,10 @@ import { useLoginWithAbstract } from "@abstract-foundation/agw-react";
 import { useMultiWallet } from "@/hooks/use-multi-wallet";
 import { Wallet } from "lucide-react";
 
+/**
+ * AuthPage component that displays the authentication screen and wallet connection options
+ * @returns {JSX.Element} The authentication page component
+ */
 export default function AuthPage() {
   const [_, setLocation] = useLocation();
   const { user, address, updateProfileMutation } = useAuth();
@@ -24,23 +28,33 @@ export default function AuthPage() {
   
   // Wrap the Abstract login function to return a Promise
   const abstractLogin = async (): Promise<void> => {
-    rawAbstractLogin();
-    return Promise.resolve();
+    try {
+      rawAbstractLogin();
+      return Promise.resolve();
+    } catch (error) {
+      console.error("Abstract login error:", error);
+      return Promise.reject(error);
+    }
   };
 
   const profileForm = useForm({
     resolver: zodResolver(insertUserSchema.pick({ username: true, avatar: true })),
   });
 
+  // Open wallet selection modal
   const handleOpenModal = () => {
+    console.log("Opening wallet selection modal");
     setIsModalOpen(true);
   };
 
+  // Close wallet selection modal
   const handleCloseModal = async (): Promise<void> => {
+    console.log("Closing wallet selection modal");
     setIsModalOpen(false);
     return Promise.resolve();
   };
 
+  // Redirect to home if user is authenticated
   if (user && !showProfile) {
     setLocation("/");
     return null;
