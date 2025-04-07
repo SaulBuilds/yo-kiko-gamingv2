@@ -13,58 +13,102 @@ export function useNFID() {
 
   // Function to properly show the NFID UI during connection
   const showNFIDModal = useCallback(() => {
-    // Target the NFID dialog element
+    // Find ALL possible NFID elements using a more aggressive approach
     setTimeout(() => {
-      const nfidDialogs = document.querySelectorAll(".identitykit-dialog");
+      // Method 1: Find elements by text content
+      const findElementsByText = (text: string) => {
+        const elements: HTMLElement[] = [];
+        const walker = document.createTreeWalker(
+          document.body,
+          NodeFilter.SHOW_ELEMENT,
+          {
+            acceptNode: (node) => {
+              if (node instanceof HTMLElement) {
+                if (node.innerText && node.innerText.includes(text)) {
+                  return NodeFilter.FILTER_ACCEPT;
+                }
+              }
+              return NodeFilter.FILTER_SKIP;
+            }
+          }
+        );
+        
+        let currentNode: Node | null;
+        while (currentNode = walker.nextNode()) {
+          if (currentNode instanceof HTMLElement) {
+            elements.push(currentNode);
+          }
+        }
+        
+        return elements;
+      };
       
-      nfidDialogs.forEach(dialog => {
-        if (dialog instanceof HTMLElement) {
-          // Make it visible
-          dialog.style.display = "block";
-          // Add attribute for targeting in CSS
-          dialog.setAttribute('data-nfid-container', 'true');
+      // Find all potential NFID elements
+      const signerElements = findElementsByText('Select signer');
+      const walletElements = findElementsByText('Connect your wallet');
+      const nfidElements = findElementsByText('NFID Wallet');
+      const identityElements = findElementsByText('Internet Identity');
+      
+      // Combine all elements
+      const allElements = [
+        ...signerElements,
+        ...walletElements,
+        ...nfidElements,
+        ...identityElements
+      ];
+      
+      // Get parent elements to capture the whole modal
+      const parentElements: HTMLElement[] = [];
+      allElements.forEach(el => {
+        let parent = el.parentElement;
+        while (parent) {
+          // Add parent to our list if it's not already included
+          if (parent instanceof HTMLElement && !parentElements.includes(parent)) {
+            parentElements.push(parent);
+          }
+          parent = parent.parentElement;
           
-          // Style it properly
-          dialog.style.position = "fixed";
-          dialog.style.zIndex = "9999";
-          dialog.style.maxWidth = "400px";
-          dialog.style.width = "100%";
-          dialog.style.backgroundColor = "rgba(0, 0, 0, 0.75)";
-          dialog.style.borderRadius = "8px";
-          dialog.style.padding = "20px";
-          dialog.style.boxShadow = "0 4px 30px rgba(0, 0, 0, 0.1)";
-          dialog.style.margin = "0 auto";
-          dialog.style.top = "50%";
-          dialog.style.left = "50%";
-          dialog.style.transform = "translate(-50%, -50%)";
+          // Limit to 3 levels up to avoid affecting too much of the DOM
+          if (parentElements.length > 3) break;
         }
       });
       
-      // Also handle any fixed positioned elements
-      const fixedElements = document.querySelectorAll('div[style*="position: fixed"]');
-      fixedElements.forEach(el => {
-        if (el instanceof HTMLElement && !el.classList.contains('identitykit-dialog')) {
-          el.style.display = "none";
+      // Show all potential parent elements by marking them as explicitly visible
+      const allTargetElements = [...allElements, ...parentElements];
+      allTargetElements.forEach(el => {
+        if (el instanceof HTMLElement) {
+          el.classList.add('nfid-modal-visible');
+          // Remove any inline display: none
+          el.style.removeProperty('display');
         }
       });
-    }, 100); // Small delay to ensure the elements are rendered
+    }, 200); // Increase delay to ensure elements are rendered
   }, []);
 
   // Function to hide the NFID UI after connection is complete or failed
   const hideNFIDModal = useCallback(() => {
-    // Target all potential NFID UI elements
-    const nfidDialogs = document.querySelectorAll(".identitykit-dialog");
-    nfidDialogs.forEach(dialog => {
-      if (dialog instanceof HTMLElement) {
-        dialog.style.display = "none";
+    // Remove the visible class from any elements that have it
+    const visibleElements = document.querySelectorAll('.nfid-modal-visible');
+    visibleElements.forEach(el => {
+      if (el instanceof HTMLElement) {
+        el.classList.remove('nfid-modal-visible');
+        el.style.display = 'none';
       }
     });
     
-    // Also handle any fixed positioned elements
-    const fixedElements = document.querySelectorAll('div[style*="position: fixed"]');
-    fixedElements.forEach(el => {
-      if (el instanceof HTMLElement && !el.classList.contains('identitykit-dialog')) {
-        el.style.display = "none";
+    // Also hide any elements that might be related to NFID
+    const potentialNFIDElements = document.querySelectorAll('div:has(h2), div:has(h3)');
+    potentialNFIDElements.forEach(el => {
+      if (el instanceof HTMLElement) {
+        const textContent = el.innerText || '';
+        if (
+          textContent.includes('Select signer') ||
+          textContent.includes('Connect your wallet') ||
+          textContent.includes('NFID Wallet') ||
+          textContent.includes('Internet Identity')
+        ) {
+          el.style.display = 'none';
+        }
       }
     });
   }, []);
