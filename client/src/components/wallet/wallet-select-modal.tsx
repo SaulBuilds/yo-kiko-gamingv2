@@ -99,7 +99,7 @@ export function WalletSelectModal({
             <CardContent className="pb-2">
               <div className="h-24 flex items-center justify-center">
                 <img 
-                  src="https://web3.abstract.foundation/static/images/agw.png" 
+                  src="/assets/abstract.svg" 
                   alt="Abstract Wallet" 
                   className="h-16 w-auto object-contain" 
                 />
@@ -125,7 +125,7 @@ export function WalletSelectModal({
             <CardContent className="pb-2">
               <div className="h-24 flex items-center justify-center">
                 <img 
-                  src="https://assets.website-files.com/61bb02cd01a738658a7a93bf/61e857c8012f024fe0ae53f2_NFID-logo_horizontal_dark-p-800.png" 
+                  src="/assets/IC_logo_horizontal_white.svg" 
                   alt="NFID Wallet" 
                   className="h-12 w-auto object-contain" 
                 />
