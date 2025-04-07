@@ -8,17 +8,32 @@ import { useAuth } from "@/hooks/use-auth";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { insertUserSchema } from "@shared/schema";
-import { ConnectWallet } from "@/components/connect-wallet";
 import { Image } from "@/components/ui/image";
+import { WalletSelectModal } from "@/components/wallet/wallet-select-modal";
+import { useLoginWithAbstract } from "@abstract-foundation/agw-react";
+import { useMultiWallet } from "@/hooks/use-multi-wallet";
+import { Wallet } from "lucide-react";
 
 export default function AuthPage() {
   const [_, setLocation] = useLocation();
   const { user, address, updateProfileMutation } = useAuth();
   const [showProfile, setShowProfile] = useState(false);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const { login: abstractLogin } = useLoginWithAbstract();
+  const { isAbstractConnecting } = useMultiWallet();
 
   const profileForm = useForm({
     resolver: zodResolver(insertUserSchema.pick({ username: true, avatar: true })),
   });
+
+  const handleOpenModal = () => {
+    setIsModalOpen(true);
+  };
+
+  const handleCloseModal = async () => {
+    setIsModalOpen(false);
+    return Promise.resolve();
+  };
 
   if (user && !showProfile) {
     setLocation("/");
@@ -41,9 +56,17 @@ export default function AuthPage() {
               <div className="text-center space-y-4">
                 <h2 className="text-2xl font-bold mb-4">Welcome to Yo-Kiko</h2>
                 <p className="text-muted-foreground mb-6">
-                  Connect with Abstract to start playing and earning rewards
+                  Connect your wallet to start playing and earning rewards
                 </p>
-                <ConnectWallet />
+                <Button 
+                  onClick={handleOpenModal}
+                  className="pixel-font flex items-center gap-2"
+                  variant="default"
+                  size="lg"
+                >
+                  <Wallet className="w-5 h-5 mr-2" />
+                  Connect to Play
+                </Button>
               </div>
             ) : !user ? (
               <div className="text-center">
@@ -113,6 +136,14 @@ export default function AuthPage() {
           cryptocurrency rewards.
         </p>
       </div>
+
+      {/* Wallet Selection Modal */}
+      <WalletSelectModal
+        isOpen={isModalOpen}
+        onClose={handleCloseModal}
+        useAbstractWalletConnect={abstractLogin}
+        isAbstractConnecting={isAbstractConnecting}
+      />
     </div>
   );
 }
