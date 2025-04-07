@@ -10,18 +10,9 @@ import { useForm } from "react-hook-form";
 import { insertUserSchema } from "@shared/schema";
 import { Image } from "@/components/ui/image";
 import { Wallet } from "lucide-react";
-import { 
-  Dialog, 
-  DialogContent, 
-  DialogHeader, 
-  DialogTitle,
-  DialogDescription,
-  DialogFooter
-} from "@/components/ui/dialog";
-import { useToast } from "@/hooks/use-toast";
-import { Card as CardUI, CardContent as CardContentUI, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-import { useAuth as useNFIDAuth } from "@nfid/identitykit/react";
+import { WalletSelectModal } from "@/components/wallet/wallet-select-modal";
 import { useLoginWithAbstract } from "@abstract-foundation/agw-react";
+import { useMultiWallet } from "@/hooks/use-multi-wallet";
 
 /**
  * AuthPage component that displays the authentication screen and wallet connection options
@@ -33,58 +24,23 @@ export default function AuthPage() {
   const [showProfile, setShowProfile] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const { login: rawAbstractLogin } = useLoginWithAbstract();
-  const { toast } = useToast();
-  const { connect: connectNFID, isConnecting: isNFIDConnecting } = useNFIDAuth();
-  const [isAbstractConnecting, setIsAbstractConnecting] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
+  const { isAbstractConnecting } = useMultiWallet();
   
+  // Wrap the Abstract login function to return a Promise
+  const abstractLogin = async (): Promise<void> => {
+    try {
+      console.log("Starting Abstract login from auth page...");
+      rawAbstractLogin();
+      return Promise.resolve();
+    } catch (error) {
+      console.error("Abstract login error:", error);
+      return Promise.reject(error);
+    }
+  };
+
   const profileForm = useForm({
     resolver: zodResolver(insertUserSchema.pick({ username: true, avatar: true })),
   });
-
-  // Handle Abstract connect
-  const handleAbstractConnect = async () => {
-    try {
-      setIsAbstractConnecting(true);
-      rawAbstractLogin();
-      toast({
-        title: "Connecting with Abstract",
-        description: "Please check your wallet for connection request",
-      });
-      closeModal();
-    } catch (error) {
-      console.error("Failed to connect with Abstract Wallet:", error);
-      toast({
-        title: "Connection Failed",
-        description: error instanceof Error ? error.message : "Failed to connect with Abstract Wallet",
-        variant: "destructive",
-      });
-    } finally {
-      setIsAbstractConnecting(false);
-    }
-  };
-
-  // Handle NFID connect
-  const handleNFIDConnect = async () => {
-    try {
-      setIsLoading(true);
-      await connectNFID();
-      toast({
-        title: "Connected with NFID",
-        description: "You've successfully connected with NFID wallet",
-      });
-      closeModal();
-    } catch (error) {
-      console.error("Failed to connect with NFID:", error);
-      toast({
-        title: "Connection Failed",
-        description: error instanceof Error ? error.message : "Failed to connect with NFID wallet",
-        variant: "destructive",
-      });
-    } finally {
-      setIsLoading(false);
-    }
-  };
 
   // Open wallet selection modal
   const openModal = () => {
@@ -93,9 +49,10 @@ export default function AuthPage() {
   };
 
   // Close wallet selection modal
-  const closeModal = () => {
+  const handleCloseModal = async (): Promise<void> => {
     console.log("Closing wallet selection modal");
     setIsModalOpen(false);
+    return Promise.resolve();
   };
 
   // Redirect to home if user is authenticated
@@ -201,77 +158,13 @@ export default function AuthPage() {
         </p>
       </div>
 
-      {/* Directly embed the wallet selection modal instead of using a component */}
-      <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
-        <DialogContent className="sm:max-w-[500px]">
-          <DialogHeader>
-            <DialogTitle className="text-xl font-bold">Connect Your Wallet</DialogTitle>
-            <DialogDescription>
-              Choose your preferred wallet to connect to the platform
-            </DialogDescription>
-          </DialogHeader>
-          
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 py-4">
-            {/* Abstract Wallet Card */}
-            <CardUI className="hover:border-primary/50 cursor-pointer transition-all" onClick={handleAbstractConnect}>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-lg">Abstract Wallet</CardTitle>
-                <CardDescription>Connect with AGW</CardDescription>
-              </CardHeader>
-              <CardContentUI className="pb-2">
-                <div className="h-24 flex items-center justify-center">
-                  <img 
-                    src="/assets/abstract.svg" 
-                    alt="Abstract Wallet" 
-                    className="h-16 w-auto object-contain" 
-                  />
-                </div>
-              </CardContentUI>
-              <CardFooter>
-                <Button 
-                  className="w-full" 
-                  variant="outline"
-                  disabled={isAbstractConnecting || isLoading}
-                >
-                  {isAbstractConnecting ? "Connecting..." : "Connect"}
-                </Button>
-              </CardFooter>
-            </CardUI>
-
-            {/* NFID Wallet Card */}
-            <CardUI className="hover:border-primary/50 cursor-pointer transition-all" onClick={handleNFIDConnect}>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-lg">NFID Wallet</CardTitle>
-                <CardDescription>Connect with Internet Computer</CardDescription>
-              </CardHeader>
-              <CardContentUI className="pb-2">
-                <div className="h-24 flex items-center justify-center">
-                  <img 
-                    src="/assets/IC_logo_horizontal_white.svg" 
-                    alt="NFID Wallet" 
-                    className="h-12 w-auto object-contain" 
-                  />
-                </div>
-              </CardContentUI>
-              <CardFooter>
-                <Button 
-                  className="w-full" 
-                  variant="outline"
-                  disabled={isNFIDConnecting || isLoading}
-                >
-                  {isNFIDConnecting ? "Connecting..." : "Connect"}
-                </Button>
-              </CardFooter>
-            </CardUI>
-          </div>
-
-          <DialogFooter>
-            <Button variant="ghost" onClick={closeModal}>
-              Cancel
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      {/* Use the WalletSelectModal component */}
+      <WalletSelectModal
+        isOpen={isModalOpen}
+        onClose={handleCloseModal}
+        useAbstractWalletConnect={abstractLogin}
+        isAbstractConnecting={isAbstractConnecting}
+      />
     </div>
   );
 }
