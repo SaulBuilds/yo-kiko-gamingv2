@@ -1,5 +1,5 @@
 import { useState, useCallback } from "react";
-import { useNFIDIdentityKit } from "@nfid/identitykit";
+import { useIdentityKit } from "@nfid/identitykit/react";
 
 /**
  * Custom hook to interact with NFID wallet
@@ -9,7 +9,7 @@ import { useNFIDIdentityKit } from "@nfid/identitykit";
 export function useNFID() {
   const [isConnecting, setIsConnecting] = useState(false);
   const [error, setError] = useState<Error | null>(null);
-  const nfidIdentityKit = useNFIDIdentityKit();
+  const nfidIdentityKit = useIdentityKit();
 
   /**
    * Connect to NFID wallet
@@ -58,7 +58,7 @@ export function useNFID() {
    */
   const getPrincipal = useCallback((): string | undefined => {
     try {
-      return nfidIdentityKit.getPrincipal()?.toString();
+      return nfidIdentityKit.user?.principal.toString();
     } catch (err) {
       console.error("Error getting NFID principal:", err);
       return undefined;
