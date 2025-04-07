@@ -14,7 +14,7 @@ import { useAuth as useNFIDAuth } from "@nfid/identitykit/react";
 
 interface WalletSelectModalProps {
   isOpen: boolean;
-  onClose: () => Promise<void>;
+  onClose: () => Promise<void> | void;
   onSuccess?: () => void;
   useAbstractWalletConnect: () => Promise<void>;
   isAbstractConnecting: boolean;
@@ -40,7 +40,10 @@ export function WalletSelectModal({
         description: "You've successfully connected with NFID wallet",
       });
       onSuccess?.();
-      await onClose();
+      const result = onClose();
+      if (result instanceof Promise) {
+        await result;
+      }
     } catch (error) {
       console.error("Failed to connect with NFID:", error);
       toast({
@@ -71,7 +74,10 @@ export function WalletSelectModal({
   return (
     <Dialog open={isOpen} onOpenChange={(open) => {
       if (!open) {
-        void onClose();
+        const result = onClose();
+        if (result instanceof Promise) {
+          void result;
+        }
       }
       return true;
     }}>
@@ -139,7 +145,10 @@ export function WalletSelectModal({
 
         <DialogFooter>
           <Button variant="ghost" onClick={() => {
-            void onClose();
+            const result = onClose();
+            if (result instanceof Promise) {
+              void result;
+            }
           }}>
             Cancel
           </Button>
