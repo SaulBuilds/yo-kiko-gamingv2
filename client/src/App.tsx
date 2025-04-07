@@ -3,7 +3,7 @@ import { SEO } from "@/components/seo";
 import { Providers } from "@/components/providers";
 import NotFound from "@/pages/not-found";
 import SplashPage from "@/pages/splash-page";
-import AuthPage from "@/pages/auth-page";
+import NewAuthPage from "@/pages/new-auth-page";
 import DashboardPage from "@/pages/dashboard-page";
 import GamePage from "@/pages/game-page";
 import NewGamePage from "@/pages/new-game-page";
@@ -16,7 +16,7 @@ function Router() {
   return (
     <Switch>
       <Route path="/" component={SplashPage} />
-      <Route path="/auth" component={AuthPage} />
+      <Route path="/auth" component={NewAuthPage} />
       <ProtectedRoute path="/dashboard" component={DashboardPage} />
       <ProtectedRoute path="/game/new" component={NewGamePage} />
       <ProtectedRoute path="/game/:id" component={GamePage} />
