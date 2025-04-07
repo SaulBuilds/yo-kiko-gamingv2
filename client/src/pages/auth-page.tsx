@@ -19,8 +19,14 @@ export default function AuthPage() {
   const { user, address, updateProfileMutation } = useAuth();
   const [showProfile, setShowProfile] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const { login: abstractLogin } = useLoginWithAbstract();
+  const { login: rawAbstractLogin } = useLoginWithAbstract();
   const { isAbstractConnecting } = useMultiWallet();
+  
+  // Wrap the Abstract login function to return a Promise
+  const abstractLogin = async (): Promise<void> => {
+    rawAbstractLogin();
+    return Promise.resolve();
+  };
 
   const profileForm = useForm({
     resolver: zodResolver(insertUserSchema.pick({ username: true, avatar: true })),
@@ -30,7 +36,7 @@ export default function AuthPage() {
     setIsModalOpen(true);
   };
 
-  const handleCloseModal = () => {
+  const handleCloseModal = async (): Promise<void> => {
     setIsModalOpen(false);
     return Promise.resolve();
   };

@@ -12,9 +12,15 @@ import { useMultiWallet } from "@/hooks/use-multi-wallet";
  * @returns {JSX.Element} - The rendered component
  */
 export function ConnectWallet() {
-  const { login: abstractLogin, logout: abstractLogout } = useLoginWithAbstract();
+  const { login: rawAbstractLogin, logout: abstractLogout } = useLoginWithAbstract();
   const { address: abstractAddress } = useGlobalWalletSignerAccount();
   const [isModalOpen, setIsModalOpen] = useState(false);
+  
+  // Wrap the Abstract login function to return a Promise
+  const abstractLogin = async (): Promise<void> => {
+    rawAbstractLogin();
+    return Promise.resolve();
+  };
   
   const {
     isConnected,
@@ -43,7 +49,7 @@ export function ConnectWallet() {
     setIsModalOpen(true);
   };
 
-  const handleCloseModal = async () => {
+  const handleCloseModal = async (): Promise<void> => {
     setIsModalOpen(false);
     return Promise.resolve();
   };
