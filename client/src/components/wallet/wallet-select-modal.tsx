@@ -53,7 +53,7 @@ export function WalletSelectModal({
 
   return (
     <Dialog open={isOpen} onOpenChange={() => onClose()}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="sm:max-w-md z-50 relative">
         <DialogHeader>
           <DialogTitle className="text-xl font-bold">Connect Your Wallet</DialogTitle>
           <DialogDescription>
@@ -61,7 +61,8 @@ export function WalletSelectModal({
           </DialogDescription>
         </DialogHeader>
         
-        <div className="grid gap-4 py-4">
+        <div className="grid gap-4 py-4 bg-blue-100 dark:bg-blue-900">
+          <div className="text-center p-2 font-bold">Wallet Options</div>
           {error && (
             <div className="bg-destructive/20 border border-destructive text-destructive px-4 py-2 rounded-md">
               {error}
@@ -79,7 +80,7 @@ export function WalletSelectModal({
               <Spinner className="mr-2" />
             ) : (
               <img 
-                src="/assets/abstract-logo.svg" 
+                src="http://localhost:5000/assets/abstract-logo.svg" 
                 alt="Abstract Wallet" 
                 className="w-6 h-6 mr-2"
               />
@@ -101,7 +102,7 @@ export function WalletSelectModal({
               <Spinner className="mr-2" />
             ) : (
               <img 
-                src="/assets/nfid-logo.svg" 
+                src="http://localhost:5000/nfid-simple.svg" 
                 alt="NFID" 
                 className="w-6 h-6 mr-2"
               />
