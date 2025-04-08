@@ -25,7 +25,7 @@ function shortenAddress(address: string): string {
  */
 export function ConnectWallet() {
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const { login: rawAbstractLogin, logout: abstractLogout } = useLoginWithAbstract();
+  const { login: rawAbstractLogin } = useLoginWithAbstract();
   const { 
     isConnected,
     walletAddress,
@@ -46,23 +46,22 @@ export function ConnectWallet() {
     }
   };
 
+  /**
+   * Handle wallet disconnection using the unified disconnect method from useMultiWallet
+   * This will handle both wallet types and redirect to the splash page
+   */
   const handleDisconnect = async () => {
-    // If using NFID, use the disconnect from useMultiWallet
-    // If using Abstract directly, use abstractLogout
-    if (activeWalletType === 'nfid') {
-      await disconnect();
-    } else {
-      await abstractLogout();
-    }
+    console.log("Disconnecting wallet from header button");
+    await disconnect();
   };
 
   const handleOpenModal = () => {
-    console.log("Opening wallet modal from ConnectWallet component");
+    console.log("Opening wallet selection modal");
     setIsModalOpen(true);
   };
 
   const handleCloseModal = async (): Promise<void> => {
-    console.log("Closing wallet modal from ConnectWallet component");
+    console.log("Closing wallet selection modal");
     setIsModalOpen(false);
     return Promise.resolve();
   };
