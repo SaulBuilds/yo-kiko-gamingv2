@@ -81,9 +81,27 @@ export function FixedModal({
   );
 
   const modalContent = (
-    <div className="fixed inset-0 bg-black/70 z-[9999]" onClick={(e) => e.stopPropagation()}>
-      <div className="w-full h-full flex items-center justify-center">
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-md w-full p-6 m-4 relative">
+    <div 
+      className="fixed inset-0 bg-black/70 z-[9999] overflow-auto" 
+      onClick={(e) => e.stopPropagation()}
+      style={{
+        position: 'fixed',
+        top: 0,
+        left: 0,
+        width: '100vw',
+        height: '100vh'
+      }}
+    >
+      <div 
+        className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2" 
+        style={{
+          position: 'absolute',
+          top: '50%',
+          left: '50%',
+          transform: 'translate(-50%, -50%)'
+        }}
+      >
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl w-[320px] md:w-[400px] p-6 relative">
           <button 
             onClick={handleClose}
             className="absolute top-3 right-3 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
