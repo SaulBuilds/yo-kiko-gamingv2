@@ -41,24 +41,53 @@ export function useMultiWallet() {
       
       // First disconnect the specific wallet
       if (activeWalletType === 'abstract') {
-        abstractLogout();
+        console.log("Attempting to disconnect from Abstract wallet");
+        // Force a disconnect call on abstract even if not the active wallet
+        try {
+          abstractLogout();
+          console.log("Abstract wallet disconnected successfully");
+        } catch (abstractErr) {
+          console.warn("Error disconnecting from Abstract wallet:", abstractErr);
+          // Continue with disconnection flow even if Abstract fails
+        }
       } else if (activeWalletType === 'nfid') {
-        await nfidDisconnect();
+        console.log("Attempting to disconnect from NFID wallet");
+        try {
+          await nfidDisconnect();
+          console.log("NFID wallet disconnected successfully");
+        } catch (nfidErr) {
+          console.warn("Error disconnecting from NFID wallet:", nfidErr);
+          // Continue with disconnection flow even if NFID fails
+        }
       }
       
-      // Then disconnect from the auth context
+      // Always disconnect from auth context regardless of wallet-specific disconnection success
+      console.log("Calling auth disconnect");
       await authDisconnect();
+      console.log("Auth disconnect completed");
       
       // Reset local state
       setActiveWalletType(null);
       setWalletAddress(undefined);
       setIsConnected(false);
       
-      // Redirect to the splash page
+      // Force a redirect to the splash page
+      console.log("Redirecting to splash page");
       setLocation("/");
+      
+      // Force a page reload to clear any persistent state
+      setTimeout(() => {
+        window.location.reload();
+      }, 500);
     } catch (err) {
-      console.error("Error disconnecting from wallet:", err);
+      console.error("Error in disconnect flow:", err);
       setError(err instanceof Error ? err : new Error("Failed to disconnect from wallet"));
+      
+      // Even if there's an error, try to reset state and redirect
+      setActiveWalletType(null);
+      setWalletAddress(undefined);
+      setIsConnected(false);
+      setLocation("/");
     }
   }, [activeWalletType, abstractLogout, nfidDisconnect, authDisconnect, setLocation]);
 
