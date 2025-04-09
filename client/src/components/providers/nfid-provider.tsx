@@ -34,6 +34,8 @@ export function NFIDProvider({ children }: NFIDProviderProps) {
         transform: translate(-50%, -50%) !important;
         font-family: system-ui, -apple-system, sans-serif !important;
         border: 1px solid rgba(255, 255, 255, 0.1) !important;
+        max-height: 90vh !important;
+        overflow-y: auto !important;
       }
 
       /* Only show main dialog when triggered by our button */
@@ -50,14 +52,33 @@ export function NFIDProvider({ children }: NFIDProviderProps) {
         transition: all 0.2s ease !important;
       }
 
+      /* Contained scrolling for the dialog */
+      .identitykit-dialog > div {
+        max-height: 100% !important;
+        overflow: hidden !important;
+      }
+
       /* Style the backdrop */
       .identitykit-backdrop {
         background-color: rgba(0, 0, 0, 0.7) !important;
+        position: fixed !important;
+        top: 0 !important;
+        left: 0 !important;
+        right: 0 !important;
+        bottom: 0 !important;
+        z-index: 9998 !important;
       }
 
       /* Hide any unwanted NFID elements that appear at the bottom */
-      body > div[style*="position: fixed"][style*="bottom: 0"] {
+      body > div[style*="position: fixed"][style*="bottom: 0"],
+      div[style*="position: fixed"]:not(.identitykit-dialog):not(.identitykit-backdrop) {
         display: none !important;
+      }
+
+      /* Override any scrollbar modifications */
+      html, body {
+        overflow: auto !important;
+        height: auto !important;
       }
     `;
     
