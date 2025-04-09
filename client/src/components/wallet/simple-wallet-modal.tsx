@@ -96,8 +96,31 @@ export function SimpleWalletModal({
 
   // Content to render
   const modalContent = (
-    <div id="wallet-modal-portal" className="fixed inset-0 bg-black bg-opacity-50 z-[9999] flex items-center justify-center p-4">
-      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-md w-full p-6 relative" onClick={e => e.stopPropagation()}>
+    <div 
+      id="wallet-modal-portal" 
+      className="fixed inset-0 bg-black bg-opacity-50 z-[9999] flex items-center justify-center p-4"
+      style={{ 
+        position: 'fixed',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        overflow: 'auto',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center'
+      }}
+      onClick={(e) => {
+        // Prevent clicks outside the modal from closing it unless specifically on the close button
+        e.preventDefault();
+        e.stopPropagation();
+        // Do not close automatically on background click
+      }}
+    >
+      <div 
+        className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-md w-full p-6 relative" 
+        style={{ margin: '10vh auto', transform: 'translateY(0)' }}
+        onClick={e => e.stopPropagation()}
         {/* Close button */}
         <button 
           onClick={() => onClose()} 

@@ -10,7 +10,7 @@ import { useForm } from "react-hook-form";
 import { insertUserSchema } from "@shared/schema";
 import { Image } from "@/components/ui/image";
 import { Wallet } from "lucide-react";
-import { SimpleWalletModal } from "@/components/wallet/simple-wallet-modal";
+import { FixedModal } from "@/components/wallet/fixed-modal";
 import { useLoginWithAbstract } from "@abstract-foundation/agw-react";
 import { useMultiWallet } from "@/hooks/use-multi-wallet";
 import { SEO } from "@/components/seo";
@@ -166,8 +166,8 @@ export default function NewAuthPage() {
           </p>
         </div>
 
-        {/* Use the SimpleWalletModal component */}
-        <SimpleWalletModal
+        {/* Use the FixedModal component */}
+        <FixedModal
           isOpen={isModalOpen}
           onClose={handleCloseModal}
           useAbstractWalletConnect={abstractLogin}

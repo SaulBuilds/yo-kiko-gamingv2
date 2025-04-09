@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Wallet } from "lucide-react";
 import { useMultiWallet } from "@/hooks/use-multi-wallet";
 import { useLoginWithAbstract } from "@abstract-foundation/agw-react";
-import { SimpleWalletModal } from "./wallet/simple-wallet-modal";
+import { FixedModal } from "./wallet/fixed-modal";
 
 /**
  * Shortens a wallet address for display purposes
@@ -94,7 +94,7 @@ export function ConnectWallet() {
         </Button>
       )}
 
-      <SimpleWalletModal
+      <FixedModal
         isOpen={isModalOpen}
         onClose={handleCloseModal}
         useAbstractWalletConnect={abstractLogin}
