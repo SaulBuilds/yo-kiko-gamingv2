@@ -1,8 +1,9 @@
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback } from "react";
 import { useIdentityKit } from "@nfid/identitykit/react";
 
 /**
  * Custom hook to interact with NFID wallet
+ * This hook focuses only on the connection logic without UI management
  * 
  * @returns {Object} Object containing connect function and connection state
  */
@@ -10,29 +11,6 @@ export function useNFID() {
   const [isConnecting, setIsConnecting] = useState(false);
   const [error, setError] = useState<Error | null>(null);
   const nfidIdentityKit = useIdentityKit();
-
-  // Function to properly show the NFID UI during connection
-  const showNFIDModal = useCallback(() => {
-    // Use the global function to show NFID dialog
-    if (typeof window.showNFIDDialog === 'function') {
-      window.showNFIDDialog();
-    }
-  }, []);
-
-  // Function to hide the NFID UI after connection is complete or failed
-  const hideNFIDModal = useCallback(() => {
-    // Use the global function to hide NFID dialog
-    if (typeof window.hideNFIDDialog === 'function') {
-      window.hideNFIDDialog();
-    }
-  }, []);
-
-  // Cleanup function to ensure the modal is hidden when the component unmounts
-  useEffect(() => {
-    return () => {
-      hideNFIDModal();
-    };
-  }, [hideNFIDModal]);
 
   /**
    * Connect to NFID wallet
@@ -43,26 +21,19 @@ export function useNFID() {
     setIsConnecting(true);
     setError(null);
     
-    // Show the NFID modal before attempting connection
-    showNFIDModal();
-    
     try {
       console.log("Initiating NFID connection...");
       await nfidIdentityKit.connect();
       console.log("NFID connection successful");
-      // Hide modal after successful connection
-      hideNFIDModal(); 
       return Promise.resolve();
     } catch (err) {
       console.error("NFID connection error:", err);
       setError(err instanceof Error ? err : new Error(String(err)));
-      // Hide modal on error
-      hideNFIDModal();
       return Promise.reject(err);
     } finally {
       setIsConnecting(false);
     }
-  }, [nfidIdentityKit, showNFIDModal, hideNFIDModal]);
+  }, [nfidIdentityKit]);
 
   /**
    * Disconnect from NFID wallet
@@ -72,10 +43,6 @@ export function useNFID() {
   const disconnect = useCallback(async (): Promise<void> => {
     try {
       console.log("Disconnecting from NFID...");
-      
-      // Ensure the modal is hidden during disconnection
-      hideNFIDModal();
-      
       await nfidIdentityKit.disconnect();
       console.log("NFID disconnection successful");
       return Promise.resolve();
@@ -83,7 +50,7 @@ export function useNFID() {
       console.error("NFID disconnection error:", err);
       return Promise.reject(err);
     }
-  }, [nfidIdentityKit, hideNFIDModal]);
+  }, [nfidIdentityKit]);
 
   /**
    * Get the NFID principal ID
@@ -99,11 +66,23 @@ export function useNFID() {
     }
   }, [nfidIdentityKit]);
 
+  /**
+   * Check if the user is connected to NFID
+   * 
+   * @returns {boolean} True if connected, false otherwise
+   */
+  const isConnected = useCallback((): boolean => {
+    return !!nfidIdentityKit.user;
+  }, [nfidIdentityKit]);
+
   return {
     connect,
     disconnect,
     getPrincipal,
+    isConnected: isConnected(),
     isConnecting,
-    error
+    error,
+    // Provide direct access to the identity kit for advanced use cases
+    identityKit: nfidIdentityKit
   };
 }

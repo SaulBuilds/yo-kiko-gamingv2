@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { useNFID } from "@/hooks/use-nfid";
@@ -25,44 +25,62 @@ export function WalletSelectModal({
   isAbstractConnecting
 }: WalletSelectModalProps) {
   const { connect: connectNFID, isConnecting: isNFIDConnecting, error: nfidError } = useNFID();
-  const [error, setError] = React.useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
   const nfidContainerRef = useRef<HTMLDivElement>(null);
+  const [nfidUIVisible, setNfidUIVisible] = useState(false);
 
-  // Move NFID interface into our modal when it appears
+  // Setup handler to capture and relocate NFID UI to our modal
   useEffect(() => {
     if (!isOpen) return;
+
+    // Define a style for NFID elements when they're in our container
+    const styleElement = document.createElement('style');
+    styleElement.innerHTML = `
+      /* Container styling when NFID UI is present */
+      .nfid-container-active {
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        background-color: rgba(0, 0, 0, 0.2);
+        padding: 8px;
+        border-radius: 8px;
+      }
+      
+      /* Style for NFID UI elements once relocated */
+      .nfid-container-active > div {
+        position: static !important;
+        margin: 0 !important;
+        width: 100% !important;
+        max-width: 100% !important;
+        border-radius: 8px !important;
+        background: transparent !important;
+        bottom: auto !important;
+        left: auto !important;
+        right: auto !important;
+      }
+    `;
+    
+    document.head.appendChild(styleElement);
 
     // Create an observer to watch for NFID UI elements appearing
     const observer = new MutationObserver((mutations) => {
       // Look for bottom bar elements when they appear
-      const nfidBottomBar = document.querySelector('div[style*="position: fixed"][style*="bottom: 0"]');
-      if (nfidBottomBar && nfidContainerRef.current) {
-        // Clone the element and move it to our container
+      const nfidElements = document.querySelector('div[style*="position: fixed"][style*="bottom: 0"]');
+      if (nfidElements && nfidContainerRef.current) {
         try {
           // Stop observing to prevent loops
           observer.disconnect();
           
-          // Move the element inside our container
+          // Move the element to our container
           nfidContainerRef.current.innerHTML = '';
-          nfidContainerRef.current.appendChild(nfidBottomBar);
+          nfidContainerRef.current.appendChild(nfidElements);
+          nfidContainerRef.current.classList.add('nfid-container-active');
           
-          // Style the moved element
-          if (nfidBottomBar instanceof HTMLElement) {
-            nfidBottomBar.style.position = 'static';
-            nfidBottomBar.style.bottom = 'auto';
-            nfidBottomBar.style.left = 'auto';
-            nfidBottomBar.style.right = 'auto';
-            nfidBottomBar.style.width = '100%';
-            nfidBottomBar.style.maxWidth = '100%';
-            nfidBottomBar.style.borderRadius = '8px';
-            nfidBottomBar.style.margin = '0';
-            nfidBottomBar.style.background = 'transparent';
-          }
+          // Mark that we have NFID UI visible
+          setNfidUIVisible(true);
           
           // Re-observe after modifications
           observer.observe(document.body, { childList: true, subtree: true });
         } catch (err) {
-          console.error("Error moving NFID interface:", err);
+          console.error("Error relocating NFID interface:", err);
         }
       }
     });
@@ -73,6 +91,8 @@ export function WalletSelectModal({
     // Clean up
     return () => {
       observer.disconnect();
+      document.head.removeChild(styleElement);
+      setNfidUIVisible(false);
     };
   }, [isOpen]);
 
@@ -92,9 +112,10 @@ export function WalletSelectModal({
   const handleNFIDConnect = async () => {
     try {
       setError(null);
-      // Simply trigger the NFID connection - the UI will be handled by our observer
+      console.log("Activating NFID wallet interface...");
+      // Simply start the connection - our observer will handle the UI
       await connectNFID();
-      await onClose();
+      // Don't close the modal right away - let the user interact with the NFID UI
     } catch (err: any) {
       console.error("Error connecting to NFID wallet:", err);
       setError(err?.message || "Failed to connect to NFID wallet");
@@ -140,40 +161,38 @@ export function WalletSelectModal({
             </div>
           </Button>
 
-          {/* NFID Wallet Button - This now activates the real NFID interface */}
+          {/* NFID Wallet Option */}
           <div className="w-full">
-            {/* NFID button that triggers the connection */}
-            <Button
-              onClick={() => {
-                // Let the user know something is happening
-                setError(null);
-                console.log("Activating NFID wallet interface...");
-                // Our observer will handle the UI
-                handleNFIDConnect();
-              }}
-              disabled={isNFIDConnecting || isAbstractConnecting}
-              className="w-full py-6 relative"
-              variant="outline"
-            >
-              {isNFIDConnecting ? (
-                <Spinner className="mr-2" />
-              ) : (
-                <img 
-                  src="/assets/nfid-logo.svg" 
-                  alt="NFID" 
-                  className="w-6 h-6 mr-2"
-                />
-              )}
-              <div className="flex flex-col items-start">
-                <span className="font-semibold">NFID</span>
-                <span className="text-xs text-muted-foreground">Connect with Internet Computer</span>
-              </div>
-            </Button>
+            {/* Only show the button if NFID UI is not yet visible */}
+            {!nfidUIVisible && (
+              <Button
+                onClick={handleNFIDConnect}
+                disabled={isNFIDConnecting || isAbstractConnecting}
+                className="w-full py-6 relative"
+                variant="outline"
+              >
+                {isNFIDConnecting ? (
+                  <Spinner className="mr-2" />
+                ) : (
+                  <img 
+                    src="/assets/nfid-logo.svg" 
+                    alt="NFID" 
+                    className="w-6 h-6 mr-2"
+                  />
+                )}
+                <div className="flex flex-col items-start">
+                  <span className="font-semibold">NFID</span>
+                  <span className="text-xs text-muted-foreground">Connect with Internet Computer</span>
+                </div>
+              </Button>
+            )}
             
-            {/* Container where the NFID interface will be moved */}
+            {/* Container where NFID UI will be moved */}
             <div 
               ref={nfidContainerRef} 
-              className="mt-4 w-full rounded-md overflow-hidden"
+              className={`mt-4 w-full rounded-md overflow-hidden transition-all duration-200 ${
+                nfidUIVisible ? 'opacity-100' : 'opacity-0 h-0'
+              }`}
             ></div>
           </div>
 

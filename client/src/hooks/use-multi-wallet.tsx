@@ -19,15 +19,71 @@ export function useMultiWallet() {
 
   // Get auth and wallet hooks
   const { user, updateProfileMutation } = useAuth();
-  const { connect: nfidConnect, disconnect: nfidDisconnect, getPrincipal } = useNFID();
+  const {
+    connect: nfidConnect,
+    disconnect: nfidDisconnect,
+    getPrincipal,
+    isConnected: isNFIDConnected
+  } = useNFID();
   
-  // Use the Abstract login hook with proper type handling
+  // Use the Abstract login hook
   const abstractLogin = useLoginWithAbstract();
-  // Extract values from abstractLogin with proper typing
   const isAbstractLoggedIn = !!(abstractLogin as any).isLoggedIn;
   const abstractAddress = (abstractLogin as any).address as string | undefined;
   const abstractLogout = (abstractLogin as any).logout as () => void;
   const isAbstractLoggingIn = !!(abstractLogin as any).isLoggingIn;
+
+  /**
+   * Connect to NFID wallet
+   * 
+   * @returns {Promise<void>} Promise that resolves when connection is complete
+   */
+  const connectNFID = useCallback(async (): Promise<void> => {
+    try {
+      setError(null);
+      await nfidConnect();
+      
+      // Check if connection was successful
+      const principal = getPrincipal();
+      if (principal) {
+        setWalletAddress(principal);
+        setIsConnected(true);
+        setActiveWalletType('nfid');
+        
+        // Update the user profile if we're connected but don't have a wallet saved yet
+        if (user && !user.walletAddress) {
+          await updateProfileMutation.mutateAsync({
+            walletAddress: principal
+          });
+        }
+      }
+      
+      return Promise.resolve();
+    } catch (err) {
+      console.error("Error connecting to NFID wallet:", err);
+      setError(err instanceof Error ? err : new Error(String(err)));
+      return Promise.reject(err);
+    }
+  }, [nfidConnect, getPrincipal, user, updateProfileMutation]);
+
+  /**
+   * Connect to Abstract wallet
+   * 
+   * @returns {Promise<void>} Promise that resolves when connection is complete
+   */
+  const connectAbstract = useCallback(async (): Promise<void> => {
+    try {
+      setError(null);
+      await (abstractLogin as any).login();
+      
+      // The connection status will be picked up by the effect below
+      return Promise.resolve();
+    } catch (err) {
+      console.error("Error connecting to Abstract wallet:", err);
+      setError(err instanceof Error ? err : new Error(String(err)));
+      return Promise.reject(err);
+    }
+  }, [abstractLogin]);
 
   /**
    * Disconnect from the active wallet
@@ -72,17 +128,19 @@ export function useMultiWallet() {
   useEffect(() => {
     const checkNFIDConnection = async () => {
       try {
-        const principal = getPrincipal();
-        if (principal) {
-          setWalletAddress(principal);
-          setIsConnected(true);
-          setActiveWalletType('nfid');
-          
-          // Update the user profile if we're connected but don't have a wallet saved yet
-          if (user && !user.walletAddress) {
-            await updateProfileMutation.mutateAsync({
-              walletAddress: principal
-            });
+        if (isNFIDConnected) {
+          const principal = getPrincipal();
+          if (principal) {
+            setWalletAddress(principal);
+            setIsConnected(true);
+            setActiveWalletType('nfid');
+            
+            // Update the user profile if we're connected but don't have a wallet saved yet
+            if (user && !user.walletAddress) {
+              await updateProfileMutation.mutateAsync({
+                walletAddress: principal
+              });
+            }
           }
         }
       } catch (err) {
@@ -91,12 +149,14 @@ export function useMultiWallet() {
     };
     
     checkNFIDConnection();
-  }, [getPrincipal, user, updateProfileMutation]);
+  }, [isNFIDConnected, getPrincipal, user, updateProfileMutation]);
 
   return {
     activeWalletType,
     walletAddress,
     isConnected,
+    connectNFID,
+    connectAbstract,
     disconnect,
     error,
     isAbstractConnecting: isAbstractLoggingIn

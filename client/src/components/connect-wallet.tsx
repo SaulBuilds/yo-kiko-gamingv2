@@ -2,7 +2,6 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Wallet } from "lucide-react";
 import { useMultiWallet } from "@/hooks/use-multi-wallet";
-import { useLoginWithAbstract } from "@abstract-foundation/agw-react";
 import { WalletSelectModal } from "./wallet/wallet-select-modal";
 
 /**
@@ -25,20 +24,21 @@ function shortenAddress(address: string): string {
  */
 export function ConnectWallet() {
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const { login: rawAbstractLogin, logout: abstractLogout } = useLoginWithAbstract();
+  
   const { 
     isConnected,
     walletAddress,
     activeWalletType,
     disconnect,
+    connectAbstract,
     isAbstractConnecting
   } = useMultiWallet();
 
-  // Wrap the Abstract login function to return a Promise
-  const abstractLogin = async (): Promise<void> => {
+  // Handle the Abstract login with our multi-wallet hook
+  const handleAbstractLogin = async (): Promise<void> => {
     try {
       console.log("Starting Abstract login from ConnectWallet component...");
-      rawAbstractLogin();
+      await connectAbstract();
       return Promise.resolve();
     } catch (error) {
       console.error("Abstract login error:", error);
@@ -46,28 +46,24 @@ export function ConnectWallet() {
     }
   };
 
+  // Handle wallet disconnection
   const handleDisconnect = async () => {
-    // If using NFID, use the disconnect from useMultiWallet
-    // If using Abstract directly, use abstractLogout
-    if (activeWalletType === 'nfid') {
-      await disconnect();
-    } else {
-      await abstractLogout();
-    }
+    await disconnect();
   };
 
+  // Open the wallet selection modal
   const handleOpenModal = () => {
-    console.log("Opening wallet modal from ConnectWallet component");
+    console.log("Opening wallet selection modal");
     setIsModalOpen(true);
   };
 
+  // Close the wallet selection modal
   const handleCloseModal = async (): Promise<void> => {
-    console.log("Closing wallet modal from ConnectWallet component");
+    console.log("Closing wallet selection modal");
     setIsModalOpen(false);
     return Promise.resolve();
   };
 
-  // Show wallet selection modal
   return (
     <>
       {isConnected && walletAddress ? (
@@ -93,7 +89,7 @@ export function ConnectWallet() {
       <WalletSelectModal
         isOpen={isModalOpen}
         onClose={handleCloseModal}
-        useAbstractWalletConnect={abstractLogin}
+        useAbstractWalletConnect={handleAbstractLogin}
         isAbstractConnecting={isAbstractConnecting}
       />
     </>
