@@ -13,23 +13,34 @@ interface NFIDProviderProps {
  * @returns {JSX.Element} - The wrapped component with NFID context
  */
 export function NFIDProvider({ children }: NFIDProviderProps) {
-  // Add custom styles to the NFID UI elements after they're rendered
+  // Add custom styles to the NFID UI elements and continuously monitor for any new elements
   useEffect(() => {
     // Create a style element to contain our custom CSS
     const styleElement = document.createElement('style');
     styleElement.innerHTML = `
-      /* Completely hide all NFID UI elements by default */
-      /* We'll only show the dialog when needed */
-      .identitykit-dialog,
-      div[data-radix-popper-content-wrapper],
-      div[style*="position: fixed"] {
+      /* ABSOLUTE HIDING for NFID's bottom bar */
+      html body > div:last-child:not(.identitykit-dialog) > div:last-child > div > div {
+        display: none !important;
+        visibility: hidden !important;
+        opacity: 0 !important;
+        height: 0 !important;
+        max-height: 0 !important;
+        overflow: hidden !important;
+        pointer-events: none !important;
+        position: absolute !important;
+        top: -9999px !important;
+        left: -9999px !important;
+      }
+      
+      /* First, hide everything position:fixed by default */
+      div[style*="position: fixed"]:not(.modal-wrapper):not(.dialog-content) {
         display: none !important;
         visibility: hidden !important;
         opacity: 0 !important;
         pointer-events: none !important;
       }
       
-      /* Only show main dialog when triggered by our button with show-nfid-dialog class */
+      /* Only show main dialog when triggered by our button */
       .identitykit-dialog.show-nfid-dialog {
         display: block !important;
         visibility: visible !important;
@@ -52,45 +63,20 @@ export function NFIDProvider({ children }: NFIDProviderProps) {
         overflow-y: auto !important;
       }
 
-      /* Style the buttons inside the dialog */
-      .identitykit-dialog button {
-        border-radius: 6px !important;
-        padding: 10px 16px !important;
-        transition: all 0.2s ease !important;
-      }
-
-      /* Contained scrolling for the dialog */
-      .identitykit-dialog > div {
-        max-height: 100% !important;
-        overflow: hidden !important;
-      }
-
-      /* Style the backdrop - only show when dialog is active */
-      .identitykit-backdrop.show-nfid-dialog {
-        display: block !important;
-        visibility: visible !important;
-        opacity: 1 !important;
-        pointer-events: auto !important;
-        background-color: rgba(0, 0, 0, 0.7) !important;
-        position: fixed !important;
-        top: 0 !important;
-        left: 0 !important;
-        right: 0 !important;
-        bottom: 0 !important;
-        z-index: 9998 !important;
-      }
-
-      /* Make sure the bottom bar is always hidden */
-      body > div[style*="position: fixed"][style*="bottom: 0"],
-      div[style*="position: fixed"]:not(.identitykit-dialog):not(.identitykit-backdrop),
+      /* Target ALL bottom fixed elements using multiple selectors */
+      body > div[style*="position: fixed"][style*="bottom"],
+      div[style*="position: fixed"][style*="bottom"],
+      div[data-theme="dark"][style*="bottom"],
       div[data-theme="dark"][style*="position: fixed"],
-      div[class*="bottom-bar"],
-      div[class*="bottom-container"],
-      div[style*="bottom: 0"][style*="position: fixed"] {
+      div[style*="bottom: 0px"],
+      div[style*="bottom: 0"] {
         display: none !important;
         visibility: hidden !important;
         opacity: 0 !important;
         pointer-events: none !important;
+        height: 0 !important;
+        max-height: 0 !important;
+        overflow: hidden !important;
       }
 
       /* Override any scrollbar modifications */
@@ -105,41 +91,74 @@ export function NFIDProvider({ children }: NFIDProviderProps) {
     
     // Expose a global method to show/hide the NFID dialog
     window.showNFIDDialog = () => {
-      // Show the dialog
-      const dialogs = document.querySelectorAll('.identitykit-dialog');
-      dialogs.forEach(dialog => {
+      // Target all dialogs
+      document.querySelectorAll('.identitykit-dialog').forEach(dialog => {
         dialog.classList.add('show-nfid-dialog');
       });
       
-      // Also show the backdrop if it exists
-      const backdrops = document.querySelectorAll('.identitykit-backdrop');
-      backdrops.forEach(backdrop => {
-        backdrop.classList.add('show-nfid-dialog');
+      // Function to aggressively remove any bottom elements
+      const hideBottomElements = () => {
+        // Use multiple selectors to target the bottom elements
+        const selectors = [
+          'div[style*="position: fixed"][style*="bottom"]',
+          'div[style*="bottom: 0"]',
+          'body > div > div > div[style*="position"]'
+        ];
+        
+        selectors.forEach(selector => {
+          document.querySelectorAll(selector).forEach(el => {
+            // Apply hiding styles directly
+            if (el instanceof HTMLElement) {
+              el.style.display = 'none';
+              el.style.visibility = 'hidden';
+              el.style.opacity = '0';
+              el.style.height = '0';
+              el.style.maxHeight = '0';
+              el.style.overflow = 'hidden';
+              el.style.pointerEvents = 'none';
+            }
+          });
+        });
+      };
+      
+      // Execute initial hiding
+      hideBottomElements();
+      
+      // Set up an interval to continuously hide elements
+      // This handles dynamically added elements
+      const intervalId = window.setInterval(hideBottomElements, 100);
+      
+      // Store the interval ID on the window so we can clear it later
+      (window as any)._nfidHideInterval = intervalId;
+    };
+
+    window.hideNFIDDialog = () => {
+      // Hide all dialogs
+      document.querySelectorAll('.identitykit-dialog').forEach(dialog => {
+        dialog.classList.remove('show-nfid-dialog');
       });
       
-      // Hide any stray elements that appear at the bottom of the screen
-      const bottomElements = document.querySelectorAll('div[style*="position: fixed"][style*="bottom: 0"]');
+      // Clear the interval if it exists
+      if ((window as any)._nfidHideInterval) {
+        window.clearInterval((window as any)._nfidHideInterval);
+        (window as any)._nfidHideInterval = null;
+      }
+    };
+    
+    // Function to periodically clean up bottom UI elements
+    const cleanupInterval = setInterval(() => {
+      const bottomElements = document.querySelectorAll('div[style*="position: fixed"][style*="bottom"], div[style*="bottom: 0"]');
       bottomElements.forEach(el => {
         if (el instanceof HTMLElement) {
           el.style.display = 'none';
           el.style.visibility = 'hidden';
+          el.style.opacity = '0';
+          el.style.height = '0';
+          el.style.maxHeight = '0';
+          el.style.overflow = 'hidden';
         }
       });
-    };
-
-    window.hideNFIDDialog = () => {
-      // Hide the dialog
-      const dialogs = document.querySelectorAll('.identitykit-dialog');
-      dialogs.forEach(dialog => {
-        dialog.classList.remove('show-nfid-dialog');
-      });
-      
-      // Also hide the backdrop if it exists
-      const backdrops = document.querySelectorAll('.identitykit-backdrop');
-      backdrops.forEach(backdrop => {
-        backdrop.classList.remove('show-nfid-dialog');
-      });
-    };
+    }, 1000);
     
     // Hide the dialog initially
     window.hideNFIDDialog();
@@ -147,7 +166,12 @@ export function NFIDProvider({ children }: NFIDProviderProps) {
     // Clean up function
     return () => {
       document.head.removeChild(styleElement);
-      // Remove global methods by setting them to undefined
+      clearInterval(cleanupInterval);
+      // Clean up interval if it exists
+      if ((window as any)._nfidHideInterval) {
+        window.clearInterval((window as any)._nfidHideInterval);
+      }
+      // Remove global methods
       window.showNFIDDialog = undefined as any;
       window.hideNFIDDialog = undefined as any;
     };
