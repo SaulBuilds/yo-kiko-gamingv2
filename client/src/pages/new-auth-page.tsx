@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useLocation } from "wouter";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -10,51 +10,120 @@ import { useForm } from "react-hook-form";
 import { insertUserSchema } from "@shared/schema";
 import { Image } from "@/components/ui/image";
 import { Wallet } from "lucide-react";
-import { WalletSelectModal } from "@/components/wallet/wallet-select-modal";
 import { useLoginWithAbstract } from "@abstract-foundation/agw-react";
 import { useMultiWallet } from "@/hooks/use-multi-wallet";
+import { useNFID } from "@/hooks/use-nfid";
 import { SEO } from "@/components/seo";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Separator } from "@/components/ui/separator";
+import { Spinner } from "@/components/ui/spinner";
 
 /**
- * NewAuthPage component that displays the authentication screen and wallet connection options
+ * NewAuthPage component that displays the authentication screen with separate wallet options
  * @returns {JSX.Element} The authentication page component
  */
 export default function NewAuthPage() {
   const [_, setLocation] = useLocation();
   const { user, address, updateProfileMutation } = useAuth();
   const [showProfile, setShowProfile] = useState(false);
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const { login: rawAbstractLogin } = useLoginWithAbstract();
-  const { isAbstractConnecting } = useMultiWallet();
   
-  // Wrap the Abstract login function to return a Promise
-  const abstractLogin = async (): Promise<void> => {
-    try {
-      console.log("Starting Abstract login from auth page...");
-      rawAbstractLogin();
-      return Promise.resolve();
-    } catch (error) {
-      console.error("Abstract login error:", error);
-      return Promise.reject(error);
-    }
-  };
-
+  // NFID setup
+  const { connect: nfidConnect, isConnecting: isNFIDConnecting, error: nfidError } = useNFID();
+  const nfidContainerRef = useRef<HTMLDivElement>(null);
+  const [nfidUIVisible, setNfidUIVisible] = useState(false);
+  
+  // Abstract setup
+  const { connectAbstract, isAbstractConnecting } = useMultiWallet();
+  
+  // Profile form
   const profileForm = useForm({
     resolver: zodResolver(insertUserSchema.pick({ username: true, avatar: true })),
   });
 
-  // Open wallet selection modal
-  const openModal = () => {
-    console.log("Opening wallet selection modal");
-    setIsModalOpen(true);
+  // Handle direct Abstract connection
+  const handleAbstractConnect = async () => {
+    try {
+      console.log("Starting Abstract login from auth page...");
+      await connectAbstract();
+    } catch (error) {
+      console.error("Abstract login error:", error);
+    }
   };
 
-  // Close wallet selection modal
-  const handleCloseModal = async (): Promise<void> => {
-    console.log("Closing wallet selection modal");
-    setIsModalOpen(false);
-    return Promise.resolve();
+  // Handle direct NFID connection
+  const handleNFIDConnect = async () => {
+    try {
+      console.log("Starting NFID login from auth page...");
+      await nfidConnect();
+    } catch (error) {
+      console.error("NFID login error:", error);
+    }
   };
+
+  // Setup handler to capture and relocate NFID UI to our container
+  useEffect(() => {
+    // Define a style for NFID elements when they're in our container
+    const styleElement = document.createElement('style');
+    styleElement.innerHTML = `
+      /* Container styling when NFID UI is present */
+      .nfid-container-active {
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        background-color: rgba(0, 0, 0, 0.2);
+        padding: 8px;
+        border-radius: 8px;
+        margin-top: 1rem;
+      }
+      
+      /* Style for NFID UI elements once relocated */
+      .nfid-container-active > div {
+        position: static !important;
+        margin: 0 !important;
+        width: 100% !important;
+        max-width: 100% !important;
+        border-radius: 8px !important;
+        background: transparent !important;
+        bottom: auto !important;
+        left: auto !important;
+        right: auto !important;
+      }
+    `;
+    
+    document.head.appendChild(styleElement);
+
+    // Create an observer to watch for NFID UI elements appearing
+    const observer = new MutationObserver((mutations) => {
+      // Look for bottom bar elements when they appear
+      const nfidElements = document.querySelector('div[style*="position: fixed"][style*="bottom: 0"]');
+      if (nfidElements && nfidContainerRef.current) {
+        try {
+          // Stop observing to prevent loops
+          observer.disconnect();
+          
+          // Move the element to our container
+          nfidContainerRef.current.innerHTML = '';
+          nfidContainerRef.current.appendChild(nfidElements);
+          nfidContainerRef.current.classList.add('nfid-container-active');
+          
+          // Mark that we have NFID UI visible
+          setNfidUIVisible(true);
+          
+          // Re-observe after modifications
+          observer.observe(document.body, { childList: true, subtree: true });
+        } catch (err) {
+          console.error("Error relocating NFID interface:", err);
+        }
+      }
+    });
+    
+    // Start observing
+    observer.observe(document.body, { childList: true, subtree: true });
+    
+    // Clean up
+    return () => {
+      observer.disconnect();
+      document.head.removeChild(styleElement);
+    };
+  }, []);
 
   // Redirect to home if user is authenticated
   if (user && !showProfile) {
@@ -77,20 +146,100 @@ export default function NewAuthPage() {
                 />
               </div>
               {!address ? (
-                <div className="text-center space-y-4">
-                  <h2 className="text-2xl font-bold mb-4">Welcome to Yo-Kiko</h2>
-                  <p className="text-muted-foreground mb-6">
-                    Connect your wallet to start playing and earning rewards
-                  </p>
-                  <Button 
-                    onClick={openModal}
-                    className="pixel-font flex items-center gap-2"
-                    variant="default"
-                    size="lg"
-                  >
-                    <Wallet className="w-5 h-5 mr-2" />
-                    Connect to Play
-                  </Button>
+                <div className="space-y-4">
+                  <div className="text-center">
+                    <h2 className="text-2xl font-bold mb-4">Welcome to Yo-Kiko</h2>
+                    <p className="text-muted-foreground mb-6">
+                      Choose your wallet type to start playing
+                    </p>
+                  </div>
+                  
+                  <Tabs defaultValue="options" className="w-full">
+                    <TabsList className="grid w-full grid-cols-2">
+                      <TabsTrigger value="options">Wallet Options</TabsTrigger>
+                      <TabsTrigger value="nfid">NFID (ICP)</TabsTrigger>
+                    </TabsList>
+                    
+                    <TabsContent value="options" className="space-y-4 pt-4">
+                      <div className="space-y-2">
+                        <Button 
+                          onClick={handleAbstractConnect}
+                          disabled={isAbstractConnecting}
+                          className="w-full py-6 relative"
+                          variant="outline"
+                        >
+                          {isAbstractConnecting ? (
+                            <Spinner className="mr-2" />
+                          ) : (
+                            <img 
+                              src="/assets/abstract-logo.svg" 
+                              alt="Abstract Wallet" 
+                              className="w-6 h-6 mr-2"
+                            />
+                          )}
+                          <div className="flex flex-col items-start">
+                            <span className="font-semibold">Abstract Wallet</span>
+                            <span className="text-xs text-muted-foreground">Connect with your EVM wallet</span>
+                          </div>
+                        </Button>
+                        
+                        <Separator className="my-4" />
+                        
+                        <Button 
+                          onClick={handleNFIDConnect}
+                          disabled={isNFIDConnecting}
+                          className="w-full py-6 relative"
+                          variant="outline"
+                        >
+                          {isNFIDConnecting ? (
+                            <Spinner className="mr-2" />
+                          ) : (
+                            <img 
+                              src="/assets/nfid-logo.svg" 
+                              alt="NFID" 
+                              className="w-6 h-6 mr-2"
+                            />
+                          )}
+                          <div className="flex flex-col items-start">
+                            <span className="font-semibold">NFID</span>
+                            <span className="text-xs text-muted-foreground">Connect with Internet Computer</span>
+                          </div>
+                        </Button>
+                      </div>
+                    </TabsContent>
+                    
+                    <TabsContent value="nfid" className="space-y-4 pt-4">
+                      <p className="text-sm text-muted-foreground mb-4">
+                        Connect to Internet Computer using NFID
+                      </p>
+                      
+                      {!nfidUIVisible && (
+                        <Button 
+                          onClick={handleNFIDConnect}
+                          disabled={isNFIDConnecting}
+                          className="w-full"
+                          variant="default"
+                        >
+                          {isNFIDConnecting ? (
+                            <Spinner className="mr-2" />
+                          ) : (
+                            <img 
+                              src="/assets/nfid-logo.svg" 
+                              alt="NFID" 
+                              className="w-6 h-6 mr-2"
+                            />
+                          )}
+                          Connect with NFID
+                        </Button>
+                      )}
+                      
+                      {/* Container where NFID UI will be moved */}
+                      <div 
+                        ref={nfidContainerRef} 
+                        className="w-full rounded-md overflow-hidden"
+                      ></div>
+                    </TabsContent>
+                  </Tabs>
                 </div>
               ) : !user ? (
                 <div className="text-center">
@@ -160,14 +309,6 @@ export default function NewAuthPage() {
             cryptocurrency rewards.
           </p>
         </div>
-
-        {/* Use the WalletSelectModal component */}
-        <WalletSelectModal
-          isOpen={isModalOpen}
-          onClose={handleCloseModal}
-          useAbstractWalletConnect={abstractLogin}
-          isAbstractConnecting={isAbstractConnecting}
-        />
       </div>
     </>
   );
