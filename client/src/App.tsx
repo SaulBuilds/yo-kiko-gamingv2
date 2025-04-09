@@ -1,6 +1,7 @@
 import { Switch, Route } from "wouter";
 import { SEO } from "@/components/seo";
 import { Providers } from "@/components/providers";
+import { DebugStatus } from "@/components/debug-status";
 import NotFound from "@/pages/not-found";
 import SplashPage from "@/pages/splash-page";
 import NewAuthPage from "@/pages/new-auth-page";
@@ -37,6 +38,7 @@ function App() {
       
       <Providers>
         <Router />
+        <DebugStatus />
       </Providers>
     </div>
   );

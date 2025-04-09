@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { createPortal } from 'react-dom';
 import { useNFID } from '@/hooks/use-nfid';
 import { Wallet, ExternalLink } from 'lucide-react';
 
@@ -21,16 +22,39 @@ export function SimpleWalletModal({
   useAbstractWalletConnect,
   isAbstractConnecting
 }: SimpleWalletModalProps) {
-  // Debug log to verify the modal state
-  console.log("SimpleWalletModal render state:", { isOpen, isAbstractConnecting });
+  // More detailed debugging
+  console.log("%c[WALLET MODAL] Render", "color: #2e86de", { 
+    isOpen, 
+    isAbstractConnecting, 
+    timestamp: new Date().toISOString() 
+  });
+  
+  // Use a ref to track mount state
+  const mountedRef = React.useRef(false);
+  
+  React.useEffect(() => {
+    console.log("%c[WALLET MODAL] Effect - isOpen changed to:", "color: #2e86de", isOpen);
+    
+    if (!mountedRef.current) {
+      mountedRef.current = true;
+      console.log("%c[WALLET MODAL] First mount", "color: #2e86de");
+    }
+    
+    return () => {
+      console.log("%c[WALLET MODAL] Effect cleanup", "color: #2e86de");
+    };
+  }, [isOpen]);
   
   const { connect: connectNFID, isConnecting: isNFIDConnecting, error: nfidError } = useNFID();
   const [error, setError] = useState<string | null>(null);
 
   // Nothing to render if modal is closed
   if (!isOpen) {
+    console.log("%c[WALLET MODAL] Not rendering - closed", "color: #f39c12");
     return null;
   }
+  
+  console.log("%c[WALLET MODAL] Rendering - open", "color: #27ae60");
 
   // Handle Abstract wallet connection
   const handleAbstractConnect = async () => {
@@ -63,9 +87,17 @@ export function SimpleWalletModal({
     <div className={`animate-spin rounded-full h-4 w-4 border-2 border-current border-t-transparent ${className}`} />
   );
 
-  return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
-      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-md w-full p-6 relative">
+  // Use a safe way to access document in case of SSR
+  const [modalRoot, setModalRoot] = useState<HTMLElement | null>(null);
+  
+  React.useEffect(() => {
+    setModalRoot(document.body);
+  }, []);
+
+  // Content to render
+  const modalContent = (
+    <div id="wallet-modal-portal" className="fixed inset-0 bg-black bg-opacity-50 z-[9999] flex items-center justify-center p-4">
+      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-md w-full p-6 relative" onClick={e => e.stopPropagation()}>
         {/* Close button */}
         <button 
           onClick={() => onClose()} 
@@ -101,11 +133,9 @@ export function SimpleWalletModal({
             {isAbstractConnecting ? (
               <Spinner className="mr-3" />
             ) : (
-              <img 
-                src="/assets/abstract-logo.svg" 
-                alt="Abstract Wallet" 
-                className="w-6 h-6 mr-3"
-              />
+              <div className="w-6 h-6 mr-3 bg-gray-800 text-white rounded-full flex items-center justify-center">
+                <Wallet className="w-4 h-4" />
+              </div>
             )}
             <div className="text-left">
               <div className="font-semibold">Abstract Wallet</div>
@@ -124,11 +154,9 @@ export function SimpleWalletModal({
             {isNFIDConnecting ? (
               <Spinner className="mr-3" />
             ) : (
-              <img 
-                src="/nfid-simple.svg" 
-                alt="NFID" 
-                className="w-6 h-6 mr-3"
-              />
+              <div className="w-6 h-6 mr-3 bg-purple-700 text-white rounded-full flex items-center justify-center">
+                <span className="text-xs font-bold">IC</span>
+              </div>
             )}
             <div className="text-left">
               <div className="font-semibold">NFID</div>
@@ -149,5 +177,16 @@ export function SimpleWalletModal({
         </div>
       </div>
     </div>
+  );
+
+  // Handle portal rendering
+  if (!modalRoot) {
+    console.warn("Modal root not found, using regular render");
+    return isOpen ? modalContent : null;
+  }
+
+  return createPortal(
+    modalContent,
+    modalRoot
   );
 }

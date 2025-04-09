@@ -45,14 +45,19 @@ export default function NewAuthPage() {
 
   // Open wallet selection modal
   const openModal = () => {
-    console.log("Opening wallet selection modal");
-    setIsModalOpen(true);
+    console.log("%c[AUTH PAGE] Opening wallet selection modal", "color: #3498db");
+    // Force reflow to ensure state update
+    setTimeout(() => {
+      setIsModalOpen(true);
+      console.log("%c[AUTH PAGE] Modal state set to open", "color: #3498db");
+    }, 0);
   };
 
   // Close wallet selection modal
   const handleCloseModal = async (): Promise<void> => {
-    console.log("Closing wallet selection modal");
+    console.log("%c[AUTH PAGE] Closing wallet selection modal", "color: #e74c3c");
     setIsModalOpen(false);
+    console.log("%c[AUTH PAGE] Modal state set to closed", "color: #e74c3c");
     return Promise.resolve();
   };
 
