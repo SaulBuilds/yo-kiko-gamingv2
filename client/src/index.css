@@ -28,20 +28,4 @@
   .game-card-content {
     @apply absolute inset-0 flex flex-col justify-end p-6 bg-gradient-to-t from-black/80 to-transparent text-white;
   }
-  
-  /* NFID Container Styles */
-  #nfid-container {
-    @apply fixed top-0 left-0 right-0 bottom-0 z-[9999] flex items-center justify-center bg-black/50 pointer-events-none opacity-0 transition-opacity duration-300;
-    visibility: hidden;
-  }
-  
-  #nfid-container.visible {
-    @apply opacity-100 pointer-events-auto;
-    visibility: visible;
-  }
-  
-  /* Ensure wallet modal has proper z-index */
-  .wallet-modal {
-    @apply z-[1000];
-  }
 }

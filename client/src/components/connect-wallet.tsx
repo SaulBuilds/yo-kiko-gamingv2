@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Wallet } from "lucide-react";
 import { useMultiWallet } from "@/hooks/use-multi-wallet";
 import { useLoginWithAbstract } from "@abstract-foundation/agw-react";
-import { FixedModal } from "./wallet/fixed-modal";
+import { WalletSelectModal } from "./wallet/wallet-select-modal";
 
 /**
  * Shortens a wallet address for display purposes
@@ -25,7 +25,7 @@ function shortenAddress(address: string): string {
  */
 export function ConnectWallet() {
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const { login: rawAbstractLogin } = useLoginWithAbstract();
+  const { login: rawAbstractLogin, logout: abstractLogout } = useLoginWithAbstract();
   const { 
     isConnected,
     walletAddress,
@@ -46,28 +46,24 @@ export function ConnectWallet() {
     }
   };
 
-  /**
-   * Handle wallet disconnection using the unified disconnect method from useMultiWallet
-   * This will handle both wallet types and redirect to the splash page
-   */
   const handleDisconnect = async () => {
-    console.log("Disconnecting wallet from header button");
-    await disconnect();
+    // If using NFID, use the disconnect from useMultiWallet
+    // If using Abstract directly, use abstractLogout
+    if (activeWalletType === 'nfid') {
+      await disconnect();
+    } else {
+      await abstractLogout();
+    }
   };
 
   const handleOpenModal = () => {
-    console.log("%c[CONNECT WALLET] Opening wallet selection modal", "color: #3498db");
-    // Force reflow to ensure state update
-    setTimeout(() => {
-      setIsModalOpen(true);
-      console.log("%c[CONNECT WALLET] Modal state set to open", "color: #3498db");
-    }, 0);
+    console.log("Opening wallet modal from ConnectWallet component");
+    setIsModalOpen(true);
   };
 
   const handleCloseModal = async (): Promise<void> => {
-    console.log("%c[CONNECT WALLET] Closing wallet selection modal", "color: #e74c3c");
+    console.log("Closing wallet modal from ConnectWallet component");
     setIsModalOpen(false);
-    console.log("%c[CONNECT WALLET] Modal state set to closed", "color: #e74c3c");
     return Promise.resolve();
   };
 
@@ -94,7 +90,7 @@ export function ConnectWallet() {
         </Button>
       )}
 
-      <FixedModal
+      <WalletSelectModal
         isOpen={isModalOpen}
         onClose={handleCloseModal}
         useAbstractWalletConnect={abstractLogin}

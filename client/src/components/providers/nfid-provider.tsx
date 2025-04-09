@@ -1,14 +1,6 @@
 import { ReactNode, useEffect } from 'react';
 import { IdentityKitProvider, IdentityKitTheme } from '@nfid/identitykit/react';
 
-// Extend the Window interface to include our global functions
-declare global {
-  interface Window {
-    showNFIDContainer?: () => void;
-    hideNFIDContainer?: () => void;
-  }
-}
-
 interface NFIDProviderProps {
   children: ReactNode;
 }
@@ -21,76 +13,45 @@ interface NFIDProviderProps {
  * @returns {JSX.Element} - The wrapped component with NFID context
  */
 export function NFIDProvider({ children }: NFIDProviderProps) {
+  // Add custom styles to the NFID UI elements after they're rendered
   useEffect(() => {
-    // Expose functions to show/hide NFID container for global access
-    window.showNFIDContainer = () => {
-      const container = document.getElementById('nfid-container');
-      if (container) {
-        container.classList.add('visible');
+    // Create a style element to contain our custom CSS
+    const styleElement = document.createElement('style');
+    styleElement.innerHTML = `
+      /* Hide NFID UI by default */
+      .identitykit-dialog {
+        display: none;
+        position: fixed;
+        z-index: 9999;
+        max-width: 400px;
+        width: 100%;
+        background-color: rgba(0, 0, 0, 0.75);
+        border-radius: 8px;
+        padding: 20px;
+        box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1);
+        margin: 0 auto;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
       }
-    };
-    
-    window.hideNFIDContainer = () => {
-      const container = document.getElementById('nfid-container');
-      if (container) {
-        container.classList.remove('visible');
+
+      /* Apply a data attribute for JS targeting */
+      .identitykit-dialog[data-nfid-container] {
+        display: none;
       }
-    };
-    
-    // Create a MutationObserver to detect when the NFID UI is rendered
-    const observer = new MutationObserver((mutations) => {
-      // Check if any mutations contain NFID-related content
-      const hasSigner = mutations.some(mutation => {
-        if (mutation.type === 'childList' && mutation.addedNodes.length > 0) {
-          return Array.from(mutation.addedNodes).some(node => {
-            if (node instanceof HTMLElement) {
-              // Use textContent instead of innerText for broader compatibility
-              const text = node.textContent || '';
-              return (
-                text.includes('Select signer') || 
-                text.includes('Connect your wallet') || 
-                text.includes('NFID Wallet') || 
-                text.includes('Internet Identity')
-              );
-            }
-            return false;
-          });
-        }
-        return false;
-      });
-      
-      if (hasSigner) {
-        // Force move any NFID elements to our container
-        const nfidContainer = document.getElementById('nfid-container');
-        if (nfidContainer) {
-          document.querySelectorAll('body > div:not(#root):not(#nfid-container)').forEach(el => {
-            // Use textContent instead of innerText for broader compatibility
-            const text = el.textContent || '';
-            if (
-              text.includes('Select signer') || 
-              text.includes('Connect your wallet') ||
-              text.includes('NFID Wallet') ||
-              text.includes('Internet Identity')
-            ) {
-              nfidContainer.appendChild(el);
-            }
-          });
-        }
+
+      /* Remove any fixed position elements added by NFID */
+      div[style*="position: fixed"] {
+        display: none !important;
       }
-    });
+    `;
     
-    // Observe the entire document
-    observer.observe(document.documentElement, { 
-      childList: true, 
-      subtree: true,
-      characterData: true
-    });
+    // Add the style to the document head
+    document.head.appendChild(styleElement);
     
+    // Clean up function
     return () => {
-      observer.disconnect();
-      // Clean up global functions
-      delete window.showNFIDContainer;
-      delete window.hideNFIDContainer;
+      document.head.removeChild(styleElement);
     };
   }, []);
 
@@ -100,7 +61,6 @@ export function NFIDProvider({ children }: NFIDProviderProps) {
       featuredSigner={false}
       // Specify the theme to match our app's design
       theme={IdentityKitTheme.DARK}
-      // Note: providerUrl is not a valid prop for IdentityKitProvider, removing it
     >
       {children}
     </IdentityKitProvider>

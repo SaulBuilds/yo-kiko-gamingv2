@@ -2,7 +2,6 @@ import { useState, useCallback, useEffect } from 'react';
 import { useAuth } from '@/hooks/use-auth';
 import { useNFID } from '@/hooks/use-nfid';
 import { useLoginWithAbstract } from '@abstract-foundation/agw-react';
-import { useLocation } from 'wouter';
 
 type WalletType = 'abstract' | 'nfid' | null;
 
@@ -17,89 +16,55 @@ export function useMultiWallet() {
   const [walletAddress, setWalletAddress] = useState<string | undefined>(undefined);
   const [isConnected, setIsConnected] = useState<boolean>(false);
   const [error, setError] = useState<Error | null>(null);
-  const [, setLocation] = useLocation();
 
   // Get auth and wallet hooks
-  const { user, updateProfileMutation, disconnect: authDisconnect, isConnecting } = useAuth();
+  const { user, updateProfileMutation } = useAuth();
   const { connect: nfidConnect, disconnect: nfidDisconnect, getPrincipal } = useNFID();
-  
-  // Use Abstract wallet hooks
-  const abstractLogin = useLoginWithAbstract();
-  const abstractLogout = abstractLogin.logout;
+  const { 
+    isLoggedIn: isAbstractLoggedIn, 
+    address: abstractAddress,
+    logout: abstractLogout,
+    isLoggingIn: isAbstractLoggingIn 
+  } = useLoginWithAbstract();
 
   /**
    * Disconnect from the active wallet
-   * Performs wallet-specific disconnection and then triggers the auth disconnect
-   * This ensures a unified disconnection flow for both wallet types
    * 
    * @returns {Promise<void>} Promise that resolves when disconnection is complete
    */
   const disconnect = useCallback(async () => {
     try {
       setError(null);
-      console.log("Disconnecting wallet type:", activeWalletType);
-      
-      // First disconnect the specific wallet
       if (activeWalletType === 'abstract') {
-        console.log("Attempting to disconnect from Abstract wallet");
-        // Force a disconnect call on abstract even if not the active wallet
-        try {
-          abstractLogout();
-          console.log("Abstract wallet disconnected successfully");
-        } catch (abstractErr) {
-          console.warn("Error disconnecting from Abstract wallet:", abstractErr);
-          // Continue with disconnection flow even if Abstract fails
-        }
+        abstractLogout();
       } else if (activeWalletType === 'nfid') {
-        console.log("Attempting to disconnect from NFID wallet");
-        try {
-          await nfidDisconnect();
-          console.log("NFID wallet disconnected successfully");
-        } catch (nfidErr) {
-          console.warn("Error disconnecting from NFID wallet:", nfidErr);
-          // Continue with disconnection flow even if NFID fails
-        }
+        await nfidDisconnect();
       }
       
-      // Always disconnect from auth context regardless of wallet-specific disconnection success
-      console.log("Calling auth disconnect");
-      await authDisconnect();
-      console.log("Auth disconnect completed");
-      
-      // Reset local state
       setActiveWalletType(null);
       setWalletAddress(undefined);
       setIsConnected(false);
-      
-      // Force a redirect to the splash page
-      console.log("Redirecting to splash page");
-      setLocation("/");
-      
-      // Force a page reload to clear any persistent state
-      setTimeout(() => {
-        window.location.reload();
-      }, 500);
     } catch (err) {
-      console.error("Error in disconnect flow:", err);
+      console.error("Error disconnecting from wallet:", err);
       setError(err instanceof Error ? err : new Error("Failed to disconnect from wallet"));
-      
-      // Even if there's an error, try to reset state and redirect
-      setActiveWalletType(null);
-      setWalletAddress(undefined);
-      setIsConnected(false);
-      setLocation("/");
     }
-  }, [activeWalletType, abstractLogout, nfidDisconnect, authDisconnect, setLocation]);
+  }, [activeWalletType, abstractLogout, nfidDisconnect]);
 
-  // Effect to update connection status when auth address changes (for Abstract wallet)
+  // Effect to update connection status when Abstract wallet status changes
   useEffect(() => {
-    // The address from useAuth will update when Abstract wallet connects
-    if (user && user.walletAddress && activeWalletType !== 'nfid') {
-      setWalletAddress(user.walletAddress);
+    if (isAbstractLoggedIn && abstractAddress) {
+      setWalletAddress(abstractAddress);
       setIsConnected(true);
       setActiveWalletType('abstract');
+      
+      // Update the user profile if we're connected but don't have a wallet saved yet
+      if (user && !user.walletAddress) {
+        updateProfileMutation.mutate({
+          walletAddress: abstractAddress
+        });
+      }
     }
-  }, [user, activeWalletType]);
+  }, [isAbstractLoggedIn, abstractAddress, user, updateProfileMutation]);
 
   // Effect to check NFID connection status on mount
   useEffect(() => {
@@ -132,6 +97,6 @@ export function useMultiWallet() {
     isConnected,
     disconnect,
     error,
-    isAbstractConnecting: isConnecting  // Use isConnecting from auth hook
+    isAbstractConnecting: isAbstractLoggingIn
   };
 }

@@ -10,7 +10,7 @@ import { useForm } from "react-hook-form";
 import { insertUserSchema } from "@shared/schema";
 import { Image } from "@/components/ui/image";
 import { Wallet } from "lucide-react";
-import { FixedModal } from "@/components/wallet/fixed-modal";
+import { WalletSelectModal } from "@/components/wallet/wallet-select-modal";
 import { useLoginWithAbstract } from "@abstract-foundation/agw-react";
 import { useMultiWallet } from "@/hooks/use-multi-wallet";
 import { SEO } from "@/components/seo";
@@ -45,19 +45,14 @@ export default function NewAuthPage() {
 
   // Open wallet selection modal
   const openModal = () => {
-    console.log("%c[AUTH PAGE] Opening wallet selection modal", "color: #3498db");
-    // Force reflow to ensure state update
-    setTimeout(() => {
-      setIsModalOpen(true);
-      console.log("%c[AUTH PAGE] Modal state set to open", "color: #3498db");
-    }, 0);
+    console.log("Opening wallet selection modal");
+    setIsModalOpen(true);
   };
 
   // Close wallet selection modal
   const handleCloseModal = async (): Promise<void> => {
-    console.log("%c[AUTH PAGE] Closing wallet selection modal", "color: #e74c3c");
+    console.log("Closing wallet selection modal");
     setIsModalOpen(false);
-    console.log("%c[AUTH PAGE] Modal state set to closed", "color: #e74c3c");
     return Promise.resolve();
   };
 
@@ -166,8 +161,8 @@ export default function NewAuthPage() {
           </p>
         </div>
 
-        {/* Use the FixedModal component */}
-        <FixedModal
+        {/* Use the WalletSelectModal component */}
+        <WalletSelectModal
           isOpen={isModalOpen}
           onClose={handleCloseModal}
           useAbstractWalletConnect={abstractLogin}
