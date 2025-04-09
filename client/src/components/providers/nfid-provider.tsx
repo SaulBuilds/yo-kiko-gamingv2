@@ -18,30 +18,45 @@ export function NFIDProvider({ children }: NFIDProviderProps) {
     // Create a style element to contain our custom CSS
     const styleElement = document.createElement('style');
     styleElement.innerHTML = `
-      /* Hide NFID UI by default */
+      /* Style NFID UI containers for better integration */
       .identitykit-dialog {
-        display: none;
-        position: fixed;
-        z-index: 9999;
-        max-width: 400px;
-        width: 100%;
-        background-color: rgba(0, 0, 0, 0.75);
-        border-radius: 8px;
-        padding: 20px;
-        box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1);
-        margin: 0 auto;
-        top: 50%;
-        left: 50%;
-        transform: translate(-50%, -50%);
+        display: block !important;
+        position: fixed !important;
+        z-index: 9999 !important; 
+        max-width: 450px !important;
+        width: 100% !important;
+        background-color: rgba(18, 18, 18, 0.95) !important;
+        border-radius: 12px !important;
+        padding: 20px !important;
+        box-shadow: 0 4px 30px rgba(0, 0, 0, 0.3) !important;
+        top: 50% !important;
+        left: 50% !important;
+        transform: translate(-50%, -50%) !important;
+        font-family: system-ui, -apple-system, sans-serif !important;
+        border: 1px solid rgba(255, 255, 255, 0.1) !important;
       }
 
-      /* Apply a data attribute for JS targeting */
-      .identitykit-dialog[data-nfid-container] {
-        display: none;
+      /* Only show main dialog when triggered by our button */
+      body > div > .identitykit-dialog:not(.show-nfid-dialog) {
+        visibility: hidden !important;
+        opacity: 0 !important;
+        pointer-events: none !important;
       }
 
-      /* Remove any fixed position elements added by NFID */
-      div[style*="position: fixed"] {
+      /* Style the buttons inside the dialog */
+      .identitykit-dialog button {
+        border-radius: 6px !important;
+        padding: 10px 16px !important;
+        transition: all 0.2s ease !important;
+      }
+
+      /* Style the backdrop */
+      .identitykit-backdrop {
+        background-color: rgba(0, 0, 0, 0.7) !important;
+      }
+
+      /* Hide any unwanted NFID elements that appear at the bottom */
+      body > div[style*="position: fixed"][style*="bottom: 0"] {
         display: none !important;
       }
     `;
@@ -49,9 +64,30 @@ export function NFIDProvider({ children }: NFIDProviderProps) {
     // Add the style to the document head
     document.head.appendChild(styleElement);
     
+    // Expose a global method to show/hide the NFID dialog
+    window.showNFIDDialog = () => {
+      const dialogs = document.querySelectorAll('.identitykit-dialog');
+      dialogs.forEach(dialog => {
+        dialog.classList.add('show-nfid-dialog');
+      });
+    };
+
+    window.hideNFIDDialog = () => {
+      const dialogs = document.querySelectorAll('.identitykit-dialog');
+      dialogs.forEach(dialog => {
+        dialog.classList.remove('show-nfid-dialog');
+      });
+    };
+    
+    // Hide the dialog initially
+    window.hideNFIDDialog();
+    
     // Clean up function
     return () => {
       document.head.removeChild(styleElement);
+      // Remove global methods by setting them to undefined
+      window.showNFIDDialog = undefined as any;
+      window.hideNFIDDialog = undefined as any;
     };
   }, []);
 
@@ -65,4 +101,12 @@ export function NFIDProvider({ children }: NFIDProviderProps) {
       {children}
     </IdentityKitProvider>
   );
+}
+
+// Add the global method types to the Window interface
+declare global {
+  interface Window {
+    showNFIDDialog: () => void;
+    hideNFIDDialog: () => void;
+  }
 }

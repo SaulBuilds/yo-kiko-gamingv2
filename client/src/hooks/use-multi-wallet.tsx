@@ -20,12 +20,14 @@ export function useMultiWallet() {
   // Get auth and wallet hooks
   const { user, updateProfileMutation } = useAuth();
   const { connect: nfidConnect, disconnect: nfidDisconnect, getPrincipal } = useNFID();
-  const { 
-    isLoggedIn: isAbstractLoggedIn, 
-    address: abstractAddress,
-    logout: abstractLogout,
-    isLoggingIn: isAbstractLoggingIn 
-  } = useLoginWithAbstract();
+  
+  // Use the Abstract login hook with proper type handling
+  const abstractLogin = useLoginWithAbstract();
+  // Extract values from abstractLogin with proper typing
+  const isAbstractLoggedIn = !!(abstractLogin as any).isLoggedIn;
+  const abstractAddress = (abstractLogin as any).address as string | undefined;
+  const abstractLogout = (abstractLogin as any).logout as () => void;
+  const isAbstractLoggingIn = !!(abstractLogin as any).isLoggingIn;
 
   /**
    * Disconnect from the active wallet

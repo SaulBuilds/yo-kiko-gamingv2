@@ -13,60 +13,18 @@ export function useNFID() {
 
   // Function to properly show the NFID UI during connection
   const showNFIDModal = useCallback(() => {
-    // Target the NFID dialog element
-    setTimeout(() => {
-      const nfidDialogs = document.querySelectorAll(".identitykit-dialog");
-      
-      nfidDialogs.forEach(dialog => {
-        if (dialog instanceof HTMLElement) {
-          // Make it visible
-          dialog.style.display = "block";
-          // Add attribute for targeting in CSS
-          dialog.setAttribute('data-nfid-container', 'true');
-          
-          // Style it properly
-          dialog.style.position = "fixed";
-          dialog.style.zIndex = "9999";
-          dialog.style.maxWidth = "400px";
-          dialog.style.width = "100%";
-          dialog.style.backgroundColor = "rgba(0, 0, 0, 0.75)";
-          dialog.style.borderRadius = "8px";
-          dialog.style.padding = "20px";
-          dialog.style.boxShadow = "0 4px 30px rgba(0, 0, 0, 0.1)";
-          dialog.style.margin = "0 auto";
-          dialog.style.top = "50%";
-          dialog.style.left = "50%";
-          dialog.style.transform = "translate(-50%, -50%)";
-        }
-      });
-      
-      // Also handle any fixed positioned elements
-      const fixedElements = document.querySelectorAll('div[style*="position: fixed"]');
-      fixedElements.forEach(el => {
-        if (el instanceof HTMLElement && !el.classList.contains('identitykit-dialog')) {
-          el.style.display = "none";
-        }
-      });
-    }, 100); // Small delay to ensure the elements are rendered
+    // Use the global function to show NFID dialog
+    if (typeof window.showNFIDDialog === 'function') {
+      window.showNFIDDialog();
+    }
   }, []);
 
   // Function to hide the NFID UI after connection is complete or failed
   const hideNFIDModal = useCallback(() => {
-    // Target all potential NFID UI elements
-    const nfidDialogs = document.querySelectorAll(".identitykit-dialog");
-    nfidDialogs.forEach(dialog => {
-      if (dialog instanceof HTMLElement) {
-        dialog.style.display = "none";
-      }
-    });
-    
-    // Also handle any fixed positioned elements
-    const fixedElements = document.querySelectorAll('div[style*="position: fixed"]');
-    fixedElements.forEach(el => {
-      if (el instanceof HTMLElement && !el.classList.contains('identitykit-dialog')) {
-        el.style.display = "none";
-      }
-    });
+    // Use the global function to hide NFID dialog
+    if (typeof window.hideNFIDDialog === 'function') {
+      window.hideNFIDDialog();
+    }
   }, []);
 
   // Cleanup function to ensure the modal is hidden when the component unmounts
