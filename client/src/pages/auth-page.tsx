@@ -107,14 +107,14 @@ export default function AuthPage() {
                 {/* Logos and Explainer */}
                 <div className="space-y-6 mb-6">
                   <div className="flex gap-4 justify-center items-center">
-                    <Image src="/assets/IC_logo_horizontal_white.svg" alt="Internet Computer" className="h-8 w-auto" />
+                    <Image src="/assets/IC_logo_horizontal_white.svg" alt="Internet Computer" className="h-4 w-auto" />
                     <span className="flex items-center text-lg">+</span>
-                    <Image src="/assets/abstract.svg" alt="Abstract" className="h-8 w-auto" />
+                    <Image src="/assets/abstract.svg" alt="Abstract" className="h-4 w-auto" />
                   </div>
                   
                   <Card className="bg-slate-100 dark:bg-slate-800 p-4 shadow-sm">
                     <CardContent className="pt-4 px-2 text-left">
-                      <h3 className="font-bold text-md mb-2">How it works:</h3>
+                      <h3 className="font-bold text-md text-primary mb-2">How it works:</h3>
                       <ol className="list-decimal list-inside space-y-2 text-sm text-muted-foreground">
                         <li>
                           <span className="font-semibold">Verify your uniqueness</span> with Internet Identity - 
@@ -132,26 +132,26 @@ export default function AuthPage() {
                 {/* Login Button */}
                 <Button 
                   onClick={handleCombinedLogin}
-                  className="w-full relative overflow-hidden"
+                  className="pixel-font w-full h-auto py-3 px-4 flex justify-center"
                   variant="default"
                   size="lg"
                   style={{ 
                     minHeight: "3.5rem",
-                    padding: "0.75rem 1.5rem",
+                    height: "auto",
                     whiteSpace: "normal",
-                    height: "auto"
+                    lineHeight: "1.2"
                   }}
                   disabled={isLoading}
                 >
-                  <div className="flex items-center justify-center gap-3 w-full text-base">
-                    <div className="flex shrink-0 gap-2">
-                      <Globe className="w-5 h-5" />
-                      <Wallet className="w-5 h-5" />
-                    </div>
-                    <span className="font-medium">
+                  <span className="flex items-center justify-center gap-2 flex-nowrap text-sm">
+                    <span className="flex-shrink-0 flex gap-1 mr-1">
+                      <Globe className="w-4 h-4" />
+                      <Wallet className="w-4 h-4" />
+                    </span>
+                    <span className="text-center">
                       {isLoading ? "Connecting..." : "Connect with Abstract via Internet Identity"}
                     </span>
-                  </div>
+                  </span>
                 </Button>
               </div>
             ) : !user ? (
