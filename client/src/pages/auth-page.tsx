@@ -8,10 +8,8 @@ import { useAuth } from "@/hooks/use-auth";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { insertUserSchema } from "@shared/schema";
-import { ConnectWallet } from "@/components/connect-wallet";
-import { ConnectICP } from "@/components/connect-icp";
+import { ConnectCombined } from "@/components/connect-combined";
 import { Image } from "@/components/ui/image";
-import { Separator } from "@/components/ui/separator";
 
 export default function AuthPage() {
   const [_, setLocation] = useLocation();
@@ -47,13 +45,7 @@ export default function AuthPage() {
                   Connect your wallet to start playing and earning rewards
                 </p>
                 <div className="space-y-4">
-                  <ConnectWallet />
-                  <div className="flex items-center gap-2 my-2">
-                    <Separator className="flex-1" />
-                    <span className="text-xs text-muted-foreground">OR</span>
-                    <Separator className="flex-1" />
-                  </div>
-                  <ConnectICP />
+                  <ConnectCombined />
                 </div>
               </div>
             ) : !user ? (
