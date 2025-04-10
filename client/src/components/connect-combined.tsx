@@ -4,6 +4,8 @@ import { Button } from "@/components/ui/button";
 import { Globe, Wallet } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useLoginWithAbstract } from "@abstract-foundation/agw-react";
+import { Card, CardContent } from "@/components/ui/card";
+import { Image } from "@/components/ui/image";
 
 export function ConnectCombined() {
   const [isLoading, setIsLoading] = useState(false);
@@ -66,17 +68,39 @@ export function ConnectCombined() {
   };
 
   return (
-    <Button 
-      onClick={handleCombinedLogin}
-      className="pixel-font flex items-center gap-2 w-full"
-      variant="default"
-      disabled={isLoading}
-    >
-      <div className="flex items-center gap-1">
-        <Globe className="w-4 h-4" />
-        <Wallet className="w-4 h-4" />
+    <div className="space-y-6">
+      <div className="flex gap-4 justify-center">
+        <Image src="/assets/logos/IC_logo_horizontal_white.svg" alt="Internet Computer" className="h-10 w-auto" />
+        <span className="flex items-center text-lg">+</span>
+        <Image src="/assets/logos/abstract.svg" alt="Abstract" className="h-10 w-auto" />
       </div>
-      {isLoading ? "Connecting..." : "Connect with Abstract via Internet Identity"}
-    </Button>
+      
+      <Card className="bg-slate-100 dark:bg-slate-800 p-4 shadow-sm">
+        <CardContent className="pt-4 px-2">
+          <p className="text-sm text-center mb-4">
+            Connect with both Internet Identity and Abstract in one streamlined process. 
+            First authenticate with Internet Computer, then link your Abstract wallet for 
+            a complete Web3 experience.
+          </p>
+        </CardContent>
+      </Card>
+      
+      <Button 
+        onClick={handleCombinedLogin}
+        className="pixel-font w-full h-auto py-3"
+        variant="default"
+        disabled={isLoading}
+      >
+        <span className="flex items-center gap-2">
+          <span className="flex gap-1">
+            <Globe className="w-4 h-4" />
+            <Wallet className="w-4 h-4" />
+          </span>
+          <span>
+            {isLoading ? "Connecting..." : "Connect with Abstract via Internet Identity"}
+          </span>
+        </span>
+      </Button>
+    </div>
   );
 }
