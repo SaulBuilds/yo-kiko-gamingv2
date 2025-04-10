@@ -10,6 +10,7 @@ import NewGamePage from "@/pages/new-game-page";
 import TempleRunnerPage from "@/pages/temple-runner-page";
 import StreetFighterPage from "@/pages/street-fighter-page";
 import CreatorApplication from "@/pages/creator-application";
+import WalletDemoPage from "@/pages/wallet-demo-page";
 import { ProtectedRoute } from "./lib/protected-route";
 
 function Router() {
@@ -17,6 +18,7 @@ function Router() {
     <Switch>
       <Route path="/" component={SplashPage} />
       <Route path="/auth" component={NewAuthPage} />
+      <Route path="/wallet-demo" component={WalletDemoPage} />
       <ProtectedRoute path="/dashboard" component={DashboardPage} />
       <ProtectedRoute path="/game/new" component={NewGamePage} />
       <ProtectedRoute path="/game/:id" component={GamePage} />
