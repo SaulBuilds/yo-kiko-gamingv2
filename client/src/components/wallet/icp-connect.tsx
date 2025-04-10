@@ -4,31 +4,47 @@ import { Button } from "@/components/ui/button";
 import { Globe } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { queryClient } from '@/lib/queryClient';
+import { AuthClient } from "@dfinity/auth-client";
+import { Identity } from "@dfinity/agent";
 
 export function ICPWalletConnect() {
   const [isConnected, setIsConnected] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [principal, setPrincipal] = useState<string | null>(null);
+  const [authClient, setAuthClient] = useState<AuthClient | null>(null);
   const { toast } = useToast();
   const [_, setLocation] = useLocation();
 
-  // Check if user is already logged in with ICP
+  // Initialize the auth client and check login status
   useEffect(() => {
-    const checkLoginStatus = async () => {
+    const initAuthClient = async () => {
       try {
-        // In a real implementation, you'd check the identity status
-        // For the mock, we'll check local storage
-        const savedPrincipal = localStorage.getItem('icp_principal');
-        if (savedPrincipal) {
-          setPrincipal(savedPrincipal);
+        // Create a new AuthClient
+        const client = await AuthClient.create();
+        setAuthClient(client);
+        
+        // Check if the user is already authenticated
+        const isAuthenticated = await client.isAuthenticated();
+        
+        if (isAuthenticated) {
+          const identity = client.getIdentity();
+          const principal = identity.getPrincipal().toString();
+          setPrincipal(principal);
           setIsConnected(true);
+        } else {
+          // Check if we have a stored principal from a previous session
+          const savedPrincipal = localStorage.getItem('icp_principal');
+          if (savedPrincipal) {
+            setPrincipal(savedPrincipal);
+            setIsConnected(true);
+          }
         }
       } catch (error) {
-        console.error("Error checking ICP login status:", error);
+        console.error("Error initializing ICP AuthClient:", error);
       }
     };
 
-    checkLoginStatus();
+    initAuthClient();
   }, []);
 
   const shortenPrincipal = (principal: string) => {
@@ -40,12 +56,10 @@ export function ICPWalletConnect() {
     setIsLoading(true);
     
     try {
-      // Mock logout - In production you would:
-      // Call authClient.logout()
-      console.log("Logging out from ICP...");
-      
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 500));
+      if (authClient) {
+        // Log out of Internet Identity if we have an auth client
+        await authClient.logout();
+      }
       
       setPrincipal(null);
       setIsConnected(false);

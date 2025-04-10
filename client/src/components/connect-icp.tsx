@@ -1,18 +1,57 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useLocation } from 'wouter';
 import { Button } from "@/components/ui/button";
 import { Globe } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { queryClient } from '@/lib/queryClient';
+import { AuthClient } from "@dfinity/auth-client";
+import { Identity } from "@dfinity/agent";
 
-// Mock implementation for ICP authentication
-// In a real implementation, this would connect to Internet Identity
 export function ConnectICP() {
   const [isConnected, setIsConnected] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [principal, setPrincipal] = useState<string | null>(null);
+  const [authClient, setAuthClient] = useState<AuthClient | null>(null);
+  const [identity, setIdentity] = useState<Identity | null>(null);
   const { toast } = useToast();
   const [_, setLocation] = useLocation();
+
+  // Initialize the auth client
+  useEffect(() => {
+    const init = async () => {
+      try {
+        // Create a new AuthClient
+        const client = await AuthClient.create();
+        setAuthClient(client);
+        
+        // Check if the user is already authenticated
+        const isAuthenticated = await client.isAuthenticated();
+        
+        if (isAuthenticated) {
+          const identity = client.getIdentity();
+          const principal = identity.getPrincipal().toString();
+          
+          setIdentity(identity);
+          setPrincipal(principal);
+          setIsConnected(true);
+          
+          // Save to localStorage for persistence between page reloads
+          localStorage.setItem('icp_principal', principal);
+          
+          // Create or update user
+          try {
+            await createUserForICP(principal);
+          } catch (err) {
+            console.error("Failed to sync authenticated user:", err);
+          }
+        }
+      } catch (error) {
+        console.error("Error initializing ICP AuthClient:", error);
+      }
+    };
+    
+    init();
+  }, []);
 
   const shortenPrincipal = (principal: string) => {
     if (!principal) return '';
@@ -23,34 +62,50 @@ export function ConnectICP() {
     setIsLoading(true);
     
     try {
-      // Mock implementation - In production you would:
-      // 1. Create an AuthClient
-      // 2. Call authClient.login() with the Internet Identity URL
-      // 3. Update the principal from authClient.getIdentity().getPrincipal()
-      console.log("Starting NFID login from auth page...");
-      console.log("Initiating NFID connection...");
+      if (!authClient) {
+        throw new Error("Auth client not initialized");
+      }
       
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      // Mock successful login
-      const mockPrincipal = "5uylz-j7fcd-isj73-gp57f-xwwyy-po2ib-7iboa-fdkdv-nrsam-3bd3r-qqe";
-      setPrincipal(mockPrincipal);
-      setIsConnected(true);
-      
-      // Store in localStorage for persistence
-      localStorage.setItem('icp_principal', mockPrincipal);
-      
-      // Create a mock user for ICP login
-      await createUserForICP(mockPrincipal);
-      
-      toast({
-        title: "Success!",
-        description: "Connected to Internet Identity",
-      });
+      console.log("Starting Internet Identity login...");
 
-      // Redirect to dashboard
-      setLocation("/dashboard");
+      // Set up the callback config for Internet Identity
+      // The production host for Internet Identity is https://identity.ic0.app
+      await authClient.login({
+        identityProvider: "https://identity.ic0.app",
+        onSuccess: async () => {
+          // Get the identity after successful authentication
+          const identity = authClient.getIdentity();
+          const principal = identity.getPrincipal().toString();
+          
+          setIdentity(identity);
+          setPrincipal(principal);
+          setIsConnected(true);
+          
+          // Store in localStorage for persistence
+          localStorage.setItem('icp_principal', principal);
+          
+          // Create a user for ICP login
+          await createUserForICP(principal);
+          
+          toast({
+            title: "Success!",
+            description: "Connected to Internet Identity",
+          });
+          
+          // Redirect to dashboard
+          setLocation("/dashboard");
+          setIsLoading(false);
+        },
+        onError: (error) => {
+          console.error("ICP login error:", error);
+          toast({
+            title: "Connection Failed",
+            description: "Could not connect to Internet Identity. Please try again.",
+            variant: "destructive",
+          });
+          setIsLoading(false);
+        }
+      });
     } catch (error) {
       console.error("ICP login error:", error);
       toast({
@@ -58,7 +113,6 @@ export function ConnectICP() {
         description: "Could not connect to Internet Identity. Please try again.",
         variant: "destructive",
       });
-    } finally {
       setIsLoading(false);
     }
   };
@@ -92,14 +146,18 @@ export function ConnectICP() {
     setIsLoading(true);
     
     try {
-      // Mock logout - In production you would:
-      // Call authClient.logout()
+      if (!authClient) {
+        throw new Error("Auth client not initialized");
+      }
+      
       console.log("Logging out from ICP...");
       
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 500));
+      // Log out of Internet Identity
+      await authClient.logout();
       
+      // Clear state
       setPrincipal(null);
+      setIdentity(null);
       setIsConnected(false);
       
       // Remove from localStorage
