@@ -1,5 +1,6 @@
 import { useLocation } from "wouter";
 import { WalletConnect } from "@/components/wallet/wallet-connect";
+import { ICPWalletConnect } from "@/components/wallet/icp-connect";
 import { Image } from "@/components/ui/image";
 
 export function Navbar() {
@@ -21,6 +22,7 @@ export function Navbar() {
           </div>
 
           <div className="flex items-center space-x-4">
+            <ICPWalletConnect />
             <WalletConnect />
           </div>
         </div>
