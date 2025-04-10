@@ -11,6 +11,9 @@ import TempleRunnerPage from "@/pages/temple-runner-page";
 import StreetFighterPage from "@/pages/street-fighter-page";
 import CreatorApplication from "@/pages/creator-application";
 import WalletDemoPage from "@/pages/wallet-demo-page";
+import WalletSelector from "@/pages/wallet-selector";
+import AbstractAuthPage from "@/pages/auth-abstract";
+import NFIDAuthPage from "@/pages/auth-nfid";
 import { ProtectedRoute } from "./lib/protected-route";
 
 function Router() {

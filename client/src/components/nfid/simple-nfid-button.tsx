@@ -72,7 +72,7 @@ export function SimpleNFIDButton({ className }: SimpleNFIDButtonProps) {
           <Spinner className="mr-2" />
         ) : (
           <img 
-            src="/assets/nfid-logo.svg" 
+            src="/assets/nfid-logo-small.svg" 
             alt="NFID" 
             className="w-6 h-6 mr-2"
           />
