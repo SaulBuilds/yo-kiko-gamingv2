@@ -70,9 +70,9 @@ export function ConnectCombined() {
   return (
     <div className="space-y-6">
       <div className="flex gap-4 justify-center">
-        <Image src="/assets/logos/IC_logo_horizontal_white.svg" alt="Internet Computer" className="h-10 w-auto" />
+        <Image src="/assets/IC_logo_horizontal_white.svg" alt="Internet Computer" className="h-10 w-auto" />
         <span className="flex items-center text-lg">+</span>
-        <Image src="/assets/logos/abstract.svg" alt="Abstract" className="h-10 w-auto" />
+        <Image src="/assets/abstract.svg" alt="Abstract" className="h-10 w-auto" />
       </div>
       
       <Card className="bg-slate-100 dark:bg-slate-800 p-4 shadow-sm">

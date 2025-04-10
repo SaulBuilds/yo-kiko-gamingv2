@@ -107,9 +107,9 @@ export default function AuthPage() {
                 {/* Logos and Explainer */}
                 <div className="space-y-6 mb-6">
                   <div className="flex gap-4 justify-center items-center">
-                    <Image src="/assets/logos/IC_logo_horizontal_white.svg" alt="Internet Computer" className="h-8 w-auto" />
+                    <Image src="/assets/IC_logo_horizontal_white.svg" alt="Internet Computer" className="h-8 w-auto" />
                     <span className="flex items-center text-lg">+</span>
-                    <Image src="/assets/logos/abstract.svg" alt="Abstract" className="h-8 w-auto" />
+                    <Image src="/assets/abstract.svg" alt="Abstract" className="h-8 w-auto" />
                   </div>
                   
                   <Card className="bg-slate-100 dark:bg-slate-800 p-4 shadow-sm">
@@ -132,19 +132,26 @@ export default function AuthPage() {
                 {/* Login Button */}
                 <Button 
                   onClick={handleCombinedLogin}
-                  className="pixel-font w-full h-auto py-3"
+                  className="w-full relative overflow-hidden"
                   variant="default"
+                  size="lg"
+                  style={{ 
+                    minHeight: "3.5rem",
+                    padding: "0.75rem 1.5rem",
+                    whiteSpace: "normal",
+                    height: "auto"
+                  }}
                   disabled={isLoading}
                 >
-                  <span className="flex items-center gap-2">
-                    <span className="flex gap-1">
-                      <Globe className="w-4 h-4" />
-                      <Wallet className="w-4 h-4" />
-                    </span>
-                    <span>
+                  <div className="flex items-center justify-center gap-3 w-full text-base">
+                    <div className="flex shrink-0 gap-2">
+                      <Globe className="w-5 h-5" />
+                      <Wallet className="w-5 h-5" />
+                    </div>
+                    <span className="font-medium">
                       {isLoading ? "Connecting..." : "Connect with Abstract via Internet Identity"}
                     </span>
-                  </span>
+                  </div>
                 </Button>
               </div>
             ) : !user ? (
