@@ -14,7 +14,6 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { User, LogOut, ChevronDown } from "lucide-react";
-import { Image } from "@/components/ui/image";
 
 export function UserProfileDropdown() {
   const { user, address, disconnect } = useAuth();
@@ -118,7 +117,7 @@ export function UserProfileDropdown() {
         {address && (
           <DropdownMenuItem className="flex items-center p-3" onSelect={(e) => e.preventDefault()}>
             <div className="flex items-center gap-3 w-full">
-              <Image src="/assets/logos/abstract.svg" alt="Abstract" className="h-6 w-auto" />
+              <img src="/assets/logos/abstract.svg" alt="Abstract" className="h-6 w-auto" />
               <div className="flex-1">
                 <p className="text-sm font-semibold">Abstract</p>
                 <p className="text-xs text-muted-foreground">{shortenAddress(address)}</p>
@@ -138,7 +137,7 @@ export function UserProfileDropdown() {
         {principal && (
           <DropdownMenuItem className="flex items-center p-3" onSelect={(e) => e.preventDefault()}>
             <div className="flex items-center gap-3 w-full">
-              <Image src="/assets/logos/IC_logo_horizontal_white.svg" alt="Internet Computer" className="h-6 w-auto" />
+              <img src="/assets/logos/IC_logo_horizontal_white.svg" alt="Internet Computer" className="h-6 w-auto" />
               <div className="flex-1">
                 <p className="text-sm font-semibold">Internet Identity</p>
                 <p className="text-xs text-muted-foreground">{shortenAddress(principal)}</p>
