@@ -17,7 +17,7 @@ import { User, LogOut, ChevronDown } from "lucide-react";
 import { Image } from "@/components/ui/image";
 
 export function UserProfileDropdown() {
-  const { user, address } = useAuth();
+  const { user, address, disconnect } = useAuth();
   const [_, setLocation] = useLocation();
   const { toast } = useToast();
   const [principal, setPrincipal] = useState<string | null>(null);
@@ -37,31 +37,57 @@ export function UserProfileDropdown() {
     return `${addr.slice(0, 6)}...${addr.slice(-4)}`;
   };
 
-  const handleLogout = async () => {
+  const handleAbstractLogout = async () => {
     setIsLoading(true);
     
     try {
-      // If we have an ICP connection, clear it
-      if (principal) {
-        localStorage.removeItem('icp_principal');
-        setPrincipal(null);
+      // Use the disconnect function from useAuth
+      if (disconnect) {
+        await disconnect();
       }
+      
+      toast({
+        title: "Logged Out",
+        description: "Successfully disconnected from Abstract",
+      });
+      
+      // Redirect to home page
+      setLocation("/");
+    } catch (error) {
+      console.error("Abstract logout error:", error);
+      toast({
+        title: "Logout Failed",
+        description: "Error during Abstract logout. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleICPLogout = async () => {
+    setIsLoading(true);
+    
+    try {
+      // Clear ICP connection
+      localStorage.removeItem('icp_principal');
+      setPrincipal(null);
       
       // Clear user data from cache
       queryClient.setQueryData(["/api/user"], null);
       
       toast({
         title: "Logged Out",
-        description: "Successfully disconnected",
+        description: "Successfully disconnected from Internet Identity",
       });
 
       // Redirect to home page
       setLocation("/");
     } catch (error) {
-      console.error("Logout error:", error);
+      console.error("ICP logout error:", error);
       toast({
         title: "Logout Failed",
-        description: "Error during logout. Please try again.",
+        description: "Error during ICP logout. Please try again.",
         variant: "destructive",
       });
     } finally {
@@ -81,7 +107,7 @@ export function UserProfileDropdown() {
             <AvatarImage src={user?.avatar || ""} />
             <AvatarFallback><User className="h-4 w-4" /></AvatarFallback>
           </Avatar>
-          <span className="hidden md:inline">{user?.username || shortenAddress(address || "")}</span>
+          <span className="hidden md:inline">{user?.username || shortenAddress(address || principal || "")}</span>
           <ChevronDown className="h-4 w-4" />
         </Button>
       </DropdownMenuTrigger>
@@ -90,9 +116,9 @@ export function UserProfileDropdown() {
         <DropdownMenuSeparator />
         
         {address && (
-          <DropdownMenuItem className="flex items-center p-3">
+          <DropdownMenuItem className="flex items-center p-3" onSelect={(e) => e.preventDefault()}>
             <div className="flex items-center gap-3 w-full">
-              <Image src="/assets/abstract.svg" alt="Abstract" className="h-4 w-auto" />
+              <Image src="/assets/logos/abstract.svg" alt="Abstract" className="h-6 w-auto" />
               <div className="flex-1">
                 <p className="text-sm font-semibold">Abstract</p>
                 <p className="text-xs text-muted-foreground">{shortenAddress(address)}</p>
@@ -100,7 +126,7 @@ export function UserProfileDropdown() {
               <Button 
                 variant="outline" 
                 size="sm" 
-                onClick={handleLogout}
+                onClick={handleAbstractLogout}
                 disabled={isLoading}
               >
                 {isLoading ? "..." : <LogOut className="h-3 w-3" />}
@@ -110,9 +136,9 @@ export function UserProfileDropdown() {
         )}
         
         {principal && (
-          <DropdownMenuItem className="flex items-center p-3">
+          <DropdownMenuItem className="flex items-center p-3" onSelect={(e) => e.preventDefault()}>
             <div className="flex items-center gap-3 w-full">
-              <Image src="/assets/IC_logo_horizontal_white.svg" alt="Internet Computer" className="h-4 w-auto" />
+              <Image src="/assets/logos/IC_logo_horizontal_white.svg" alt="Internet Computer" className="h-6 w-auto" />
               <div className="flex-1">
                 <p className="text-sm font-semibold">Internet Identity</p>
                 <p className="text-xs text-muted-foreground">{shortenAddress(principal)}</p>
@@ -120,7 +146,7 @@ export function UserProfileDropdown() {
               <Button 
                 variant="outline" 
                 size="sm" 
-                onClick={handleLogout}
+                onClick={handleICPLogout}
                 disabled={isLoading}
               >
                 {isLoading ? "..." : <LogOut className="h-3 w-3" />}
