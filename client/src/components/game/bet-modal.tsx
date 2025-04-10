@@ -117,11 +117,32 @@ export function BetModal({ open, onClose, gameType }: BetModalProps) {
             </RadioGroup>
           </div>
 
+          {betType === "crypto" && (
+            <div className="space-y-2">
+              <Label>Cryptocurrency</Label>
+              <Select 
+                value={cryptoType} 
+                onValueChange={(value) => setCryptoType(value as "eth" | "icp")}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select cryptocurrency" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="eth">Ethereum (ETH)</SelectItem>
+                  <SelectItem value="icp">Internet Computer (ICP)</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+          
           <div className="space-y-2">
             <Label>Bet Amount</Label>
             <Input
               type="number"
-              placeholder={betType === 'xp' ? "Enter XP amount" : "Enter ETH amount"}
+              placeholder={
+                betType === 'xp' ? "Enter XP amount" : 
+                cryptoType === 'eth' ? "Enter ETH amount" : "Enter ICP amount"
+              }
               value={betAmount}
               onChange={(e) => setBetAmount(e.target.value)}
               min="0"

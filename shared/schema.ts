@@ -20,6 +20,7 @@ export const gameMatches = pgTable("game_matches", {
   player2Id: integer("player2_id"),
   betAmount: text("bet_amount").notNull(),
   betType: text("bet_type").notNull().default("xp"), // 'xp' or 'crypto'
+  cryptoType: text("crypto_type"), // 'eth' or 'icp' when betType is 'crypto'
   status: text("status").notNull(), // 'waiting', 'in_progress', 'completed'
   winnerId: integer("winner_id"),
   startTime: timestamp("start_time"),
@@ -62,13 +63,15 @@ export const insertGameMatchSchema = createInsertSchema(gameMatches).pick({
   player1Id: true,
   betAmount: true,
   betType: true,
+  cryptoType: true,
   gameType: true,
   isPractice: true,
   timeLimit: true
 }).partial({
   isPractice: true,
   timeLimit: true,
-  betType: true
+  betType: true,
+  cryptoType: true
 });
 
 // Create schema for creator applications
