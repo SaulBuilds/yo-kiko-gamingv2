@@ -10,7 +10,7 @@ import { NFIDConnectButton } from "@/components/nfid/nfid-connect-button";
 import { useMultiWallet } from "@/hooks/use-multi-wallet";
 import { useAuth } from "@/hooks/use-auth";
 import { WalletBasedBetUI } from "@/components/betting/wallet-based-bet-ui";
-import { NFIDModalButton } from "@/components/nfid/nfid-modal-button";
+import { SimpleNFIDButton } from "@/components/nfid/simple-nfid-button";
 import { AbstractModalButton } from "@/components/abstract/abstract-modal-button";
 
 /**
@@ -134,7 +134,7 @@ export default function WalletDemoPage() {
                     
                     <div className="space-y-2">
                       <h3 className="text-md font-medium">NFID Wallet</h3>
-                      <NFIDModalButton />
+                      <SimpleNFIDButton />
                     </div>
                   </div>
                 </CardContent>

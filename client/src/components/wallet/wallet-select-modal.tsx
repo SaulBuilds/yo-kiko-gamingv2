@@ -3,7 +3,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { ExternalLink } from "lucide-react";
 
 // Import our specialized wallet button components
-import { NFIDModalButton } from "@/components/nfid/nfid-modal-button";
+import { SimpleNFIDButton } from "@/components/nfid/simple-nfid-button";
 import { AbstractModalButton } from "@/components/abstract/abstract-modal-button";
 
 interface WalletSelectModalProps {
@@ -53,7 +53,7 @@ export function WalletSelectModal({
           />
 
           {/* NFID Wallet Option */}
-          <NFIDModalButton onClose={onClose} />
+          <SimpleNFIDButton />
 
           <div className="text-xs text-center text-muted-foreground mt-2">
             <a 
