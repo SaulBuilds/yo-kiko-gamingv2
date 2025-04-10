@@ -51,13 +51,23 @@ export default function SplashPage() {
             <p className="text-2xl md:text-3xl mb-8 text-primary/20 pixel-font max-w-3xl mx-auto leading-relaxed">
               Level Up Your Gaming: Create, Play, and Earn in ETH
             </p>
-            <Button 
-              size="lg" 
-              className="text-xl px-12 py-8 pixel-font bg-primary hover:bg-primary/90 transition-all"
-              onClick={() => setLocation("/auth")}
-            >
-              Start Your Adventure
-            </Button>
+            <div className="flex flex-col sm:flex-row gap-4 justify-center">
+              <Button 
+                size="lg" 
+                className="text-xl px-12 py-8 pixel-font bg-primary hover:bg-primary/90 transition-all"
+                onClick={() => setLocation("/auth")}
+              >
+                Start Your Adventure
+              </Button>
+              <Button 
+                size="lg" 
+                variant="outline"
+                className="text-xl px-12 py-8 pixel-font border-primary text-primary hover:bg-primary/10 transition-all"
+                onClick={() => setLocation("/wallet-demo")}
+              >
+                Wallet Demo
+              </Button>
+            </div>
           </motion.div>
         </div>
 
@@ -167,13 +177,23 @@ export default function SplashPage() {
           <p className="text-2xl text-gray-300 mb-12 max-w-3xl mx-auto pixel-font">
             Are you ready to be part of the next generation of gaming? Join our community of vibe coders and players!
           </p>
-          <Button 
-            size="lg"
-            onClick={() => setLocation("/auth")}
-            className="text-xl px-12 py-8 pixel-font bg-primary hover:bg-primary/90"
-          >
-            Start Gaming Now
-          </Button>
+          <div className="flex flex-col sm:flex-row gap-4 justify-center">
+            <Button 
+              size="lg"
+              onClick={() => setLocation("/auth")}
+              className="text-xl px-12 py-8 pixel-font bg-primary hover:bg-primary/90"
+            >
+              Start Gaming Now
+            </Button>
+            <Button 
+              size="lg"
+              variant="outline"
+              onClick={() => setLocation("/wallet-demo")}
+              className="text-xl px-12 py-8 pixel-font border-primary text-primary hover:bg-primary/10"
+            >
+              Try Wallet Demo
+            </Button>
+          </div>
         </div>
       </section>
 
@@ -218,7 +238,7 @@ export default function SplashPage() {
         </div>
       </footer>
 
-      <style jsx global>{`
+      <style>{`
         @keyframes float {
           0% { transform: translateY(0px) }
           50% { transform: translateY(-20px) }
