@@ -1,7 +1,8 @@
 import { useState, useEffect, useRef } from 'react';
-import { useAuth as useNfidAuth } from '@nfid/identitykit/react';
+import { ConnectWallet } from '@nfid/identitykit/react';
 import { Button } from '@/components/ui/button';
 import { Spinner } from '@/components/ui/spinner';
+import { useNFID } from '@/hooks/use-nfid';
 
 interface NFIDModalButtonProps {
   onClose?: () => Promise<void>;
@@ -19,7 +20,7 @@ interface NFIDModalButtonProps {
  * @returns {JSX.Element} The NFID modal button component
  */
 export function NFIDModalButton({ onClose, className }: NFIDModalButtonProps) {
-  const { connect, isConnecting } = useNfidAuth();
+  const { isConnecting, connect } = useNFID();
   const [error, setError] = useState<string | null>(null);
   const nfidContainerRef = useRef<HTMLDivElement>(null);
   const [nfidUIVisible, setNfidUIVisible] = useState(false);
@@ -50,31 +51,63 @@ export function NFIDModalButton({ onClose, className }: NFIDModalButtonProps) {
         left: auto !important;
         right: auto !important;
       }
+      
+      /* Force NFID dialog to be visible in our modal */
+      .identitykit-dialog {
+        display: block !important;
+        position: static !important;
+        transform: none !important;
+        margin: 0 auto !important;
+        max-width: 100% !important;
+        z-index: 9999 !important;
+      }
+      
+      /* Make the NFID backdrop invisible since we're already in a modal */
+      .identitykit-backdrop {
+        display: none !important;
+      }
+      
+      /* Handle nested scrolling */
+      .identitykit-dialog-body {
+        max-height: 400px !important;
+        overflow-y: auto !important;
+      }
     `;
     
     document.head.appendChild(styleElement);
 
     // Create an observer to watch for NFID UI elements appearing
     const observer = new MutationObserver((mutations) => {
-      // Look for NFID UI elements when they appear
-      const nfidElements = document.querySelector('div[style*="position: fixed"][style*="bottom: 0"]');
-      if (nfidElements && nfidContainerRef.current) {
-        try {
-          // Stop observing to prevent loops
-          observer.disconnect();
+      for (const mutation of mutations) {
+        if (mutation.type === 'childList' && mutation.addedNodes.length > 0) {
+          // Look for NFID UI elements
+          const nfidElements = document.querySelector('.identitykit-dialog');
+          const nfidBackdrop = document.querySelector('.identitykit-backdrop');
           
-          // Move the element to our container
-          nfidContainerRef.current.innerHTML = '';
-          nfidContainerRef.current.appendChild(nfidElements);
-          nfidContainerRef.current.classList.add('nfid-container-active');
-          
-          // Mark that we have NFID UI visible
-          setNfidUIVisible(true);
-          
-          // Re-observe after modifications
-          observer.observe(document.body, { childList: true, subtree: true });
-        } catch (err) {
-          console.error("Error relocating NFID interface:", err);
+          if (nfidElements && nfidContainerRef.current) {
+            try {
+              // Stop observing to prevent loops
+              observer.disconnect();
+              
+              // Move the element to our container
+              nfidContainerRef.current.innerHTML = '';
+              nfidContainerRef.current.appendChild(nfidElements);
+              nfidContainerRef.current.classList.add('nfid-container-active');
+              
+              // Hide the backdrop if it exists
+              if (nfidBackdrop && nfidBackdrop.parentNode) {
+                nfidBackdrop.parentNode.removeChild(nfidBackdrop);
+              }
+              
+              // Mark that we have NFID UI visible
+              setNfidUIVisible(true);
+              
+              // Re-observe after modifications
+              observer.observe(document.body, { childList: true, subtree: true });
+            } catch (err) {
+              console.error("Error relocating NFID interface:", err);
+            }
+          }
         }
       }
     });
@@ -115,7 +148,7 @@ export function NFIDModalButton({ onClose, className }: NFIDModalButtonProps) {
         </div>
       )}
       
-      {/* Only show the button if NFID UI is not yet visible */}
+      {/* Custom button to trigger NFID Connect */}
       {!nfidUIVisible && (
         <Button 
           onClick={handleNFIDConnect}
@@ -138,6 +171,11 @@ export function NFIDModalButton({ onClose, className }: NFIDModalButtonProps) {
           </div>
         </Button>
       )}
+      
+      {/* Hidden official NFID button to ensure proper connection */}
+      <div className="hidden">
+        <ConnectWallet />
+      </div>
       
       {/* Container where NFID UI will be moved */}
       <div 

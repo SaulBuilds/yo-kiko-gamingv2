@@ -5,7 +5,8 @@ import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { SEO } from "@/components/seo";
 import { ConnectWallet } from "@/components/connect-wallet";
-import { ConnectWallet as NFIDConnectWallet } from "@nfid/identitykit/react";
+import { ConnectWallet as NFIDOfficialButton } from "@nfid/identitykit/react";
+import { NFIDConnectButton } from "@/components/nfid/nfid-connect-button";
 import { useMultiWallet } from "@/hooks/use-multi-wallet";
 import { useAuth } from "@/hooks/use-auth";
 import { WalletBasedBetUI } from "@/components/betting/wallet-based-bet-ui";
@@ -105,8 +106,13 @@ export default function WalletDemoPage() {
                   <CardTitle>NFID Native Button</CardTitle>
                   <CardDescription>The official NFID ConnectWallet component</CardDescription>
                 </CardHeader>
-                <CardContent className="flex justify-center items-center h-[200px]">
-                  <NFIDConnectWallet />
+                <CardContent className="flex flex-col justify-center items-center h-[200px] gap-4">
+                  <div className="w-full">
+                    <NFIDOfficialButton />
+                  </div>
+                  <div className="w-full mt-4">
+                    <NFIDConnectButton />
+                  </div>
                 </CardContent>
               </Card>
               
