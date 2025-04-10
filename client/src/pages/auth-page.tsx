@@ -9,7 +9,9 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { insertUserSchema } from "@shared/schema";
 import { ConnectWallet } from "@/components/connect-wallet";
+import { ConnectICP } from "@/components/connect-icp";
 import { Image } from "@/components/ui/image";
+import { Separator } from "@/components/ui/separator";
 
 export default function AuthPage() {
   const [_, setLocation] = useLocation();
@@ -41,9 +43,17 @@ export default function AuthPage() {
               <div className="text-center space-y-4">
                 <h2 className="text-2xl font-bold mb-4">Welcome to Yo-Kiko</h2>
                 <p className="text-muted-foreground mb-6">
-                  Connect with Abstract to start playing and earning rewards
+                  Connect your wallet to start playing and earning rewards
                 </p>
-                <ConnectWallet />
+                <div className="space-y-4">
+                  <ConnectWallet />
+                  <div className="flex items-center gap-2 my-2">
+                    <Separator className="flex-1" />
+                    <span className="text-xs text-muted-foreground">OR</span>
+                    <Separator className="flex-1" />
+                  </div>
+                  <ConnectICP />
+                </div>
               </div>
             ) : !user ? (
               <div className="text-center">

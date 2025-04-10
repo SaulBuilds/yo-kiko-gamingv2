@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/use-auth";
 import { useLocation } from "wouter";
@@ -21,6 +22,7 @@ export function BetModal({ open, onClose, gameType }: BetModalProps) {
   const { user } = useAuth();
   const { toast } = useToast();
   const [betType, setBetType] = useState<"xp" | "crypto">("xp");
+  const [cryptoType, setCryptoType] = useState<"eth" | "icp">("eth");
   const [betAmount, setBetAmount] = useState("");
 
   const createMatchMutation = useMutation({
@@ -28,6 +30,7 @@ export function BetModal({ open, onClose, gameType }: BetModalProps) {
       const res = await apiRequest("POST", "/api/matches", {
         betAmount,
         betType,
+        cryptoType: betType === "crypto" ? cryptoType : undefined,
         gameType,
         isPractice: false
       });
