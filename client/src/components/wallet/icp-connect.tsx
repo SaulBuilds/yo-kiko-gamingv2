@@ -23,7 +23,7 @@ export function ICPWalletConnect() {
         const client = await AuthClient.create();
         setAuthClient(client);
         
-        // Check if the user is already authenticated
+        // Check if the user is already authenticated with Internet Identity
         const isAuthenticated = await client.isAuthenticated();
         
         if (isAuthenticated) {
@@ -43,8 +43,25 @@ export function ICPWalletConnect() {
         console.error("Error initializing ICP AuthClient:", error);
       }
     };
+    
+    // Also check if connected with Plug wallet
+    const checkPlugConnection = async () => {
+      try {
+        if (window.ic?.plug) {
+          const connected = await window.ic.plug.isConnected();
+          if (connected) {
+            const principal = await window.ic.plug.getPrincipal();
+            setPrincipal(principal.toString());
+            setIsConnected(true);
+          }
+        }
+      } catch (error) {
+        console.error("Error checking Plug connection:", error);
+      }
+    };
 
     initAuthClient();
+    checkPlugConnection();
   }, []);
 
   const shortenPrincipal = (principal: string) => {
@@ -56,6 +73,19 @@ export function ICPWalletConnect() {
     setIsLoading(true);
     
     try {
+      // Handle Plug wallet logout
+      if (window.ic?.plug) {
+        try {
+          const isPlugConnected = await window.ic.plug.isConnected();
+          if (isPlugConnected) {
+            await window.ic.plug.disconnect();
+          }
+        } catch (plugError) {
+          console.error("Error disconnecting from Plug:", plugError);
+        }
+      }
+      
+      // Handle Internet Identity logout
       if (authClient) {
         // Log out of Internet Identity if we have an auth client
         await authClient.logout();
@@ -72,7 +102,7 @@ export function ICPWalletConnect() {
       
       toast({
         title: "Logged Out",
-        description: "Successfully disconnected from Internet Identity",
+        description: "Successfully disconnected from Internet Computer",
       });
 
       // Redirect to home page
