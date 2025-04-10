@@ -55,7 +55,7 @@ export default function SplashPage() {
               <Button 
                 size="lg" 
                 className="text-xl px-12 py-8 pixel-font bg-primary hover:bg-primary/90 transition-all"
-                onClick={() => setLocation("/auth")}
+                onClick={() => setLocation("/wallet-selector")}
               >
                 Start Your Adventure
               </Button>
@@ -63,9 +63,17 @@ export default function SplashPage() {
                 size="lg" 
                 variant="outline"
                 className="text-xl px-12 py-8 pixel-font border-primary text-primary hover:bg-primary/10 transition-all"
-                onClick={() => setLocation("/wallet-demo")}
+                onClick={() => setLocation("/auth-abstract")}
               >
-                Wallet Demo
+                ETH Gaming (Abstract)
+              </Button>
+              <Button 
+                size="lg" 
+                variant="outline"
+                className="text-xl px-12 py-8 pixel-font border-primary text-primary hover:bg-primary/10 transition-all"
+                onClick={() => setLocation("/auth-nfid")}
+              >
+                ICP Gaming (NFID)
               </Button>
             </div>
           </motion.div>
@@ -180,7 +188,7 @@ export default function SplashPage() {
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <Button 
               size="lg"
-              onClick={() => setLocation("/auth")}
+              onClick={() => setLocation("/wallet-selector")}
               className="text-xl px-12 py-8 pixel-font bg-primary hover:bg-primary/90"
             >
               Start Gaming Now
@@ -188,10 +196,18 @@ export default function SplashPage() {
             <Button 
               size="lg"
               variant="outline"
-              onClick={() => setLocation("/wallet-demo")}
+              onClick={() => setLocation("/auth-abstract")}
               className="text-xl px-12 py-8 pixel-font border-primary text-primary hover:bg-primary/10"
             >
-              Try Wallet Demo
+              Play with ETH
+            </Button>
+            <Button 
+              size="lg"
+              variant="outline"
+              onClick={() => setLocation("/auth-nfid")}
+              className="text-xl px-12 py-8 pixel-font border-primary text-primary hover:bg-primary/10"
+            >
+              Play with ICP
             </Button>
           </div>
         </div>

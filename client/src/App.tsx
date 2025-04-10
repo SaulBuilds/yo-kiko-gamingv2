@@ -17,8 +17,15 @@ function Router() {
   return (
     <Switch>
       <Route path="/" component={SplashPage} />
+      
+      {/* Authentication Routes */}
+      <Route path="/wallet-selector" component={WalletSelector} />
       <Route path="/auth" component={NewAuthPage} />
+      <Route path="/auth-abstract" component={AbstractAuthPage} />
+      <Route path="/auth-nfid" component={NFIDAuthPage} />
       <Route path="/wallet-demo" component={WalletDemoPage} />
+      
+      {/* Protected Game Routes */}
       <ProtectedRoute path="/dashboard" component={DashboardPage} />
       <ProtectedRoute path="/game/new" component={NewGamePage} />
       <ProtectedRoute path="/game/:id" component={GamePage} />
@@ -26,6 +33,8 @@ function Router() {
       <ProtectedRoute path="/street-fighter/practice" component={StreetFighterPage} />
       <ProtectedRoute path="/street-fighter/:id" component={StreetFighterPage} />
       <ProtectedRoute path="/creator-application" component={CreatorApplication} />
+      
+      {/* Not Found Route */}
       <Route component={NotFound} />
     </Switch>
   );
