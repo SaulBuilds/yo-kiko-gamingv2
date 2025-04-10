@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useLocation } from "wouter";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -10,61 +10,21 @@ import { useForm } from "react-hook-form";
 import { insertUserSchema } from "@shared/schema";
 import { ConnectWallet } from "@/components/connect-wallet";
 import { ConnectICP } from "@/components/connect-icp";
-import { ConnectPlug } from "@/components/connect-plug";
 import { Image } from "@/components/ui/image";
 import { Separator } from "@/components/ui/separator";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { AuthClient } from "@dfinity/auth-client";
 
 export default function AuthPage() {
   const [_, setLocation] = useLocation();
   const { user, address, updateProfileMutation } = useAuth();
   const [showProfile, setShowProfile] = useState(false);
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
 
   const profileForm = useForm({
     resolver: zodResolver(insertUserSchema.pick({ username: true, avatar: true })),
   });
 
-  // Check if we're already authenticated with ICP
-  useEffect(() => {
-    const checkIcpAuthentication = async () => {
-      try {
-        // Check Internet Identity authentication
-        const authClient = await AuthClient.create();
-        const authenticated = await authClient.isAuthenticated();
-        
-        if (authenticated) {
-          setIsAuthenticated(true);
-          // Redirect to dashboard if authenticated
-          setLocation("/dashboard");
-        }
-        
-        // Check Plug wallet connection
-        if (window.ic?.plug) {
-          const connected = await window.ic.plug.isConnected();
-          if (connected) {
-            setIsAuthenticated(true);
-            // Redirect to dashboard if connected
-            setLocation("/dashboard");
-          }
-        }
-      } catch (error) {
-        console.error("Error checking ICP authentication:", error);
-      }
-    };
-    
-    checkIcpAuthentication();
-  }, [setLocation]);
-
-  // If the user exists and we're not showing the profile form, redirect to the dashboard
-  useEffect(() => {
-    if (user && !showProfile) {
-      setLocation("/dashboard");
-    }
-  }, [user, showProfile, setLocation]);
-
-  if (isAuthenticated || (user && !showProfile)) {
+  // If we have a user and not showing profile, redirect to dashboard
+  if (user && !showProfile) {
+    setLocation("/dashboard");
     return null;
   }
 
@@ -86,29 +46,15 @@ export default function AuthPage() {
                 <p className="text-muted-foreground mb-6">
                   Connect your wallet to start playing and earning rewards
                 </p>
-                <Tabs defaultValue="ethereum" className="w-full">
-                  <TabsList className="grid w-full grid-cols-2">
-                    <TabsTrigger value="ethereum">Ethereum</TabsTrigger>
-                    <TabsTrigger value="icp">Internet Computer</TabsTrigger>
-                  </TabsList>
-                  <TabsContent value="ethereum" className="space-y-4 pt-4">
-                    <ConnectWallet />
-                  </TabsContent>
-                  <TabsContent value="icp" className="space-y-4 pt-4">
-                    <ConnectPlug />
-                    <div className="flex items-center gap-2 my-4">
-                      <Separator className="flex-1" />
-                      <span className="text-xs text-muted-foreground">OR</span>
-                      <Separator className="flex-1" />
-                    </div>
-                    <div className="space-y-2">
-                      <p className="text-sm text-muted-foreground">
-                        If you prefer using Internet Identity instead of a wallet:
-                      </p>
-                      <ConnectICP />
-                    </div>
-                  </TabsContent>
-                </Tabs>
+                <div className="space-y-4">
+                  <ConnectWallet />
+                  <div className="flex items-center gap-2 my-2">
+                    <Separator className="flex-1" />
+                    <span className="text-xs text-muted-foreground">OR</span>
+                    <Separator className="flex-1" />
+                  </div>
+                  <ConnectICP />
+                </div>
               </div>
             ) : !user ? (
               <div className="text-center">

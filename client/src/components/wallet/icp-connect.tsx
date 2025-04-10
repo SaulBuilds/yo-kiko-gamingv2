@@ -4,64 +4,21 @@ import { Button } from "@/components/ui/button";
 import { Globe } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { queryClient } from '@/lib/queryClient';
-import { AuthClient } from "@dfinity/auth-client";
-import { Identity } from "@dfinity/agent";
 
 export function ICPWalletConnect() {
   const [isConnected, setIsConnected] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [principal, setPrincipal] = useState<string | null>(null);
-  const [authClient, setAuthClient] = useState<AuthClient | null>(null);
   const { toast } = useToast();
   const [_, setLocation] = useLocation();
 
-  // Initialize the auth client and check login status
+  // Check if the user is logged in via ICP (using localStorage)
   useEffect(() => {
-    const initAuthClient = async () => {
-      try {
-        // Create a new AuthClient
-        const client = await AuthClient.create();
-        setAuthClient(client);
-        
-        // Check if the user is already authenticated with Internet Identity
-        const isAuthenticated = await client.isAuthenticated();
-        
-        if (isAuthenticated) {
-          const identity = client.getIdentity();
-          const principal = identity.getPrincipal().toString();
-          setPrincipal(principal);
-          setIsConnected(true);
-        } else {
-          // Check if we have a stored principal from a previous session
-          const savedPrincipal = localStorage.getItem('icp_principal');
-          if (savedPrincipal) {
-            setPrincipal(savedPrincipal);
-            setIsConnected(true);
-          }
-        }
-      } catch (error) {
-        console.error("Error initializing ICP AuthClient:", error);
-      }
-    };
-    
-    // Also check if connected with Plug wallet
-    const checkPlugConnection = async () => {
-      try {
-        if (window.ic?.plug) {
-          const connected = await window.ic.plug.isConnected();
-          if (connected) {
-            const principal = await window.ic.plug.getPrincipal();
-            setPrincipal(principal.toString());
-            setIsConnected(true);
-          }
-        }
-      } catch (error) {
-        console.error("Error checking Plug connection:", error);
-      }
-    };
-
-    initAuthClient();
-    checkPlugConnection();
+    const savedPrincipal = localStorage.getItem('icp_principal');
+    if (savedPrincipal) {
+      setPrincipal(savedPrincipal);
+      setIsConnected(true);
+    }
   }, []);
 
   const shortenPrincipal = (principal: string) => {
@@ -73,24 +30,7 @@ export function ICPWalletConnect() {
     setIsLoading(true);
     
     try {
-      // Handle Plug wallet logout
-      if (window.ic?.plug) {
-        try {
-          const isPlugConnected = await window.ic.plug.isConnected();
-          if (isPlugConnected) {
-            await window.ic.plug.disconnect();
-          }
-        } catch (plugError) {
-          console.error("Error disconnecting from Plug:", plugError);
-        }
-      }
-      
-      // Handle Internet Identity logout
-      if (authClient) {
-        // Log out of Internet Identity if we have an auth client
-        await authClient.logout();
-      }
-      
+      // Clear state
       setPrincipal(null);
       setIsConnected(false);
 
