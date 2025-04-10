@@ -1,36 +1,27 @@
 import { Switch, Route } from "wouter";
+import { QueryClientProvider } from "@tanstack/react-query";
+import { queryClient } from "./lib/queryClient";
+import { AbstractWalletProvider } from "@abstract-foundation/agw-react";
+import { abstractTestnet } from "viem/chains";
+import { Toaster } from "@/components/ui/toaster";
+import { AuthProvider } from "@/hooks/use-auth";
 import { SEO } from "@/components/seo";
-import { Providers } from "@/components/providers";
 import NotFound from "@/pages/not-found";
 import SplashPage from "@/pages/splash-page";
-import NewAuthPage from "@/pages/new-auth-page";
+import AuthPage from "@/pages/auth-page";
 import DashboardPage from "@/pages/dashboard-page";
 import GamePage from "@/pages/game-page";
 import NewGamePage from "@/pages/new-game-page";
 import TempleRunnerPage from "@/pages/temple-runner-page";
 import StreetFighterPage from "@/pages/street-fighter-page";
 import CreatorApplication from "@/pages/creator-application";
-import WalletDemoPage from "@/pages/wallet-demo-page";
-import WalletSelector from "@/pages/wallet-selector";
-import AbstractAuthPage from "@/pages/auth-abstract";
-import NFIDAuthPage from "@/pages/auth-nfid";
-import WalletAlternatives from "@/pages/wallet-alternatives";
 import { ProtectedRoute } from "./lib/protected-route";
 
 function Router() {
   return (
     <Switch>
       <Route path="/" component={SplashPage} />
-      
-      {/* Authentication Routes */}
-      <Route path="/wallet-selector" component={WalletSelector} />
-      <Route path="/auth" component={NewAuthPage} />
-      <Route path="/auth-abstract" component={AbstractAuthPage} />
-      <Route path="/auth-nfid" component={NFIDAuthPage} />
-      <Route path="/wallet-demo" component={WalletDemoPage} />
-      <Route path="/wallet-alternatives" component={WalletAlternatives} />
-      
-      {/* Protected Game Routes */}
+      <Route path="/auth" component={AuthPage} />
       <ProtectedRoute path="/dashboard" component={DashboardPage} />
       <ProtectedRoute path="/game/new" component={NewGamePage} />
       <ProtectedRoute path="/game/:id" component={GamePage} />
@@ -38,8 +29,6 @@ function Router() {
       <ProtectedRoute path="/street-fighter/practice" component={StreetFighterPage} />
       <ProtectedRoute path="/street-fighter/:id" component={StreetFighterPage} />
       <ProtectedRoute path="/creator-application" component={CreatorApplication} />
-      
-      {/* Not Found Route */}
       <Route component={NotFound} />
     </Switch>
   );
@@ -51,9 +40,16 @@ function App() {
       {/* Global SEO configuration */}
       <SEO />
       
-      <Providers>
-        <Router />
-      </Providers>
+      <AbstractWalletProvider 
+        chain={abstractTestnet}
+      >
+        <QueryClientProvider client={queryClient}>
+          <AuthProvider>
+            <Router />
+            <Toaster />
+          </AuthProvider>
+        </QueryClientProvider>
+      </AbstractWalletProvider>
     </div>
   );
 }

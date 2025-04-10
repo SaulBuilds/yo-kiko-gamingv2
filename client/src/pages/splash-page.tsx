@@ -26,6 +26,7 @@ export default function SplashPage() {
         title="Yokiko: Web3 Gaming Platform" 
         description="Play competitive blockchain games, place skill-based wagers, and earn ETH on the Yokiko gaming platform. Join our community of vibe coders, degens, and gamers!"
         image="/assets/yo.png"
+        type="website"
       />
       
       {/* Hero Section */}
@@ -51,31 +52,13 @@ export default function SplashPage() {
             <p className="text-2xl md:text-3xl mb-8 text-primary/20 pixel-font max-w-3xl mx-auto leading-relaxed">
               Level Up Your Gaming: Create, Play, and Earn in ETH
             </p>
-            <div className="flex flex-col sm:flex-row gap-4 justify-center">
-              <Button 
-                size="lg" 
-                className="text-xl px-12 py-8 pixel-font bg-primary hover:bg-primary/90 transition-all"
-                onClick={() => setLocation("/wallet-selector")}
-              >
-                Start Your Adventure
-              </Button>
-              <Button 
-                size="lg" 
-                variant="outline"
-                className="text-xl px-12 py-8 pixel-font border-primary text-primary hover:bg-primary/10 transition-all"
-                onClick={() => setLocation("/auth-abstract")}
-              >
-                ETH Gaming (Abstract)
-              </Button>
-              <Button 
-                size="lg" 
-                variant="outline"
-                className="text-xl px-12 py-8 pixel-font border-primary text-primary hover:bg-primary/10 transition-all"
-                onClick={() => setLocation("/auth-nfid")}
-              >
-                ICP Gaming (NFID)
-              </Button>
-            </div>
+            <Button 
+              size="lg" 
+              className="text-xl px-12 py-8 pixel-font bg-primary hover:bg-primary/90 transition-all"
+              onClick={() => setLocation("/auth")}
+            >
+              Start Your Adventure
+            </Button>
           </motion.div>
         </div>
 
@@ -185,31 +168,13 @@ export default function SplashPage() {
           <p className="text-2xl text-gray-300 mb-12 max-w-3xl mx-auto pixel-font">
             Are you ready to be part of the next generation of gaming? Join our community of vibe coders and players!
           </p>
-          <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <Button 
-              size="lg"
-              onClick={() => setLocation("/wallet-selector")}
-              className="text-xl px-12 py-8 pixel-font bg-primary hover:bg-primary/90"
-            >
-              Start Gaming Now
-            </Button>
-            <Button 
-              size="lg"
-              variant="outline"
-              onClick={() => setLocation("/auth-abstract")}
-              className="text-xl px-12 py-8 pixel-font border-primary text-primary hover:bg-primary/10"
-            >
-              Play with ETH
-            </Button>
-            <Button 
-              size="lg"
-              variant="outline"
-              onClick={() => setLocation("/auth-nfid")}
-              className="text-xl px-12 py-8 pixel-font border-primary text-primary hover:bg-primary/10"
-            >
-              Play with ICP
-            </Button>
-          </div>
+          <Button 
+            size="lg"
+            onClick={() => setLocation("/auth")}
+            className="text-xl px-12 py-8 pixel-font bg-primary hover:bg-primary/90"
+          >
+            Start Gaming Now
+          </Button>
         </div>
       </section>
 
@@ -254,7 +219,7 @@ export default function SplashPage() {
         </div>
       </footer>
 
-      <style>{`
+      <style jsx global>{`
         @keyframes float {
           0% { transform: translateY(0px) }
           50% { transform: translateY(-20px) }
