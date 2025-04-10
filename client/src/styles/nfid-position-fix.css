@@ -1,0 +1,45 @@
+/* 
+ * Force NFID modal to display fixed in the center of the screen
+ * This overrides the default positioning that causes the elements to appear at the bottom
+ */
+
+/* Target the NFID modal container */
+#nfid-modal {
+  position: fixed !important;
+  top: 0 !important;
+  left: 0 !important;
+  width: 100vw !important;
+  height: 100vh !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  z-index: 9999 !important;
+  background-color: rgba(0, 0, 0, 0.75) !important;
+}
+
+/* Target the modal content */
+#nfid-modal > div {
+  position: relative !important;
+  top: auto !important;
+  left: auto !important;
+  transform: none !important;
+  margin: 0 !important;
+  max-width: 90% !important;
+  max-height: 90% !important;
+}
+
+/* Ensure the modal has proper z-index and appears above other content */
+.nfid-modal-content {
+  z-index: 10000 !important;
+}
+
+/* Add CSS to force absolute positioning for all NFID elements with fixed positioning */
+[data-nfid-container] {
+  position: fixed !important;
+  top: 50% !important;
+  left: 50% !important;
+  transform: translate(-50%, -50%) !important;
+  z-index: 9999 !important;
+  width: auto !important;
+  height: auto !important;
+}

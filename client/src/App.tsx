@@ -14,6 +14,7 @@ import WalletDemoPage from "@/pages/wallet-demo-page";
 import WalletSelector from "@/pages/wallet-selector";
 import AbstractAuthPage from "@/pages/auth-abstract";
 import NFIDAuthPage from "@/pages/auth-nfid";
+import WalletAlternatives from "@/pages/wallet-alternatives";
 import { ProtectedRoute } from "./lib/protected-route";
 
 function Router() {
@@ -27,6 +28,7 @@ function Router() {
       <Route path="/auth-abstract" component={AbstractAuthPage} />
       <Route path="/auth-nfid" component={NFIDAuthPage} />
       <Route path="/wallet-demo" component={WalletDemoPage} />
+      <Route path="/wallet-alternatives" component={WalletAlternatives} />
       
       {/* Protected Game Routes */}
       <ProtectedRoute path="/dashboard" component={DashboardPage} />

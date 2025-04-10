@@ -71,7 +71,7 @@ export default function NFIDAuthPage() {
                       </div>
                     </div>
                     
-                    <div className="text-center pt-4">
+                    <div className="text-center pt-4 space-y-2">
                       <Button
                         variant="link"
                         onClick={() => setLocation("/auth-abstract")}
@@ -79,6 +79,16 @@ export default function NFIDAuthPage() {
                       >
                         Prefer to use Abstract Wallet? Click here
                       </Button>
+                      
+                      <div>
+                        <Button
+                          variant="link"
+                          onClick={() => setLocation("/wallet-alternatives")}
+                          className="text-sm text-primary"
+                        >
+                          View alternative ICP wallet options
+                        </Button>
+                      </div>
                     </div>
                   </div>
                 </div>
