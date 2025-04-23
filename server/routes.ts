@@ -183,7 +183,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const match = await storage.createGameMatch({
         player1Id: req.session.userId,
         betAmount: req.body.betAmount,
-        gameType: "tetris",
+        betType: req.body.betType || 'xp',
+        cryptoType: req.body.betType === 'crypto' ? req.body.cryptoType : undefined,
+        gameType: req.body.gameType || "tetris",
         isPractice: req.body.isPractice || false,
         timeLimit: req.body.timeLimit
       });

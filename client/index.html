@@ -6,88 +6,9 @@
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <link rel="icon" type="image/x-icon" href="/favicon.ico" />
     <title>sumthn.fun - Crypto Gaming Platform</title>
-    <style>
-      /* Hide any NFID elements by default */
-      #nfid-container {
-        position: fixed;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
-        z-index: 9999;
-        background-color: rgba(0, 0, 0, 0.5);
-        display: none;
-        justify-content: center;
-        align-items: center;
-      }
-      
-      #nfid-container.visible {
-        display: flex;
-      }
-      
-      /* Force the main app to always be visible */
-      #root {
-        display: block !important;
-        position: relative !important;
-        z-index: 1 !important;
-      }
-      
-      /* Override any NFID styles that might appear outside our container */
-      body > div:not(#root):not(#nfid-container) > h2,
-      body > div:not(#root):not(#nfid-container) > h3,
-      body > div:not(#root):not(#nfid-container) > div {
-        display: none !important;
-      }
-    </style>
   </head>
   <body>
     <div id="root"></div>
-    <!-- Dedicated container for NFID UI -->
-    <div id="nfid-container"></div>
     <script type="module" src="/src/main.tsx"></script>
-    <script>
-      // Immediately run script to clean up any unwanted elements
-      document.addEventListener('DOMContentLoaded', function() {
-        // Move any NFID-related elements into our container
-        const moveNFIDElements = () => {
-          const container = document.getElementById('nfid-container');
-          if (!container) return;
-          
-          // Find elements with text that suggests they're NFID related
-          document.querySelectorAll('body > div:not(#root):not(#nfid-container)').forEach(el => {
-            const text = el.innerText || '';
-            if (
-              text.includes('Select signer') || 
-              text.includes('Connect your wallet') ||
-              text.includes('NFID Wallet') ||
-              text.includes('Internet Identity')
-            ) {
-              // Move this element into our container
-              container.appendChild(el);
-            }
-          });
-          
-          // Also check the last few divs in the body
-          const bodyChildren = Array.from(document.body.children);
-          const lastFewElements = bodyChildren.slice(-5).filter(el => 
-            el.id !== 'root' && el.id !== 'nfid-container'
-          );
-          
-          lastFewElements.forEach(el => {
-            if (el.tagName === 'DIV') {
-              container.appendChild(el);
-            }
-          });
-        };
-        
-        // Clean up every second until we're confident everything is moved
-        const cleanupInterval = setInterval(moveNFIDElements, 1000);
-        
-        // Stop the cleanup after 10 seconds to avoid performance issues
-        setTimeout(() => {
-          clearInterval(cleanupInterval);
-        }, 10000);
-      });
-    </script>
   </body>
 </html>

@@ -1,9 +1,14 @@
 import { Switch, Route } from "wouter";
+import { QueryClientProvider } from "@tanstack/react-query";
+import { queryClient } from "./lib/queryClient";
+import { AbstractWalletProvider } from "@abstract-foundation/agw-react";
+import { abstractTestnet } from "viem/chains";
+import { Toaster } from "@/components/ui/toaster";
+import { AuthProvider } from "@/hooks/use-auth";
 import { SEO } from "@/components/seo";
-import { Providers } from "@/components/providers";
 import NotFound from "@/pages/not-found";
 import SplashPage from "@/pages/splash-page";
-import NewAuthPage from "@/pages/new-auth-page";
+import AuthPage from "@/pages/auth-page";
 import DashboardPage from "@/pages/dashboard-page";
 import GamePage from "@/pages/game-page";
 import NewGamePage from "@/pages/new-game-page";
@@ -16,7 +21,7 @@ function Router() {
   return (
     <Switch>
       <Route path="/" component={SplashPage} />
-      <Route path="/auth" component={NewAuthPage} />
+      <Route path="/auth" component={AuthPage} />
       <ProtectedRoute path="/dashboard" component={DashboardPage} />
       <ProtectedRoute path="/game/new" component={NewGamePage} />
       <ProtectedRoute path="/game/:id" component={GamePage} />
@@ -35,9 +40,16 @@ function App() {
       {/* Global SEO configuration */}
       <SEO />
       
-      <Providers>
-        <Router />
-      </Providers>
+      <AbstractWalletProvider 
+        chain={abstractTestnet}
+      >
+        <QueryClientProvider client={queryClient}>
+          <AuthProvider>
+            <Router />
+            <Toaster />
+          </AuthProvider>
+        </QueryClientProvider>
+      </AbstractWalletProvider>
     </div>
   );
 }

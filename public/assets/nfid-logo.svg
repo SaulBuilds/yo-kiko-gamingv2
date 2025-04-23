@@ -1,9 +1,0 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<svg width="1024px" height="1024px" viewBox="0 0 1024 1024" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
-    <g stroke="none" stroke-width="1" fill="none" fill-rule="evenodd">
-        <g id="NFID-Logo">
-            <circle id="Background" fill="#29ABE2" cx="512" cy="512" r="512"></circle>
-            <path d="M701.9,309.3 L546.6,686.5 C539.5,705.1 521.8,717.5 502,717.5 L501.1,717.5 C481.3,717.5 463.6,705.1 456.6,686.5 L301.2,309.3 C295.6,294.8 302.2,278.4 316.7,272.8 C331.2,267.2 347.6,273.8 353.2,288.3 L508.5,665.5 L663.9,288.3 C669.5,273.8 685.9,267.2 700.4,272.8 C714.9,278.4 721.5,294.8 715.9,309.3 L701.9,309.3 Z" id="N" fill="#FFFFFF" fill-rule="nonzero"></path>
-        </g>
-    </g>
-</svg>
