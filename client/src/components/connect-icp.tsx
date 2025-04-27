@@ -5,6 +5,7 @@ import { Globe } from "lucide-react";
 import { useToast } from "../hooks/use-toast";
 import { AuthClient } from '@dfinity/auth-client';
 import React from 'react';
+import { getOrCreateDeviceFingerprint } from "../lib/device-fingerprint";
 
 export function ConnectICP() {
   const [isLoading, setIsLoading] = useState(false);
@@ -21,15 +22,30 @@ export function ConnectICP() {
           const identity = authClient.getIdentity();
           const principal = identity.getPrincipal().toText();
           localStorage.setItem('icp_principal', principal);
+          
+          // Get device fingerprint using our utility function
+          const deviceId = getOrCreateDeviceFingerprint();
+          
+          // Send both wallet address and device ID to create a device-specific account
           const response = await fetch('/api/user', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ walletAddress: principal, walletType: 'icp' }),
+            body: JSON.stringify({ 
+              walletAddress: principal, 
+              walletType: 'icp',
+              deviceId: deviceId
+            }),
           });
+          
           if (!response.ok) {
             throw new Error('Failed to create user');
           }
-          toast({ title: 'Success!', description: 'Connected to Internet Identity' });
+          
+          toast({ 
+            title: 'Success!', 
+            description: 'Connected to Internet Identity with device fingerprinting' 
+          });
+          
           setLocation('/dashboard');
         },
       });

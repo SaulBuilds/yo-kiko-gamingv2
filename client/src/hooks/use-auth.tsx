@@ -37,6 +37,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     staleTime: 30000 // Cache for 30 seconds
   });
 
+  // Import the device fingerprinting utility
+  import { getOrCreateDeviceFingerprint } from "../lib/device-fingerprint";
+
   // Create/update user when wallet is connected
   useEffect(() => {
     let mounted = true;
@@ -45,7 +48,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (!address || user || isLoading) return;
 
       try {
-        const res = await apiRequest("POST", "/api/user", { walletAddress: address });
+        // Get or create device ID
+        let deviceId = localStorage.getItem('device_id');
+        if (!deviceId) {
+          deviceId = generateDeviceFingerprint();
+          localStorage.setItem('device_id', deviceId);
+        }
+
+        // Send wallet address and device ID to create/retrieve user
+        const res = await apiRequest("POST", "/api/user", { 
+          walletAddress: address,
+          walletType: 'eth', // Default wallet type for non-ICP wallets
+          deviceId: deviceId
+        });
+        
         if (!res.ok) throw new Error("Failed to create user");
 
         const newUser = await res.json();
