@@ -3,7 +3,7 @@ const reactHooksPlugin = require('eslint-plugin-react-hooks');
 const typescriptPlugin = require('@typescript-eslint/eslint-plugin');
 const typescriptParser = require('@typescript-eslint/parser');
 
-export default [
+module.exports = [
   {
     ignores: ['node_modules/**', 'build/**', 'dist/**'],
   },

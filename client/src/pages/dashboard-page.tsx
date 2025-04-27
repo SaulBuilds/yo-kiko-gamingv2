@@ -101,10 +101,16 @@ export default function DashboardPage() {
     setIsBetModalOpen(true);
   };
 
-  // Filter active matches where the current user is not the creator
-  const activeMatches = matches?.filter(match =>
+  // Split matches into two categories: matches you can join and your own open challenges
+  const matchesToJoin = matches?.filter(match =>
     match.status === "waiting" &&
     match.player1Id !== user?.id &&
+    !match.isPractice
+  ) || [];
+  
+  const yourChallenges = matches?.filter(match =>
+    match.status === "waiting" &&
+    match.player1Id === user?.id &&
     !match.isPractice
   ) || [];
 
@@ -182,28 +188,28 @@ export default function DashboardPage() {
               </div>
             </div>
 
-            {/* Active Matches */}
+            {/* Challenges to Join */}
             <div>
               <h2 className="text-2xl font-bold mb-4 flex items-center gap-2 pixel-font">
                 <Users className="h-6 w-6" />
-                Available Wager Matches
+                Available Challenges
               </h2>
               <div className="space-y-4">
                 {isMatchesLoading ? (
                   <p className="text-center text-muted-foreground">Loading matches...</p>
-                ) : activeMatches.length > 0 ? (
-                  activeMatches.map((match) => (
+                ) : matchesToJoin.length > 0 ? (
+                  matchesToJoin.map((match: GameMatch) => (
                     <Card key={match.id} className="hover:border-primary transition-all duration-300">
                       <CardContent className="flex justify-between items-center p-4">
                         <div className="space-y-1">
                           <div className="flex items-center gap-2">
                             <Coins className="h-4 w-4" />
                             <p className="pixel-font text-sm">
-                              {match.betAmount} {match.betType === 'xp' ? 'XP' : 'ETH'}
+                              {match.betAmount} {match.betType === 'xp' ? 'XP' : match.cryptoType}
                             </p>
                           </div>
                           <p className="text-sm text-muted-foreground">
-                            Created by Player #{match.player1Id}
+                            {match.gameType.charAt(0).toUpperCase() + match.gameType.slice(1)} challenge by Player #{match.player1Id}
                           </p>
                         </div>
                         <Button
@@ -222,6 +228,42 @@ export default function DashboardPage() {
                 )}
               </div>
             </div>
+            
+            {/* Your Open Challenges */}
+            {yourChallenges.length > 0 && (
+              <div>
+                <h2 className="text-2xl font-bold mb-4 flex items-center gap-2 pixel-font">
+                  <Trophy className="h-6 w-6" />
+                  Your Open Challenges
+                </h2>
+                <div className="space-y-4">
+                  {yourChallenges.map((match) => (
+                    <Card key={match.id} className="hover:border-primary transition-all duration-300 border-dashed border-primary">
+                      <CardContent className="flex justify-between items-center p-4">
+                        <div className="space-y-1">
+                          <div className="flex items-center gap-2">
+                            <Coins className="h-4 w-4" />
+                            <p className="pixel-font text-sm">
+                              {match.betAmount} {match.betType === 'xp' ? 'XP' : match.cryptoType}
+                            </p>
+                          </div>
+                          <p className="text-sm text-muted-foreground">
+                            {match.gameType.charAt(0).toUpperCase() + match.gameType.slice(1)} challenge waiting for opponent
+                          </p>
+                        </div>
+                        <Button
+                          variant="outline"
+                          onClick={() => setLocation(`/game/${match.id}`)}
+                          className="pixel-font"
+                        >
+                          View Challenge
+                        </Button>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Sidebar */}

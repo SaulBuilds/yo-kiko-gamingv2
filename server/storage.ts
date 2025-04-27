@@ -104,7 +104,7 @@ export class DatabaseStorage implements IStorage {
       .select()
       .from(gameMatches)
       .where(eq(gameMatches.status, 'waiting'))
-      .orderBy(gameMatches.id);
+      .orderBy(sql`${gameMatches.id} DESC`); // Show newest challenges first
   }
 
   async updateUserXP(userId: number, xp: number, updateScore: boolean): Promise<void> {
