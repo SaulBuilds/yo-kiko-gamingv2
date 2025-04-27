@@ -15,7 +15,7 @@ export default function DashboardPage() {
   const [_, setLocation] = useLocation();
   const { user } = useAuth();
   const [isBetModalOpen, setIsBetModalOpen] = useState(false);
-  const [selectedGame, setSelectedGame] = useState<'tetris' | 'temple-runner' | 'street-fighter' | null>(null);
+  const [selectedGame, setSelectedGame] = useState<'tetris' | 'temple-runner' | 'trench-fighter' | null>(null);
 
   // Add refetch interval to keep matches list up to date
   const { data: matches, isLoading: isMatchesLoading } = useQuery<GameMatch[]>({
@@ -45,12 +45,13 @@ export default function DashboardPage() {
       enabled: true
     },
     {
-      id: "street-fighter",
-      name: "Street Fighter",
-      description: "Classic arcade fighting game with original moves and characters",
+      id: "trench-fighter",
+      name: "Trench Fighter",
+      description: "Tactical combat game with customizable fighters and special abilities",
       icon: "👊",
       background: "bg-gradient-to-r from-red-500 to-orange-500",
-      enabled: true
+      enabled: false,
+      comingSoon: true
     },
     // Coming Soon Games
     {
@@ -90,14 +91,14 @@ export default function DashboardPage() {
       case 'temple-runner':
         setLocation('/temple-runner');
         break;
-      case 'street-fighter':
-        setLocation('/street-fighter/practice');
+      case 'trench-fighter':
+        setLocation('/trench-fighter/practice');
         break;
     }
   };
 
   const handleWager = (gameId: string) => {
-    setSelectedGame(gameId as 'tetris' | 'temple-runner' | 'street-fighter');
+    setSelectedGame(gameId as 'tetris' | 'temple-runner' | 'trench-fighter');
     setIsBetModalOpen(true);
   };
 
@@ -119,7 +120,7 @@ export default function DashboardPage() {
       {/* Dashboard SEO Meta Tags */}
       <SEO 
         title="Game Dashboard" 
-        description="Play and wager on games including Tetris, Temple Runner, and Street Fighter. View your stats, join active matches, and check the leaderboard."
+        description="Play and wager on games including Tetris, Temple Runner, and more. View your stats, join active matches, and check the leaderboard."
         type="website"
       />
       
