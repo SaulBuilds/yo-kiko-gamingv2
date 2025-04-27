@@ -306,14 +306,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // WebSocket handling
+  // WebSocket handling - one for games and one for ICP betting
   const wss = new WebSocketServer({
     server: httpServer,
     path: '/game-ws'
   });
 
+  // Create separate WebSocket server for ICP bet updates
+  const betsWss = new WebSocketServer({
+    server: httpServer,
+    path: '/icp-bets-ws'
+  });
+
   const gameStates = new Map<number, Map<number, GameState>>();
   const clients = new Map<WebSocket, { matchId?: number, userId?: number, dashboardUser: boolean }>();
+  const betClients = new Map<WebSocket, { matchId?: number, userId?: number }>();
 
   // Helper function to broadcast active matches to all dashboard clients
   const broadcastActiveMatches = async () => {
@@ -449,6 +456,141 @@ export async function registerRoutes(app: Express): Promise<Server> {
       log(`Connection closed for user ${client?.userId}, match ${client?.matchId}`, "websocket");
       clients.delete(ws);
     });
+  });
+
+  // Handle ICP bet updates via WebSocket
+  betsWss.on("connection", (ws) => {
+    log("New ICP bet WebSocket connection established", "websocket");
+
+    ws.on("message", async (data) => {
+      try {
+        const message = JSON.parse(data.toString());
+        log(`Received bet message: ${JSON.stringify(message)}`, "websocket");
+
+        switch (message.type) {
+          case "subscribe": {
+            // Client wants to subscribe to bet updates for a specific match
+            const { matchId, userId } = message;
+            betClients.set(ws, { matchId, userId });
+            log(`User ${userId} subscribed to bet updates for match ${matchId}`, "websocket");
+            break;
+          }
+          
+          case "bet_create": {
+            // Client is creating a new bet using ICP
+            const { matchId, userId, amount, tokenAddress, receiver } = message;
+            log(`User ${userId} creating a bet of ${amount} for match ${matchId}`, "websocket");
+            
+            // Broadcast to all clients subscribed to this match
+            betsWss.clients.forEach((client) => {
+              if (client.readyState === WebSocket.OPEN && betClients.get(client)?.matchId === matchId) {
+                client.send(JSON.stringify({
+                  type: "bet_created",
+                  matchId,
+                  userId,
+                  amount,
+                  tokenAddress,
+                  receiver,
+                  timestamp: new Date().toISOString()
+                }));
+              }
+            });
+            break;
+          }
+          
+          case "bet_accept": {
+            // Client is accepting an existing bet
+            const { matchId, userId } = message;
+            log(`User ${userId} accepting bet for match ${matchId}`, "websocket");
+            
+            // Broadcast to all clients subscribed to this match
+            betsWss.clients.forEach((client) => {
+              if (client.readyState === WebSocket.OPEN && betClients.get(client)?.matchId === matchId) {
+                client.send(JSON.stringify({
+                  type: "bet_accepted",
+                  matchId,
+                  userId,
+                  timestamp: new Date().toISOString()
+                }));
+              }
+            });
+            break;
+          }
+          
+          case "bet_payout": {
+            // Bet payout has occurred
+            const { matchId, winner } = message;
+            log(`Bet payout for match ${matchId} to winner ${winner}`, "websocket");
+            
+            // Broadcast to all clients subscribed to this match
+            betsWss.clients.forEach((client) => {
+              if (client.readyState === WebSocket.OPEN && betClients.get(client)?.matchId === matchId) {
+                client.send(JSON.stringify({
+                  type: "bet_paid",
+                  matchId,
+                  winner,
+                  timestamp: new Date().toISOString()
+                }));
+              }
+            });
+            break;
+          }
+        }
+      } catch (error) {
+        log(`ICP bet WebSocket error: ${error}`, "websocket");
+      }
+    });
+
+    ws.on("close", () => {
+      const client = betClients.get(ws);
+      log(`ICP bet connection closed for user ${client?.userId}, match ${client?.matchId}`, "websocket");
+      betClients.delete(ws);
+    });
+  });
+
+  // Add a route to create ICP bets via REST API
+  app.post("/api/icp/bets/:matchId", async (req, res) => {
+    if (!req.session?.userId) {
+      return res.status(401).json({ error: "Not authenticated" });
+    }
+
+    try {
+      const matchId = parseInt(req.params.matchId);
+      const { amount, tokenAddress, receiver } = req.body;
+      
+      if (!amount || !tokenAddress || !receiver) {
+        return res.status(400).json({ error: "Missing required parameters" });
+      }
+      
+      log(`Creating ICP bet for match ${matchId} with amount ${amount}`, "icp-bets");
+      
+      // In a production app, this would call the ICP canister directly
+      // For now, we'll just simulate the response
+      
+      // Notify clients via WebSocket
+      betsWss.clients.forEach((client) => {
+        if (client.readyState === WebSocket.OPEN && betClients.get(client)?.matchId === matchId) {
+          client.send(JSON.stringify({
+            type: "bet_created",
+            matchId,
+            userId: req.session.userId,
+            amount,
+            tokenAddress,
+            receiver,
+            timestamp: new Date().toISOString()
+          }));
+        }
+      });
+      
+      res.json({
+        success: true,
+        matchId,
+        transactionId: `icp-bet-${matchId}-${Date.now()}`
+      });
+    } catch (error) {
+      console.error("Error creating ICP bet:", error);
+      res.status(500).json({ error: "Failed to create ICP bet" });
+    }
   });
 
   setupAuth(app);
