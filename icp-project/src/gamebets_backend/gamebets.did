@@ -1,0 +1,25 @@
+type Result = 
+  variant {
+    ok: text;
+    err: text;
+  };
+
+type GameBet = 
+  record {
+    matchId: nat;
+    player1: text;
+    player2: opt text;
+    amount: nat;
+    timestamp: int;
+    token_address: text;
+    is_active: bool;
+    is_paid: bool;
+  };
+
+service : {
+  "getEthereumAddress": () -> (text);
+  "createBet": (nat, text, text, nat) -> (Result);
+  "acceptBet": (nat) -> (Result);
+  "payoutBet": (nat, text) -> (Result);
+  "getBet": (nat) -> (opt GameBet) query;
+}
