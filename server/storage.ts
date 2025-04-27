@@ -8,17 +8,34 @@ import { pool } from "./db";
 const PostgresSessionStore = connectPg(session);
 
 export interface IStorage {
+  // User methods
   getUser(id: number): Promise<User | undefined>;
   getUserByWalletAddress(walletAddress: string): Promise<User | undefined>;
   createUser(user: InsertUser): Promise<User>;
   updateUserScore(userId: number, score: number): Promise<void>;
+  updateUserXP(userId: number, xp: number, updateScore: boolean): Promise<void>;
   getLeaderboard(): Promise<User[]>;
+  
+  // Game match methods
   createGameMatch(match: InsertGameMatch): Promise<GameMatch>;
   getGameMatch(id: number): Promise<GameMatch | undefined>;
   updateGameMatch(id: number, updates: Partial<GameMatch>): Promise<GameMatch>;
   getActiveMatches(): Promise<GameMatch[]>;
+  
+  // Creator application methods
+  createCreatorApplication(application: InsertCreatorApplication): Promise<CreatorApplication>;
+  getCreatorApplication(id: number): Promise<CreatorApplication | undefined>;
+  getCreatorApplicationsByUser(userId: number): Promise<CreatorApplication[]>;
+  
+  // New game features
+  awardBonusXP(userId: number, matchId: number): Promise<void>;
+  processGamePayout(matchId: number): Promise<void>;
+  markPlayerFinished(matchId: number, playerId: number, score: number): Promise<GameMatch>;
+  calculateWinner(matchId: number): Promise<number | null>; // Returns winner ID or null if tied
+  notifyGameResult(matchId: number, playerId: number): Promise<void>;
+  
+  // Session store
   sessionStore: session.Store;
-  updateUserXP(userId: number, xp: number, updateScore: boolean): Promise<void>;
 }
 
 export class DatabaseStorage implements IStorage {

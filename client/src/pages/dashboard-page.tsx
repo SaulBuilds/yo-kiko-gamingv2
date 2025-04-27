@@ -284,16 +284,29 @@ export default function DashboardPage() {
                             <p className="pixel-font text-sm">
                               {match.betAmount} {match.betType === 'xp' ? 'XP' : match.cryptoType}
                             </p>
+                            {match.status === 'in_progress' && (
+                              <Badge 
+                                className="ml-2 bg-amber-100 text-amber-800 border-amber-300"
+                              >
+                                Game in Session
+                              </Badge>
+                            )}
                           </div>
                           <p className="text-sm text-muted-foreground">
                             {match.gameType.charAt(0).toUpperCase() + match.gameType.slice(1)} challenge by Player #{match.player1Id}
                           </p>
+                          {match.status === 'in_progress' && (
+                            <p className="text-xs text-green-600">
+                              Join now for bonus XP!
+                            </p>
+                          )}
                         </div>
                         <Button
                           onClick={() => setLocation(`/game/${match.id}`)}
                           className="pixel-font"
+                          variant={match.status === 'in_progress' ? "secondary" : "default"}
                         >
-                          Accept Challenge
+                          {match.status === 'in_progress' ? 'Join Game' : 'Accept Challenge'}
                         </Button>
                       </CardContent>
                     </Card>
