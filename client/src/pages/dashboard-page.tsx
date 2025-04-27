@@ -1,31 +1,96 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useLocation } from "wouter";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/use-auth";
 import { GameMatch, User } from "@shared/schema";
-import { Gamepad2, Trophy, Users, Coins, Clock } from "lucide-react";
+import { Gamepad2, Trophy, Users, Coins, Clock, Wifi } from "lucide-react";
 import { Navbar } from "@/components/layout/navbar";
 import { BetModal } from "@/components/game/bet-modal";
 import { Badge } from "@/components/ui/badge";
 import { SEO } from "@/components/seo";
+import { useToast } from "@/hooks/use-toast";
 
 export default function DashboardPage() {
   const [_, setLocation] = useLocation();
   const { user } = useAuth();
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
   const [isBetModalOpen, setIsBetModalOpen] = useState(false);
   const [selectedGame, setSelectedGame] = useState<'tetris' | 'temple-runner' | 'trench-fighter' | null>(null);
-
-  // Add refetch interval to keep matches list up to date
-  const { data: matches, isLoading: isMatchesLoading } = useQuery<GameMatch[]>({
+  const [wsConnected, setWsConnected] = useState(false);
+  const [wsMatches, setWsMatches] = useState<GameMatch[] | null>(null);
+  
+  // Initial data fetch through REST API
+  const { data: initialMatches, isLoading: isMatchesLoading } = useQuery<GameMatch[]>({
     queryKey: ["/api/matches"],
-    refetchInterval: 5000 // Refetch every 5 seconds
+    // No refetch interval needed as we'll use WebSockets
   });
+
+  // Use the WebSocket data if available, otherwise fall back to REST API data
+  const matches = wsMatches || initialMatches;
 
   const { data: leaderboard } = useQuery<User[]>({
     queryKey: ["/api/leaderboard"],
   });
+  
+  // WebSocket connection for real-time updates
+  useEffect(() => {
+    if (!user) return;
+    
+    const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
+    const wsUrl = `${protocol}//${window.location.host}/game-ws`;
+    console.log("Connecting to WebSocket:", wsUrl);
+    
+    const socket = new WebSocket(wsUrl);
+    
+    socket.onopen = () => {
+      console.log("WebSocket connection established");
+      setWsConnected(true);
+      
+      // Register for dashboard updates
+      socket.send(JSON.stringify({
+        type: "dashboard",
+        userId: user.id
+      }));
+    };
+    
+    socket.onmessage = (event) => {
+      try {
+        const data = JSON.parse(event.data);
+        
+        if (data.type === "activeMatches") {
+          console.log("Received active matches via WebSocket:", data.matches);
+          setWsMatches(data.matches);
+          
+          // Also update the React Query cache
+          queryClient.setQueryData(["/api/matches"], data.matches);
+        }
+      } catch (error) {
+        console.error("Error parsing WebSocket message:", error);
+      }
+    };
+    
+    socket.onclose = () => {
+      console.log("WebSocket connection closed");
+      setWsConnected(false);
+    };
+    
+    socket.onerror = (error) => {
+      console.error("WebSocket error:", error);
+      toast({
+        title: "Connection Error",
+        description: "Could not connect to game server for real-time updates",
+        variant: "destructive"
+      });
+      setWsConnected(false);
+    };
+    
+    return () => {
+      socket.close();
+    };
+  }, [user, queryClient, toast]);
 
   const games = [
     {
@@ -126,9 +191,20 @@ export default function DashboardPage() {
       
       <Navbar />
       <main className="container mx-auto px-4 py-8">
-        <h1 className="pixel-font text-4xl text-center mb-8 text-primary">
-          Game Dashboard
-        </h1>
+        <div className="flex items-center justify-center mb-8">
+          <h1 className="pixel-font text-4xl text-center text-primary">
+            Game Dashboard
+          </h1>
+          {wsConnected && (
+            <Badge 
+              variant="outline" 
+              className="ml-4 bg-green-100 text-green-800 border-green-300 flex items-center gap-1"
+            >
+              <Wifi className="h-3 w-3" />
+              Live
+            </Badge>
+          )}
+        </div>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
           {/* Game Selection */}
           <div className="md:col-span-2 space-y-6">
