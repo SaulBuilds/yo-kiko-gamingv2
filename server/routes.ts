@@ -207,6 +207,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
     try {
       const matchId = parseInt(req.params.id);
+      const userId = req.session.userId;
       const { score } = req.body;
       const match = await storage.getGameMatch(matchId);
 
@@ -214,22 +215,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ error: "Match not found" });
       }
 
-      // Update match with score
-      const updates = {
-        status: "completed" as const,
-        endTime: new Date()
-      } as any; // Using 'any' to bypass TypeScript errors for now
-
-      if (match.player1Id === req.session.userId) {
-        updates.player1Score = score;
-      } else if (match.player2Id === req.session.userId) {
-        updates.player2Score = score;
-      }
-
-      const updatedMatch = await storage.updateGameMatch(matchId, updates);
+      // Mark the player as finished and update their score
+      const updatedMatch = await storage.markPlayerFinished(matchId, userId, score);
       
       // Broadcast the updated matches list to all connected dashboard clients
       broadcastActiveMatches();
+      
+      // Send a message to the specific match room if it exists
+      const matchRoom = `match:${matchId}`;
+      wss.clients.forEach(client => {
+        if (client.readyState === WebSocket.OPEN && (client as any).matchRoom === matchRoom) {
+          client.send(JSON.stringify({
+            type: 'MATCH_UPDATE',
+            match: updatedMatch
+          }));
+        }
+      });
+      
+      // If match is completed, delay a bit to process payout
+      if (updatedMatch.status === 'completed') {
+        await storage.processGamePayout(matchId);
+      }
+      
+      // Notify this player of the result
+      await storage.notifyGameResult(matchId, userId);
       
       res.json(updatedMatch);
     } catch (error) {
@@ -333,28 +342,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
           case "gameOver": {
             const { matchId, userId, score } = message;
-            log(`Game over for match ${matchId}, score: ${score}`, "websocket");
-            const match = await storage.getGameMatch(matchId);
-            if (match) {
-              const updates: any = {
-                status: "completed",
-                endTime: new Date()
-              };
-
-              if (match.player1Id === userId) {
-                updates.player1Score = score;
-              } else if (match.player2Id === userId) {
-                updates.player2Score = score;
-              }
-
-              if (updates.player1Score && updates.player2Score) {
-                updates.winnerId = updates.player1Score > updates.player2Score ? match.player1Id : match.player2Id;
-              }
-
-              await storage.updateGameMatch(matchId, updates);
+            log(`Game over for match ${matchId}, user ${userId}, score: ${score}`, "websocket");
+            
+            try {
+              // Mark the player as finished with their score
+              const updatedMatch = await storage.markPlayerFinished(matchId, userId, score);
+              
+              // Notify this player that we processed their result
+              await storage.notifyGameResult(matchId, userId);
               
               // Broadcast updates since match status changed
               broadcastActiveMatches();
+              
+              // Send an update to all clients in this match
+              wss.clients.forEach((client) => {
+                if (client.readyState === WebSocket.OPEN && clients.get(client)?.matchId === matchId) {
+                  client.send(JSON.stringify({
+                    type: "matchUpdate",
+                    match: updatedMatch
+                  }));
+                }
+              });
+              
+              log(`Updated match ${matchId} status: ${updatedMatch.status}`, "websocket");
+            } catch (error) {
+              log(`Error processing game over: ${error}`, "websocket");
             }
             break;
           }
