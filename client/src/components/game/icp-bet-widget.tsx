@@ -186,8 +186,6 @@ export function ICPBetWidget({ matchId, opponentId, isCreator }: ICPBetWidgetPro
     if (!matchId) return;
 
     // Create WebSocket connection using configuration
-    import { WS_CONFIG } from '@/config/app-config';
-    
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
     const wsUrl = `${protocol}//${window.location.host}${WS_CONFIG.icpBetsWsPath}`;
     const socket = new WebSocket(wsUrl);
