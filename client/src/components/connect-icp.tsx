@@ -1,8 +1,10 @@
 import { useState } from 'react';
 import { useLocation } from 'wouter';
-import { Button } from "@/components/ui/button";
+import { Button } from "../components/ui/button";
 import { Globe } from "lucide-react";
-import { useToast } from "@/hooks/use-toast";
+import { useToast } from "../hooks/use-toast";
+import { AuthClient } from '@dfinity/auth-client';
+import React from 'react';
 
 export function ConnectICP() {
   const [isLoading, setIsLoading] = useState(false);
@@ -11,47 +13,33 @@ export function ConnectICP() {
 
   const login = async () => {
     setIsLoading(true);
-    
     try {
-      console.log("Starting ICP login...");
-      
-      // In a real implementation, we would integrate with Internet Identity here
-      // For now, mock the connection and redirect to dashboard
-      
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      // Mock principal for demonstration
-      const mockPrincipal = "5uylz-j7fcd-isj73-gp57f-xwwyy-po2ib-7iboa-fdkdv-nrsam-3bd3r-qqe";
-      localStorage.setItem('icp_principal', mockPrincipal);
-      
-      // Create a mock user
-      await fetch("/api/user", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
+      const authClient = await AuthClient.create();
+      await authClient.login({
+        identityProvider: 'https://identity.ic0.app/#authorize',
+        onSuccess: async () => {
+          const identity = authClient.getIdentity();
+          const principal = identity.getPrincipal().toText();
+          localStorage.setItem('icp_principal', principal);
+          const response = await fetch('/api/user', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ walletAddress: principal, walletType: 'icp' }),
+          });
+          if (!response.ok) {
+            throw new Error('Failed to create user');
+          }
+          toast({ title: 'Success!', description: 'Connected to Internet Identity' });
+          setLocation('/dashboard');
         },
-        body: JSON.stringify({ 
-          walletAddress: mockPrincipal,
-          walletType: "icp" 
-        }),
       });
-      
-      toast({
-        title: "Success!",
-        description: "Connected to Internet Identity",
-      });
-      
-      // Redirect to dashboard
-      setLocation("/dashboard");
     } catch (error) {
-      console.error("ICP login error:", error);
+      console.error('ICP login error:', error);
       toast({
-        title: "Connection Failed",
-        description: "Could not connect to Internet Identity. Please try again.",
-        variant: "destructive",
+        title: 'Connection Failed',
+        description: 'Could not connect to Internet Identity. Please try again.',
+        variant: 'destructive',
       });
-    } finally {
       setIsLoading(false);
     }
   };
