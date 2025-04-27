@@ -4,7 +4,9 @@ import { z } from "zod";
 
 export const users = pgTable("users", {
   id: serial("id").primaryKey(),
-  walletAddress: text("wallet_address").notNull().unique(),
+  walletAddress: text("wallet_address").notNull(),
+  walletType: text("wallet_type").default("eth"), // 'eth', 'icp', etc.
+  deviceId: text("device_id"), // Store device fingerprint
   username: text("username"),
   avatar: text("avatar_url"),
   score: integer("score").default(0),
@@ -59,11 +61,15 @@ export const creatorApplications = pgTable("creator_applications", {
 
 export const insertUserSchema = createInsertSchema(users).pick({
   walletAddress: true,
+  walletType: true,
+  deviceId: true,
   username: true,
   avatar: true
 }).partial({
   username: true,
-  avatar: true
+  avatar: true,
+  walletType: true,
+  deviceId: true
 });
 
 export const insertGameMatchSchema = createInsertSchema(gameMatches).pick({

@@ -21,6 +21,7 @@ export interface IStorage {
   // User methods
   getUser(id: number): Promise<User | undefined>;
   getUserByWalletAddress(walletAddress: string): Promise<User | undefined>;
+  getUserByWalletAddressAndDevice(walletAddress: string, deviceId: string): Promise<User | undefined>;
   createUser(user: InsertUser): Promise<User>;
   updateUserScore(userId: number, score: number): Promise<void>;
   updateUserXP(userId: number, xp: number, updateScore: boolean): Promise<void>;
@@ -68,6 +69,16 @@ export class DatabaseStorage implements IStorage {
 
   async getUserByWalletAddress(walletAddress: string): Promise<User | undefined> {
     const [user] = await db.select().from(users).where(eq(users.walletAddress, walletAddress));
+    return user;
+  }
+  
+  async getUserByWalletAddressAndDevice(walletAddress: string, deviceId: string): Promise<User | undefined> {
+    const [user] = await db
+      .select()
+      .from(users)
+      .where(
+        sql`${users.walletAddress} = ${walletAddress} AND ${users.deviceId} = ${deviceId}`
+      );
     return user;
   }
 

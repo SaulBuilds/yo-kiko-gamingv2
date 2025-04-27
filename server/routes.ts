@@ -32,25 +32,58 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // User routes
   app.post("/api/user", async (req, res) => {
     try {
-      const { walletAddress } = req.body;
+      const { walletAddress, walletType, deviceId } = req.body;
       if (!walletAddress) {
         return res.status(400).json({ error: "Wallet address is required" });
       }
 
-      let user = await storage.getUserByWalletAddress(walletAddress);
-      if (!user) {
-        user = await storage.createUser({
-          walletAddress,
-          username: null,
-          avatar: null,
-        });
-      }
+      // Generate a device fingerprint if not provided
+      const deviceFingerprint = deviceId || 
+        `${req.headers['user-agent'] || 'unknown'}-${req.ip || 'unknown'}`;
+      
+      // For Internet Identity, search with both wallet address and device
+      if (walletType === 'icp') {
+        // Look up existing user by both ICP address and device fingerprint
+        let user = await storage.getUserByWalletAddressAndDevice(walletAddress, deviceFingerprint);
+        
+        if (!user) {
+          // If no user found for this address+device combo, create a new one
+          user = await storage.createUser({
+            walletAddress,
+            walletType: 'icp',
+            deviceId: deviceFingerprint,
+            username: null,
+            avatar: null,
+          });
+          log(`Created new ICP user for device: ${deviceFingerprint}`, "auth");
+        }
+        
+        // Set the session
+        if (req.session) {
+          req.session.userId = user.id;
+          req.session.deviceId = deviceFingerprint;
+        }
+        res.json(user);
+      } else {
+        // For non-ICP wallets, use original wallet-based lookup
+        let user = await storage.getUserByWalletAddress(walletAddress);
+        if (!user) {
+          user = await storage.createUser({
+            walletAddress,
+            walletType: walletType || 'eth',
+            deviceId: deviceFingerprint,
+            username: null,
+            avatar: null,
+          });
+        }
 
-      // Set the session
-      if (req.session) {
-        req.session.userId = user.id;
+        // Set the session
+        if (req.session) {
+          req.session.userId = user.id;
+          req.session.deviceId = deviceFingerprint;
+        }
+        res.json(user);
       }
-      res.json(user);
     } catch (error) {
       console.error("Error creating user:", error);
       res.status(500).json({ error: "Failed to create user" });
