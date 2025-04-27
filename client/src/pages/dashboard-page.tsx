@@ -39,59 +39,98 @@ export default function DashboardPage() {
   useEffect(() => {
     if (!user) return;
     
-    const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
-    // Updated to match the server-side path in routes.ts
-    const wsUrl = `${protocol}//${window.location.host}/game-ws`;
-    console.log("Connecting to WebSocket:", wsUrl);
+    let reconnectAttempts = 0;
+    const maxReconnectAttempts = 5;
+    let reconnectTimeout: NodeJS.Timeout;
     
-    const socket = new WebSocket(wsUrl);
-    
-    socket.onopen = () => {
-      console.log("WebSocket connection established");
-      setWsConnected(true);
+    const connectWebSocket = () => {
+      const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
+      const wsUrl = `${protocol}//${window.location.host}/game-ws`;
+      console.log("Connecting to WebSocket:", wsUrl);
       
-      // Register for dashboard updates
-      socket.send(JSON.stringify({
-        type: "dashboard",
-        userId: user.id
-      }));
-    };
-    
-    socket.onmessage = (event) => {
-      try {
-        const data = JSON.parse(event.data);
+      const socket = new WebSocket(wsUrl);
+      
+      socket.onopen = () => {
+        console.log("WebSocket connection established");
+        setWsConnected(true);
+        reconnectAttempts = 0; // Reset reconnect attempts
         
-        if (data.type === "activeMatches") {
-          console.log("Received active matches via WebSocket:", data.matches);
-          setWsMatches(data.matches);
+        // Register for dashboard updates
+        socket.send(JSON.stringify({
+          type: "dashboard",
+          userId: user.id
+        }));
+      };
+      
+      socket.onmessage = (event) => {
+        try {
+          const data = JSON.parse(event.data);
           
-          // Also update the React Query cache
-          queryClient.setQueryData(["/api/matches"], data.matches);
+          if (data.type === "activeMatches") {
+            console.log("Received active matches via WebSocket:", data.matches);
+            if (data.matches && Array.isArray(data.matches)) {
+              setWsMatches(data.matches);
+              
+              // Also update the React Query cache
+              queryClient.setQueryData(["/api/matches"], data.matches);
+              
+              // Force a refresh of the dashboard UI
+              setTimeout(() => {
+                queryClient.invalidateQueries({ queryKey: ["/api/matches"] });
+              }, 300);
+            }
+          }
+        } catch (error) {
+          console.error("Error parsing WebSocket message:", error);
         }
-      } catch (error) {
-        console.error("Error parsing WebSocket message:", error);
+      };
+      
+      socket.onclose = (event) => {
+        console.log(`WebSocket connection closed: ${event.code} - ${event.reason}`);
+        setWsConnected(false);
+        
+        // Try to reconnect with exponential backoff
+        if (reconnectAttempts < maxReconnectAttempts) {
+          const timeout = Math.min(1000 * Math.pow(2, reconnectAttempts), 30000);
+          console.log(`Trying to reconnect in ${timeout/1000} seconds...`);
+          
+          reconnectTimeout = setTimeout(() => {
+            reconnectAttempts++;
+            connectWebSocket();
+          }, timeout);
+        } else {
+          toast({
+            title: "Connection Lost",
+            description: "Could not reconnect to the game server. Please refresh the page.",
+            variant: "destructive"
+          });
+        }
+      };
+      
+      socket.onerror = (error) => {
+        console.error("WebSocket error:", error);
+        // Don't show toast on every error since onclose will also fire
+      };
+      
+      return socket;
+    };
+    
+    const socket = connectWebSocket();
+    
+    // Poll for new matches every 10 seconds as a fallback
+    const pollInterval = setInterval(() => {
+      if (!wsConnected) {
+        console.log("WebSocket not connected - polling for matches");
+        queryClient.invalidateQueries({ queryKey: ["/api/matches"] });
       }
-    };
-    
-    socket.onclose = () => {
-      console.log("WebSocket connection closed");
-      setWsConnected(false);
-    };
-    
-    socket.onerror = (error) => {
-      console.error("WebSocket error:", error);
-      toast({
-        title: "Connection Error",
-        description: "Could not connect to game server for real-time updates",
-        variant: "destructive"
-      });
-      setWsConnected(false);
-    };
+    }, 10000);
     
     return () => {
+      clearTimeout(reconnectTimeout);
+      clearInterval(pollInterval);
       socket.close();
     };
-  }, [user, queryClient, toast]);
+  }, [user, queryClient, toast, wsConnected]);
 
   const games = [
     {

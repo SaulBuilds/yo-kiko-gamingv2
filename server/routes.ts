@@ -317,17 +317,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Helper function to broadcast active matches to all dashboard clients
   const broadcastActiveMatches = async () => {
-    const activeMatches = await storage.getActiveMatches();
-    log(`Broadcasting ${activeMatches.length} active matches to all dashboard clients`, "websocket");
-    
-    wss.clients.forEach((client) => {
-      if (client.readyState === WebSocket.OPEN && clients.get(client)?.dashboardUser) {
-        client.send(JSON.stringify({
-          type: "activeMatches",
-          matches: activeMatches
-        }));
+    try {
+      const activeMatches = await storage.getActiveMatches();
+      log(`Broadcasting ${activeMatches.length} active matches to all dashboard clients`, "websocket");
+      
+      let broadcastCount = 0;
+      wss.clients.forEach((client) => {
+        if (client.readyState === WebSocket.OPEN && clients.get(client)?.dashboardUser) {
+          broadcastCount++;
+          client.send(JSON.stringify({
+            type: "activeMatches",
+            matches: activeMatches
+          }));
+        }
+      });
+      
+      log(`Sent active matches to ${broadcastCount} dashboard clients`, "websocket");
+      
+      // If no clients are connected, schedule a retry
+      if (broadcastCount === 0 && wss.clients.size > 0) {
+        log("No dashboard clients ready, scheduling retry broadcast in 1s", "websocket");
+        setTimeout(broadcastActiveMatches, 1000);
       }
-    });
+    } catch (error) {
+      log(`Error broadcasting matches: ${error}`, "websocket");
+    }
   };
 
   wss.on("connection", (ws) => {
