@@ -147,18 +147,26 @@ export class DatabaseStorage implements IStorage {
       .orderBy(sql`${gameMatches.id} DESC`); // Show newest challenges first
   }
 
-  async updateUserXP(userId: number, xp: number, updateScore: boolean): Promise<void> {
+  async updateUserXP(userId: number, xp: number, updateScore: boolean, incrementGamesPlayed = false): Promise<void> {
     const user = await this.getUser(userId);
     if (!user) throw new Error("User not found");
 
+    // Start with just updating XP
     const updates = {
-      xp: (user.xp || 0) + xp,
-      gamesPlayed: (user.gamesPlayed || 0) + 1
+      xp: (user.xp || 0) + xp
     } as any;
 
+    // Only increment games played if explicitly requested
+    if (incrementGamesPlayed) {
+      updates.gamesPlayed = (user.gamesPlayed || 0) + 1;
+    }
+
+    // Update score if requested (for non-practice games)
     if (updateScore) {
       updates.score = (user.score || 0) + xp * 10;
     }
+
+    console.log(`Updating user ${userId} XP: +${xp}, new total: ${updates.xp}, updateScore: ${updateScore}`);
 
     await db
       .update(users)
