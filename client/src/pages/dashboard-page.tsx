@@ -40,6 +40,7 @@ export default function DashboardPage() {
     if (!user) return;
     
     const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
+    // Updated to match the server-side path in routes.ts
     const wsUrl = `${protocol}//${window.location.host}/game-ws`;
     console.log("Connecting to WebSocket:", wsUrl);
     

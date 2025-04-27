@@ -115,8 +115,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(401).json({ error: "Not authenticated" });
       }
 
-      const { xp, isPractice } = req.body;
-      await storage.updateUserXP(req.session.userId, xp, !isPractice);
+      const { xp, isPractice, isMatch } = req.body;
+      console.log(`XP Update - User: ${req.session.userId}, XP: ${xp}, isPractice: ${isPractice}, isMatch: ${isMatch}`);
+      
+      // Only increment games played if it's a new game completion
+      await storage.updateUserXP(
+        req.session.userId, 
+        xp, 
+        !isPractice, // Only update score for non-practice games
+        isMatch ? false : !isPractice // Only increment games played if it's not part of a match and not practice
+      );
 
       const updatedUser = await storage.getUser(req.session.userId);
       res.json(updatedUser);

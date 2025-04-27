@@ -221,8 +221,10 @@ export default function GamePage() {
           try {
             await apiRequest("POST", "/api/user/xp", {
               xp: xpGain,
-              isPractice: match?.isPractice ?? false
+              isPractice: match?.isPractice ?? false,
+              isMatch: true // This is part of a match, so don't increment games played here
             });
+            console.log(`Added ${xpGain} XP for match play`);
           } catch (error) {
             console.error("Failed to update XP:", error);
             // Continue with game over even if XP update fails

@@ -401,7 +401,8 @@ export function TempleRunner({ matchId, isPractice = true, onGameOver }: TempleR
     mutationFn: async (score: number) => {
       const res = await apiRequest("POST", "/api/user/xp", {
         xp: Math.floor(score / 10),
-        isPractice
+        isPractice,
+        isMatch: !!matchId // Only count as match if we have a match ID
       });
       if (!res.ok) throw new Error("Failed to update XP");
       return res.json();
