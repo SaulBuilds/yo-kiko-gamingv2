@@ -3,16 +3,21 @@
  * @description Utility functions for interacting with Internet Computer's EVM RPC canister and our Game Bet canister
  */
 
-import { Actor, HttpAgent } from '@dfinity/agent';
-import { Principal } from '@dfinity/principal';
-import { ethers } from 'ethers';
+import { useState } from 'react';
 import { useToast } from '@/hooks/use-toast';
+import { Principal } from '@dfinity/principal';
+import { Actor, HttpAgent } from '@dfinity/agent';
+import { AuthClient } from '@dfinity/auth-client';
+import { getOrCreateDeviceFingerprint } from './device-fingerprint';
 
-// ICP canister IDs - these would be the actual deployed canister IDs
-const GAME_BET_CANISTER_ID = 'your-canister-id-here';
-const EVM_RPC_CANISTER_ID = '7hfb6-caaaa-aaaar-qadga-cai'; // Mainnet EVM RPC canister ID
+// Import configuration from centralized config file
+import { ICP_CONFIG } from '@/config/app-config';
 
-// GameBetCanister interface definition
+// Use canister IDs from config
+const GAME_BET_CANISTER_ID = ICP_CONFIG.gameBetCanisterId;
+const EVM_RPC_CANISTER_ID = ICP_CONFIG.evmRpcCanisterId;
+
+// Interface for the GameBetCanister methods
 interface GameBetCanister {
   createBet: (matchId: bigint, tokenAddress: string, receiver: string, amount: bigint) => Promise<{ ok: string } | { err: string }>;
   acceptBet: (matchId: bigint) => Promise<{ ok: string } | { err: string }>;
@@ -21,7 +26,7 @@ interface GameBetCanister {
   getEthereumAddress: () => Promise<string>;
 }
 
-// Bet structure matching the Motoko definition
+// Type for a GameBet
 interface GameBet {
   matchId: bigint;
   player1: string;
@@ -33,37 +38,88 @@ interface GameBet {
   is_paid: boolean;
 }
 
+// Cache for Actor instance to avoid multiple initializations
+let gameBetCanisterActor: GameBetCanister | null = null;
+
 /**
  * Initializes the GameBetCanister actor
  * @returns The GameBetCanister actor with methods to interact with the canister
  */
 export async function initGameBetCanister(): Promise<GameBetCanister> {
+  // Return cached actor if available
+  if (gameBetCanisterActor) {
+    return gameBetCanisterActor;
+  }
+
   try {
-    const agent = new HttpAgent({
-      host: process.env.NODE_ENV === 'production' 
-        ? 'https://ic0.app' 
-        : 'http://localhost:8000',
+    // Create an authentication client
+    const authClient = await AuthClient.create({
+      idleOptions: {
+        disableIdle: true,
+      },
     });
 
-    // For development only
-    if (process.env.NODE_ENV !== 'production') {
+    let agent;
+    
+    // Check if user is already authenticated
+    if (await authClient.isAuthenticated()) {
+      const identity = authClient.getIdentity();
+      agent = new HttpAgent({ 
+        identity,
+        host: ICP_CONFIG.host 
+      });
+    } else {
+      // Create a new anonymous identity
+      agent = new HttpAgent({
+        host: ICP_CONFIG.host
+      });
+    }
+
+    // In local development, we need to fetch the root key
+    if (import.meta.env.DEV) {
       await agent.fetchRootKey();
     }
 
-    // Here we would normally use idlFactory for the canister
-    // For the demo, we'll create a mock interface
-    const actor = Actor.createActor<GameBetCanister>(
-      // idlFactory would go here
-      {} as any,
+    // The interface of the GameBetCanister
+    // This would be auto-generated from the Candid file in a real project
+    const gameBetCanisterIdl = ({ IDL }: any) => {
+      const Result = IDL.Variant({
+        ok: IDL.Text,
+        err: IDL.Text,
+      });
+      
+      const GameBet = IDL.Record({
+        matchId: IDL.Nat,
+        player1: IDL.Text,
+        player2: IDL.Opt(IDL.Text),
+        amount: IDL.Nat,
+        timestamp: IDL.Int,
+        token_address: IDL.Text,
+        is_active: IDL.Bool,
+        is_paid: IDL.Bool,
+      });
+      
+      return IDL.Service({
+        getEthereumAddress: IDL.Func([], [IDL.Text], []),
+        createBet: IDL.Func([IDL.Nat, IDL.Text, IDL.Text, IDL.Nat], [Result], []),
+        acceptBet: IDL.Func([IDL.Nat], [Result], []),
+        payoutBet: IDL.Func([IDL.Nat, IDL.Text], [Result], []),
+        getBet: IDL.Func([IDL.Nat], [IDL.Opt(GameBet)], ['query']),
+      });
+    };
+
+    // Create the actor
+    gameBetCanisterActor = Actor.createActor<GameBetCanister>(
+      gameBetCanisterIdl,
       {
         agent,
-        canisterId: GAME_BET_CANISTER_ID,
-      }
+        canisterId: Principal.fromText(GAME_BET_CANISTER_ID),
+      },
     );
 
-    return actor;
+    return gameBetCanisterActor;
   } catch (error) {
-    console.error('Failed to initialize GameBetCanister actor:', error);
+    console.error('Error initializing GameBetCanister:', error);
     throw error;
   }
 }
@@ -78,32 +134,26 @@ export async function initGameBetCanister(): Promise<GameBetCanister> {
  */
 export async function createBetWithICP(
   matchId: number,
-  amount: string,
-  tokenAddress: string = '0x0',
-  receiverAddress: string
+  amount: number,
+  tokenAddress: string,
+  receiverAddress: string,
 ): Promise<string> {
   try {
-    const gameBetCanister = await initGameBetCanister();
-    
-    // Convert amount to bigint for ICP
-    const amountBigInt = BigInt(amount);
-    const matchIdBigInt = BigInt(matchId);
-    
-    // Call the canister method
-    const result = await gameBetCanister.createBet(
-      matchIdBigInt,
+    const canister = await initGameBetCanister();
+    const result = await canister.createBet(
+      BigInt(matchId),
       tokenAddress,
       receiverAddress,
-      amountBigInt
+      BigInt(amount),
     );
 
-    if ('ok' in result) {
-      return result.ok;
-    } else {
-      throw new Error(result.err);
+    if ('err' in result) {
+      throw new Error(`Failed to create bet: ${result.err}`);
     }
+
+    return result.ok;
   } catch (error) {
-    console.error('Failed to create bet with ICP:', error);
+    console.error('Error creating bet with ICP:', error);
     throw error;
   }
 }
@@ -115,19 +165,16 @@ export async function createBetWithICP(
  */
 export async function acceptBetWithICP(matchId: number): Promise<string> {
   try {
-    const gameBetCanister = await initGameBetCanister();
-    const matchIdBigInt = BigInt(matchId);
-    
-    // Call the canister method
-    const result = await gameBetCanister.acceptBet(matchIdBigInt);
-    
-    if ('ok' in result) {
-      return result.ok;
-    } else {
-      throw new Error(result.err);
+    const canister = await initGameBetCanister();
+    const result = await canister.acceptBet(BigInt(matchId));
+
+    if ('err' in result) {
+      throw new Error(`Failed to accept bet: ${result.err}`);
     }
+
+    return result.ok;
   } catch (error) {
-    console.error('Failed to accept bet with ICP:', error);
+    console.error('Error accepting bet with ICP:', error);
     throw error;
   }
 }
@@ -140,22 +187,22 @@ export async function acceptBetWithICP(matchId: number): Promise<string> {
  */
 export async function payoutBetWithICP(
   matchId: number,
-  winnerAddress: string
+  winnerAddress: string,
 ): Promise<string> {
   try {
-    const gameBetCanister = await initGameBetCanister();
-    const matchIdBigInt = BigInt(matchId);
-    
-    // Call the canister method
-    const result = await gameBetCanister.payoutBet(matchIdBigInt, winnerAddress);
-    
-    if ('ok' in result) {
-      return result.ok;
-    } else {
-      throw new Error(result.err);
+    const canister = await initGameBetCanister();
+    const result = await canister.payoutBet(
+      BigInt(matchId),
+      winnerAddress,
+    );
+
+    if ('err' in result) {
+      throw new Error(`Failed to payout bet: ${result.err}`);
     }
+
+    return result.ok;
   } catch (error) {
-    console.error('Failed to payout bet with ICP:', error);
+    console.error('Error paying out bet with ICP:', error);
     throw error;
   }
 }
@@ -167,13 +214,10 @@ export async function payoutBetWithICP(
  */
 export async function getBetWithICP(matchId: number): Promise<GameBet | null> {
   try {
-    const gameBetCanister = await initGameBetCanister();
-    const matchIdBigInt = BigInt(matchId);
-    
-    // Call the canister method
-    return await gameBetCanister.getBet(matchIdBigInt);
+    const canister = await initGameBetCanister();
+    return await canister.getBet(BigInt(matchId));
   } catch (error) {
-    console.error('Failed to get bet with ICP:', error);
+    console.error('Error getting bet with ICP:', error);
     throw error;
   }
 }
@@ -184,10 +228,10 @@ export async function getBetWithICP(matchId: number): Promise<GameBet | null> {
  */
 export async function getCanisterEthereumAddress(): Promise<string> {
   try {
-    const gameBetCanister = await initGameBetCanister();
-    return await gameBetCanister.getEthereumAddress();
+    const canister = await initGameBetCanister();
+    return await canister.getEthereumAddress();
   } catch (error) {
-    console.error('Failed to get canister Ethereum address:', error);
+    console.error('Error getting canister Ethereum address:', error);
     throw error;
   }
 }
@@ -197,92 +241,97 @@ export async function getCanisterEthereumAddress(): Promise<string> {
  */
 export function useICPEthBridge() {
   const { toast } = useToast();
+  const [isLoading, setIsLoading] = useState(false);
 
   const createBet = async (
     matchId: number,
-    amount: string,
+    amount: number,
     tokenAddress: string,
-    receiverAddress: string
-  ) => {
+    receiverAddress: string,
+  ): Promise<string> => {
+    setIsLoading(true);
     try {
-      toast({
-        title: 'Creating bet...',
-        description: 'Please wait while we process your transaction',
-      });
-      
-      const result = await createBetWithICP(matchId, amount, tokenAddress, receiverAddress);
-      
-      toast({
-        title: 'Bet created successfully',
-        description: `Transaction ID: ${result.slice(0, 20)}...`,
-      });
-      
-      return result;
+      const txHash = await createBetWithICP(
+        matchId,
+        amount,
+        tokenAddress,
+        receiverAddress,
+      );
+      return txHash;
     } catch (error) {
+      console.error('Error creating bet:', error);
       toast({
-        title: 'Failed to create bet',
-        description: error instanceof Error ? error.message : 'Unknown error',
+        title: 'Error Creating Bet',
+        description: error instanceof Error ? error.message : 'An unknown error occurred',
         variant: 'destructive',
       });
       throw error;
+    } finally {
+      setIsLoading(false);
     }
   };
 
-  const acceptBet = async (matchId: number) => {
+  const acceptBet = async (matchId: number): Promise<string> => {
+    setIsLoading(true);
     try {
-      toast({
-        title: 'Accepting bet...',
-        description: 'Please wait while we process your transaction',
-      });
-      
-      const result = await acceptBetWithICP(matchId);
-      
-      toast({
-        title: 'Bet accepted successfully',
-        description: `Transaction ID: ${result.slice(0, 20)}...`,
-      });
-      
-      return result;
+      const txHash = await acceptBetWithICP(matchId);
+      return txHash;
     } catch (error) {
+      console.error('Error accepting bet:', error);
       toast({
-        title: 'Failed to accept bet',
-        description: error instanceof Error ? error.message : 'Unknown error',
+        title: 'Error Accepting Bet',
+        description: error instanceof Error ? error.message : 'An unknown error occurred',
         variant: 'destructive',
       });
       throw error;
+    } finally {
+      setIsLoading(false);
     }
   };
 
-  const payoutBet = async (matchId: number, winnerAddress: string) => {
+  const payoutWinner = async (
+    matchId: number,
+    winnerAddress: string,
+  ): Promise<string> => {
+    setIsLoading(true);
     try {
-      toast({
-        title: 'Paying out bet...',
-        description: 'Please wait while we process your transaction',
-      });
-      
-      const result = await payoutBetWithICP(matchId, winnerAddress);
-      
-      toast({
-        title: 'Bet paid out successfully',
-        description: `Transaction ID: ${result.slice(0, 20)}...`,
-      });
-      
-      return result;
+      const txHash = await payoutBetWithICP(matchId, winnerAddress);
+      return txHash;
     } catch (error) {
+      console.error('Error paying out bet:', error);
       toast({
-        title: 'Failed to pay out bet',
-        description: error instanceof Error ? error.message : 'Unknown error',
+        title: 'Error Processing Payout',
+        description: error instanceof Error ? error.message : 'An unknown error occurred',
         variant: 'destructive',
       });
       throw error;
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const getBet = async (matchId: number): Promise<GameBet | null> => {
+    setIsLoading(true);
+    try {
+      return await getBetWithICP(matchId);
+    } catch (error) {
+      console.error('Error getting bet details:', error);
+      toast({
+        title: 'Error Fetching Bet',
+        description: error instanceof Error ? error.message : 'An unknown error occurred',
+        variant: 'destructive',
+      });
+      throw error;
+    } finally {
+      setIsLoading(false);
     }
   };
 
   return {
     createBet,
     acceptBet,
-    payoutBet,
-    getBet: getBetWithICP,
-    getCanisterAddress: getCanisterEthereumAddress,
+    payoutWinner,
+    getBet,
+    isLoading,
   };
 }
