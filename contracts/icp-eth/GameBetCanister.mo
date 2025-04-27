@@ -1,7 +1,5 @@
 // GameBetCanister.mo
 // This canister manages game bets using ICP's EVM RPC integration
-// It demonstrates how to interact with Ethereum from within ICP canisters
-
 import Array "mo:base/Array";
 import Blob "mo:base/Blob";
 import Debug "mo:base/Debug";

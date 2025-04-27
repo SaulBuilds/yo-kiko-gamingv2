@@ -1,6 +1,9 @@
 /**
  * @file icp-eth-bridge.ts
- * @description Utility functions for interacting with Internet Computer's EVM RPC canister and our Game Bet canister
+ * @description Utility functions for interacting with Internet Computer's EVM RPC canister and our GameBet canister
+ * 
+ * This module provides a bridge between the web application and Internet Computer canisters,
+ * allowing for cross-chain functionality through ICP's threshold ECDSA signatures.
  */
 
 import { useState } from 'react';
@@ -11,7 +14,16 @@ import { AuthClient } from '@dfinity/auth-client';
 import { getOrCreateDeviceFingerprint } from './device-fingerprint';
 
 // Import configuration from centralized config file
-import { ICP_CONFIG } from '@/config/app-config';
+import { ICP_CONFIG, ETH_CONFIG } from '@/config/app-config';
+
+// Validate required environment variables/configuration
+if (!ICP_CONFIG.gameBetCanisterId) {
+  console.error('GameBet Canister ID is not configured. Please set VITE_GAME_BET_CANISTER_ID in your environment.');
+}
+
+if (!ICP_CONFIG.evmRpcCanisterId) {
+  console.error('EVM RPC Canister ID is not configured. Please set VITE_EVM_RPC_CANISTER_ID in your environment.');
+}
 
 // Use canister IDs from config
 const GAME_BET_CANISTER_ID = ICP_CONFIG.gameBetCanisterId;
