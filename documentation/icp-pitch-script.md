@@ -1,8 +1,8 @@
-# 3-Minute ICP Integration Pitch Script
+# 3-Minute ICP Integration Code Walkthrough
 
 ## Introduction (30 seconds)
 
-Today, I'm excited to demonstrate how we've integrated Internet Computer Protocol into the Yokiko Gaming Platform, creating a seamless cross-chain betting experience. Our implementation solves three critical challenges in blockchain gaming:
+Today, I'm going to walk you through our Internet Computer Protocol integration in the Yokiko Gaming Platform. Looking at our README.md, you'll see we've created a cross-chain betting experience that solves three critical challenges:
 
 1. High gas fees on Ethereum
 2. Complex wallet management
@@ -12,42 +12,58 @@ Today, I'm excited to demonstrate how we've integrated Internet Computer Protoco
 
 ### Chain Fusion Approach
 
-Our solution uses ICP's threshold ECDSA to create a bridge between blockchains:
+Starting with our environment configuration:
+- Open `.env.example` to see the required environment variables for production
+- Check `client/src/config/app-config.ts` to see how we manage these variables
 
-1. **User Authentication**: Players connect using Internet Identity with device fingerprinting, allowing the same user to maintain separate accounts on different devices.
+Our solution uses ICP's threshold ECDSA for cross-chain operations:
 
-2. **Bet Creation**: When a player creates a bet, our frontend calls the ICP GameBet canister, which:
-   - Generates an ECDSA signature
-   - Signs an Ethereum transaction
-   - Submits it to the blockchain through the EVM RPC canister
+1. **User Authentication**: 
+   - Open `client/src/lib/device-fingerprint.ts` to see our fingerprinting solution
+   - Look at `client/src/components/connect-icp.tsx` for the Internet Identity integration
 
-3. **Real-Time Updates**: We've implemented WebSockets that connect to our Express server, which subscribes to canister events for instant bet status updates.
+2. **Bet Creation**: 
+   - Open `client/src/lib/icp-eth-bridge.ts` around line 135 for the `createBetWithICP` function
+   - This calls the ICP GameBet canister, which:
+     - Generates an ECDSA signature
+     - Signs an Ethereum transaction
+     - Submits it to the blockchain through the EVM RPC canister
 
-The architecture diagram shows how data flows between our React frontend, Express backend, PostgreSQL database, and IC canisters, creating a smooth user experience.
+3. **Contract Integration**:
+   - The Motoko code is in `icp-project/src/GameBetCanister.mo`
+   - The Ethereum contract is in `contracts/GameBets.sol`
 
-## Demo Highlights (60 seconds)
+## Code Highlights (60 seconds)
 
-Let me walk through our implementation:
+Let's examine the key code components:
 
-1. **Configuration System**: We've created a centralized app-config.ts file that manages all environment variables, enabling secure management of canister IDs and API keys.
+1. **Configuration System**: 
+   - In `client/src/config/app-config.ts` (lines 12-43), we manage all environment variables
+   - Notice the ICP_CONFIG and ETH_CONFIG sections for canister IDs and API keys
 
-2. **Device Fingerprinting**: Our enhanced device fingerprinting provides secure user identification across multiple devices using the same Internet Identity.
+2. **Device Fingerprinting**: 
+   - Look at `client/src/lib/device-fingerprint.ts` (lines 19-57) for our enhanced fingerprinting
+   - See how we handle errors and provide fallbacks around line 53
 
-3. **Error Handling**: Comprehensive error management at every step of the cross-chain interaction ensures a resilient user experience.
+3. **Bridge Implementation**: 
+   - In `client/src/lib/icp-eth-bridge.ts` (lines 19-27), we validate required canister IDs
+   - The hook implementation around line 252 provides clean error handling for the UI
 
-4. **Production-Ready**: We've eliminated all placeholder values and created a deployment checklist to ensure smooth transitions between environments.
+4. **Production Readiness**: 
+   - Check `documentation/icp-production-checklist.md` for our deployment requirements
+   - See `server/routes.ts` for the WebSocket implementation for real-time updates
 
 ## Conclusion (30 seconds)
 
-By leveraging ICP's unique capabilities, we've created a production-ready gaming platform that offers:
+By leveraging ICP's unique capabilities (as documented in `documentation/icp-integration-review.md`), we've created a production-ready platform that offers:
 
-- Gas-free betting for players
-- Enhanced security through Internet Identity
-- Real-time updates for a responsive user experience
-- Cross-chain compatibility without sacrificing user experience
+- Gas-free betting for players (see `client/src/lib/icp-eth-bridge.ts`)
+- Enhanced security through Internet Identity (see `client/src/components/connect-icp.tsx`)
+- Real-time updates for a responsive user experience (see `server/routes.ts`)
+- Cross-chain compatibility without sacrificing UX (see `client/src/components/game/icp-bet-widget.tsx`)
 
-Our implementation demonstrates how Internet Computer can serve as the foundation for next-generation Web3 gaming experiences, bridging multiple blockchains while maintaining a seamless user interface.
+Our implementation demonstrates how Internet Computer serves as the foundation for next-generation Web3 gaming experiences.
 
 ---
 
-*This pitch is designed for a 3-minute presentation highlighting the Internet Computer Protocol integration in the Yokiko Gaming Platform.*
+*This walkthrough is designed for a 3-minute code review highlighting the ICP integration with specific file references.*
