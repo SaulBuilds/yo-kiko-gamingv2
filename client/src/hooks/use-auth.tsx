@@ -4,6 +4,7 @@ import { useAccount, useConnect, useDisconnect } from 'wagmi';
 import { User as SelectUser } from "@shared/schema";
 import { getQueryFn, apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import { getOrCreateDeviceFingerprint } from "../lib/device-fingerprint";
 
 type AuthContextType = {
   user: SelectUser | null;
@@ -37,9 +38,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     staleTime: 30000 // Cache for 30 seconds
   });
 
-  // Import the device fingerprinting utility
-  import { getOrCreateDeviceFingerprint } from "../lib/device-fingerprint";
-
   // Create/update user when wallet is connected
   useEffect(() => {
     let mounted = true;
@@ -48,12 +46,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (!address || user || isLoading) return;
 
       try {
-        // Get or create device ID
-        let deviceId = localStorage.getItem('device_id');
-        if (!deviceId) {
-          deviceId = generateDeviceFingerprint();
-          localStorage.setItem('device_id', deviceId);
-        }
+        // Get or create device ID using our utility function
+        const deviceId = getOrCreateDeviceFingerprint();
 
         // Send wallet address and device ID to create/retrieve user
         const res = await apiRequest("POST", "/api/user", { 
