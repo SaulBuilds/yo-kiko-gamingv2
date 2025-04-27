@@ -30,6 +30,13 @@ export function ICPWalletConnect() {
     setIsLoading(true);
     
     try {
+      // Proper ICP logout using AuthClient
+      const { AuthClient } = await import('@dfinity/auth-client');
+      const authClient = await AuthClient.create();
+
+      // Log out from Internet Identity
+      await authClient.logout();
+      
       // Clear state
       setPrincipal(null);
       setIsConnected(false);
