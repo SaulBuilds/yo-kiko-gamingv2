@@ -3,6 +3,7 @@ import { createServer, type Server } from "http";
 import { WebSocketServer, WebSocket } from "ws";
 import { setupAuth } from "./auth";
 import { storage } from "./storage";
+import { db } from "./db";
 import { log } from "./vite";
 import session from "express-session";
 
@@ -283,6 +284,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/leaderboard", async (_req, res) => {
     const leaderboard = await storage.getLeaderboard();
     res.json(leaderboard);
+  });
+  
+  // Admin endpoint to view all users (for testing purposes)
+  app.get("/api/admin/users", async (_req, res) => {
+    try {
+      // Get all users from the database
+      const result = await db.query.users.findMany();
+      res.json(result);
+    } catch (error) {
+      console.error("Error fetching all users:", error);
+      res.status(500).json({ error: "Failed to fetch users" });
+    }
   });
 
   // WebSocket handling
