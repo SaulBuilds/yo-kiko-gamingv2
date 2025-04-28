@@ -4,7 +4,9 @@ import { z } from "zod";
 
 export const users = pgTable("users", {
   id: serial("id").primaryKey(),
-  walletAddress: text("wallet_address").notNull().unique(),
+  walletAddress: text("wallet_address").notNull(),
+  walletType: text("wallet_type").default("eth"), // 'eth', 'icp', etc.
+  deviceId: text("device_id"), // Store device fingerprint
   username: text("username"),
   avatar: text("avatar_url"),
   score: integer("score").default(0),
@@ -21,7 +23,7 @@ export const gameMatches = pgTable("game_matches", {
   betAmount: text("bet_amount").notNull(),
   betType: text("bet_type").notNull().default("xp"), // 'xp' or 'crypto'
   cryptoType: text("crypto_type"), // 'eth' or 'icp' when betType is 'crypto'
-  status: text("status").notNull(), // 'waiting', 'in_progress', 'completed'
+  status: text("status").notNull(), // 'waiting', 'in_progress', 'player1_finished', 'player2_finished', 'completed'
   winnerId: integer("winner_id"),
   startTime: timestamp("start_time"),
   endTime: timestamp("end_time"),
@@ -30,7 +32,14 @@ export const gameMatches = pgTable("game_matches", {
   timeLimit: integer("time_limit"), // in minutes
   player1Score: integer("player1_score"),
   player2Score: integer("player2_score"),
-  expiresAt: timestamp("expires_at")
+  expiresAt: timestamp("expires_at"),
+  player1Finished: boolean("player1_finished").default(false),
+  player2Finished: boolean("player2_finished").default(false),
+  player1Notified: boolean("player1_notified").default(false),
+  player2Notified: boolean("player2_notified").default(false),
+  bonusAwarded: boolean("bonus_awarded").default(false),
+  payoutProcessed: boolean("payout_processed").default(false),
+  acceptTimeThreshold: integer("accept_time_threshold").default(300) // 5 minutes in seconds
 });
 
 // New creator applications table
@@ -52,11 +61,15 @@ export const creatorApplications = pgTable("creator_applications", {
 
 export const insertUserSchema = createInsertSchema(users).pick({
   walletAddress: true,
+  walletType: true,
+  deviceId: true,
   username: true,
   avatar: true
 }).partial({
   username: true,
-  avatar: true
+  avatar: true,
+  walletType: true,
+  deviceId: true
 });
 
 export const insertGameMatchSchema = createInsertSchema(gameMatches).pick({

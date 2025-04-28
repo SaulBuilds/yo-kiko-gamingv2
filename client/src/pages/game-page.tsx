@@ -10,6 +10,8 @@ import { useToast } from "@/hooks/use-toast";
 import { Navbar } from "@/components/layout/navbar";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Trophy, Timer, AlertTriangle } from "lucide-react";
 
 export default function GamePage() {
   const [, params] = useRoute("/game/:id");
@@ -23,6 +25,14 @@ export default function GamePage() {
     level: 1
   });
   const [opponentState, setOpponentState] = useState<GameState | null>(null);
+  const [isWaitingForOpponent, setIsWaitingForOpponent] = useState(false);
+  const [showResultDialog, setShowResultDialog] = useState(false);
+  const [matchResult, setMatchResult] = useState<{
+    isWinner: boolean;
+    winAmount?: number;
+    playerScore?: number;
+    opponentScore?: number;
+  } | null>(null);
 
   // Fetch match details
   const { data: match, isLoading: isMatchLoading } = useQuery({
@@ -133,10 +143,40 @@ export default function GamePage() {
 
     ws.onmessage = (event) => {
       const data = JSON.parse(event.data);
+      
       if (data.type === "gameState" && data.states) {
         const opponentData = data.states.find(([id]: [number, GameState]) => id !== user.id);
         if (opponentData) {
           setOpponentState(opponentData[1]);
+        }
+      }
+      
+      if (data.type === "matchUpdate") {
+        const updatedMatch = data.match;
+        console.log("Match update received:", updatedMatch);
+        
+        // Handle match status updates
+        if (updatedMatch.status === 'completed') {
+          // Both players have finished, show results
+          const isWinner = updatedMatch.winnerId === user?.id;
+          const isPlayer1 = updatedMatch.player1Id === user?.id;
+          
+          setMatchResult({
+            isWinner,
+            playerScore: isPlayer1 ? updatedMatch.player1Score : updatedMatch.player2Score,
+            opponentScore: isPlayer1 ? updatedMatch.player2Score : updatedMatch.player1Score,
+            winAmount: isWinner && updatedMatch.betType === 'xp' ? parseInt(updatedMatch.betAmount) * 2 : undefined
+          });
+          
+          setShowResultDialog(true);
+          setIsWaitingForOpponent(false);
+        } 
+        else if (
+          (updatedMatch.player1Id === user?.id && updatedMatch.status === 'player1_finished') ||
+          (updatedMatch.player2Id === user?.id && updatedMatch.status === 'player2_finished')
+        ) {
+          // Current player has finished, waiting for opponent
+          setIsWaitingForOpponent(true);
         }
       }
     };
@@ -181,8 +221,10 @@ export default function GamePage() {
           try {
             await apiRequest("POST", "/api/user/xp", {
               xp: xpGain,
-              isPractice: match?.isPractice ?? false
+              isPractice: match?.isPractice ?? false,
+              isMatch: true // This is part of a match, so don't increment games played here
             });
+            console.log(`Added ${xpGain} XP for match play`);
           } catch (error) {
             console.error("Failed to update XP:", error);
             // Continue with game over even if XP update fails
@@ -199,6 +241,27 @@ export default function GamePage() {
           }));
         }
 
+        // For non-practice wager games, show waiting state if opponent hasn't finished
+        if (!match?.isPractice && 
+            (updatedMatch.status === 'player1_finished' || 
+             updatedMatch.status === 'player2_finished')) {
+          
+          // Set waiting for opponent state - don't navigate away yet
+          setIsWaitingForOpponent(true);
+          
+          // Keep websocket open to receive match updates
+          
+          // Show toast notification
+          toast({
+            title: "Game Complete!",
+            description: `Your score: ${gameState.score}. Waiting for opponent to finish...`,
+          });
+          
+          return; // Don't redirect yet
+        }
+        
+        // For practice games or completed matches, clean up and redirect
+        
         // Clean up socket connection first
         if (socket) {
           socket.close();
@@ -308,6 +371,82 @@ export default function GamePage() {
           </Card>
         </div>
       </main>
+      
+      {/* Waiting for opponent dialog */}
+      <Dialog open={isWaitingForOpponent} onOpenChange={setIsWaitingForOpponent}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-center flex items-center justify-center gap-2 pixel-font">
+              <Timer className="animate-pulse h-5 w-5" />
+              Waiting for Opponent
+            </DialogTitle>
+            <DialogDescription className="text-center">
+              Your game is complete! We're waiting for your opponent to finish their game.
+              Results will be shown once they're done.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex justify-center py-4">
+            <div className="loader animate-spin w-12 h-12 border-4 border-primary rounded-full border-t-transparent"></div>
+          </div>
+          <DialogFooter className="sm:justify-center">
+            <Button
+              variant="outline"
+              onClick={() => {
+                setIsWaitingForOpponent(false);
+                setLocation("/");
+              }}
+            >
+              Return to Dashboard
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      
+      {/* Match results dialog */}
+      <Dialog open={showResultDialog} onOpenChange={setShowResultDialog}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-center flex items-center justify-center gap-2 pixel-font">
+              {matchResult?.isWinner ? (
+                <>
+                  <Trophy className="h-5 w-5 text-yellow-500" />
+                  You Won!
+                </>
+              ) : (
+                <>
+                  <AlertTriangle className="h-5 w-5 text-red-500" />
+                  Game Over
+                </>
+              )}
+            </DialogTitle>
+            <DialogDescription className="text-center">
+              {matchResult?.isWinner 
+                ? `Congratulations! You've won ${matchResult.winAmount} XP.` 
+                : "Better luck next time!"}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid grid-cols-2 gap-4 py-4">
+            <div className="text-center">
+              <p className="text-sm text-muted-foreground">Your Score</p>
+              <p className="text-2xl font-bold">{matchResult?.playerScore || 0}</p>
+            </div>
+            <div className="text-center">
+              <p className="text-sm text-muted-foreground">Opponent Score</p>
+              <p className="text-2xl font-bold">{matchResult?.opponentScore || 0}</p>
+            </div>
+          </div>
+          <DialogFooter className="sm:justify-center">
+            <Button
+              onClick={() => {
+                setShowResultDialog(false);
+                setLocation("/");
+              }}
+            >
+              Return to Dashboard
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

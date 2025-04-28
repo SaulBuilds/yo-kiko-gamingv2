@@ -1,31 +1,136 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useLocation } from "wouter";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/use-auth";
 import { GameMatch, User } from "@shared/schema";
-import { Gamepad2, Trophy, Users, Coins, Clock } from "lucide-react";
+import { Gamepad2, Trophy, Users, Coins, Clock, Wifi } from "lucide-react";
 import { Navbar } from "@/components/layout/navbar";
 import { BetModal } from "@/components/game/bet-modal";
 import { Badge } from "@/components/ui/badge";
 import { SEO } from "@/components/seo";
+import { useToast } from "@/hooks/use-toast";
 
 export default function DashboardPage() {
   const [_, setLocation] = useLocation();
   const { user } = useAuth();
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
   const [isBetModalOpen, setIsBetModalOpen] = useState(false);
-  const [selectedGame, setSelectedGame] = useState<'tetris' | 'temple-runner' | 'street-fighter' | null>(null);
-
-  // Add refetch interval to keep matches list up to date
-  const { data: matches, isLoading: isMatchesLoading } = useQuery<GameMatch[]>({
+  const [selectedGame, setSelectedGame] = useState<'tetris' | 'temple-runner' | 'trench-fighter' | null>(null);
+  const [wsConnected, setWsConnected] = useState(false);
+  const [wsMatches, setWsMatches] = useState<GameMatch[] | null>(null);
+  
+  // Initial data fetch through REST API
+  const { data: initialMatches, isLoading: isMatchesLoading } = useQuery<GameMatch[]>({
     queryKey: ["/api/matches"],
-    refetchInterval: 5000 // Refetch every 5 seconds
+    // No refetch interval needed as we'll use WebSockets
   });
+
+  // Use the WebSocket data if available, otherwise fall back to REST API data
+  const matches = wsMatches || initialMatches;
 
   const { data: leaderboard } = useQuery<User[]>({
     queryKey: ["/api/leaderboard"],
   });
+  
+  // WebSocket connection for real-time updates
+  useEffect(() => {
+    if (!user) return;
+    
+    let reconnectAttempts = 0;
+    const maxReconnectAttempts = 5;
+    let reconnectTimeout: NodeJS.Timeout;
+    
+    const connectWebSocket = () => {
+      const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
+      const wsUrl = `${protocol}//${window.location.host}/game-ws`;
+      console.log("Connecting to WebSocket:", wsUrl);
+      
+      const socket = new WebSocket(wsUrl);
+      
+      socket.onopen = () => {
+        console.log("WebSocket connection established");
+        setWsConnected(true);
+        reconnectAttempts = 0; // Reset reconnect attempts
+        
+        // Register for dashboard updates
+        socket.send(JSON.stringify({
+          type: "dashboard",
+          userId: user.id
+        }));
+      };
+      
+      socket.onmessage = (event) => {
+        try {
+          const data = JSON.parse(event.data);
+          
+          if (data.type === "activeMatches") {
+            console.log("Received active matches via WebSocket:", data.matches);
+            if (data.matches && Array.isArray(data.matches)) {
+              setWsMatches(data.matches);
+              
+              // Also update the React Query cache
+              queryClient.setQueryData(["/api/matches"], data.matches);
+              
+              // Force a refresh of the dashboard UI
+              setTimeout(() => {
+                queryClient.invalidateQueries({ queryKey: ["/api/matches"] });
+              }, 300);
+            }
+          }
+        } catch (error) {
+          console.error("Error parsing WebSocket message:", error);
+        }
+      };
+      
+      socket.onclose = (event) => {
+        console.log(`WebSocket connection closed: ${event.code} - ${event.reason}`);
+        setWsConnected(false);
+        
+        // Try to reconnect with exponential backoff
+        if (reconnectAttempts < maxReconnectAttempts) {
+          const timeout = Math.min(1000 * Math.pow(2, reconnectAttempts), 30000);
+          console.log(`Trying to reconnect in ${timeout/1000} seconds...`);
+          
+          reconnectTimeout = setTimeout(() => {
+            reconnectAttempts++;
+            connectWebSocket();
+          }, timeout);
+        } else {
+          toast({
+            title: "Connection Lost",
+            description: "Could not reconnect to the game server. Please refresh the page.",
+            variant: "destructive"
+          });
+        }
+      };
+      
+      socket.onerror = (error) => {
+        console.error("WebSocket error:", error);
+        // Don't show toast on every error since onclose will also fire
+      };
+      
+      return socket;
+    };
+    
+    const socket = connectWebSocket();
+    
+    // Poll for new matches every 10 seconds as a fallback
+    const pollInterval = setInterval(() => {
+      if (!wsConnected) {
+        console.log("WebSocket not connected - polling for matches");
+        queryClient.invalidateQueries({ queryKey: ["/api/matches"] });
+      }
+    }, 10000);
+    
+    return () => {
+      clearTimeout(reconnectTimeout);
+      clearInterval(pollInterval);
+      socket.close();
+    };
+  }, [user, queryClient, toast, wsConnected]);
 
   const games = [
     {
@@ -45,12 +150,13 @@ export default function DashboardPage() {
       enabled: true
     },
     {
-      id: "street-fighter",
-      name: "Street Fighter",
-      description: "Classic arcade fighting game with original moves and characters",
+      id: "trench-fighter",
+      name: "Trench Fighter",
+      description: "Tactical combat game with customizable fighters and special abilities",
       icon: "👊",
       background: "bg-gradient-to-r from-red-500 to-orange-500",
-      enabled: true
+      enabled: false,
+      comingSoon: true
     },
     // Coming Soon Games
     {
@@ -90,21 +196,27 @@ export default function DashboardPage() {
       case 'temple-runner':
         setLocation('/temple-runner');
         break;
-      case 'street-fighter':
-        setLocation('/street-fighter/practice');
+      case 'trench-fighter':
+        setLocation('/trench-fighter/practice');
         break;
     }
   };
 
   const handleWager = (gameId: string) => {
-    setSelectedGame(gameId as 'tetris' | 'temple-runner' | 'street-fighter');
+    setSelectedGame(gameId as 'tetris' | 'temple-runner' | 'trench-fighter');
     setIsBetModalOpen(true);
   };
 
-  // Filter active matches where the current user is not the creator
-  const activeMatches = matches?.filter(match =>
+  // Split matches into two categories: matches you can join and your own open challenges
+  const matchesToJoin = matches?.filter(match =>
     match.status === "waiting" &&
     match.player1Id !== user?.id &&
+    !match.isPractice
+  ) || [];
+  
+  const yourChallenges = matches?.filter(match =>
+    match.status === "waiting" &&
+    match.player1Id === user?.id &&
     !match.isPractice
   ) || [];
 
@@ -113,15 +225,26 @@ export default function DashboardPage() {
       {/* Dashboard SEO Meta Tags */}
       <SEO 
         title="Game Dashboard" 
-        description="Play and wager on games including Tetris, Temple Runner, and Street Fighter. View your stats, join active matches, and check the leaderboard."
+        description="Play and wager on games including Tetris, Temple Runner, and more. View your stats, join active matches, and check the leaderboard."
         type="website"
       />
       
       <Navbar />
       <main className="container mx-auto px-4 py-8">
-        <h1 className="pixel-font text-4xl text-center mb-8 text-primary">
-          Game Dashboard
-        </h1>
+        <div className="flex items-center justify-center mb-8">
+          <h1 className="pixel-font text-4xl text-center text-primary">
+            Game Dashboard
+          </h1>
+          {wsConnected && (
+            <Badge 
+              variant="outline" 
+              className="ml-4 bg-green-100 text-green-800 border-green-300 flex items-center gap-1"
+            >
+              <Wifi className="h-3 w-3" />
+              Live
+            </Badge>
+          )}
+        </div>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
           {/* Game Selection */}
           <div className="md:col-span-2 space-y-6">
@@ -182,35 +305,48 @@ export default function DashboardPage() {
               </div>
             </div>
 
-            {/* Active Matches */}
+            {/* Challenges to Join */}
             <div>
               <h2 className="text-2xl font-bold mb-4 flex items-center gap-2 pixel-font">
                 <Users className="h-6 w-6" />
-                Available Wager Matches
+                Available Challenges
               </h2>
               <div className="space-y-4">
                 {isMatchesLoading ? (
                   <p className="text-center text-muted-foreground">Loading matches...</p>
-                ) : activeMatches.length > 0 ? (
-                  activeMatches.map((match) => (
+                ) : matchesToJoin.length > 0 ? (
+                  matchesToJoin.map((match: GameMatch) => (
                     <Card key={match.id} className="hover:border-primary transition-all duration-300">
                       <CardContent className="flex justify-between items-center p-4">
                         <div className="space-y-1">
                           <div className="flex items-center gap-2">
                             <Coins className="h-4 w-4" />
                             <p className="pixel-font text-sm">
-                              {match.betAmount} {match.betType === 'xp' ? 'XP' : 'ETH'}
+                              {match.betAmount} {match.betType === 'xp' ? 'XP' : match.cryptoType}
                             </p>
+                            {match.status === 'in_progress' && (
+                              <Badge 
+                                className="ml-2 bg-amber-100 text-amber-800 border-amber-300"
+                              >
+                                Game in Session
+                              </Badge>
+                            )}
                           </div>
                           <p className="text-sm text-muted-foreground">
-                            Created by Player #{match.player1Id}
+                            {match.gameType.charAt(0).toUpperCase() + match.gameType.slice(1)} challenge by Player #{match.player1Id}
                           </p>
+                          {match.status === 'in_progress' && (
+                            <p className="text-xs text-green-600">
+                              Join now for bonus XP!
+                            </p>
+                          )}
                         </div>
                         <Button
                           onClick={() => setLocation(`/game/${match.id}`)}
                           className="pixel-font"
+                          variant={match.status === 'in_progress' ? "secondary" : "default"}
                         >
-                          Accept Challenge
+                          {match.status === 'in_progress' ? 'Join Game' : 'Accept Challenge'}
                         </Button>
                       </CardContent>
                     </Card>
@@ -222,6 +358,42 @@ export default function DashboardPage() {
                 )}
               </div>
             </div>
+            
+            {/* Your Open Challenges */}
+            {yourChallenges.length > 0 && (
+              <div>
+                <h2 className="text-2xl font-bold mb-4 flex items-center gap-2 pixel-font">
+                  <Trophy className="h-6 w-6" />
+                  Your Open Challenges
+                </h2>
+                <div className="space-y-4">
+                  {yourChallenges.map((match) => (
+                    <Card key={match.id} className="hover:border-primary transition-all duration-300 border-dashed border-primary">
+                      <CardContent className="flex justify-between items-center p-4">
+                        <div className="space-y-1">
+                          <div className="flex items-center gap-2">
+                            <Coins className="h-4 w-4" />
+                            <p className="pixel-font text-sm">
+                              {match.betAmount} {match.betType === 'xp' ? 'XP' : match.cryptoType}
+                            </p>
+                          </div>
+                          <p className="text-sm text-muted-foreground">
+                            {match.gameType.charAt(0).toUpperCase() + match.gameType.slice(1)} challenge waiting for opponent
+                          </p>
+                        </div>
+                        <Button
+                          variant="outline"
+                          onClick={() => setLocation(`/game/${match.id}`)}
+                          className="pixel-font"
+                        >
+                          View Challenge
+                        </Button>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Sidebar */}

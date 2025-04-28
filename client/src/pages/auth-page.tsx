@@ -37,41 +37,68 @@ export default function AuthPage() {
     try {
       console.log("Starting combined login flow...");
       
-      // First: Internet Identity login (mocked for now)
-      // In a real implementation, we would integrate with Internet Identity here
+      // First: Real Internet Identity login using AuthClient
       console.log("Starting ICP authentication...");
       
-      // Simulate ICP login
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      // Import AuthClient dynamically to avoid issues with server-side rendering
+      const { AuthClient } = await import('@dfinity/auth-client');
+      const { getOrCreateDeviceFingerprint } = await import('../lib/device-fingerprint');
       
-      // Mock principal for demonstration
-      const mockPrincipal = "5uylz-j7fcd-isj73-gp57f-xwwyy-po2ib-7iboa-fdkdv-nrsam-3bd3r-qqe";
-      localStorage.setItem('icp_principal', mockPrincipal);
+      // Create auth client
+      const authClient = await AuthClient.create();
       
-      // Create a mock user for ICP
-      await fetch("/api/user", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
+      // Get device fingerprint for device-specific identity
+      const deviceId = getOrCreateDeviceFingerprint();
+      
+      // Initiate the Internet Identity login flow
+      await authClient.login({
+        identityProvider: 'https://identity.ic0.app/#authorize',
+        onSuccess: async () => {
+          // Get the authenticated identity and principal
+          const identity = authClient.getIdentity();
+          const principal = identity.getPrincipal().toText();
+          
+          // Store the principal in localStorage
+          localStorage.setItem('icp_principal', principal);
+          
+          // Register the user with the backend, including the device fingerprint
+          const response = await fetch("/api/user", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({ 
+              walletAddress: principal,
+              walletType: "icp",
+              deviceId: deviceId
+            }),
+          });
+          
+          if (!response.ok) {
+            throw new Error('Failed to create user with ICP identity');
+          }
+          
+          toast({
+            title: "Step 1 Complete",
+            description: "Internet Identity authenticated! Connecting with Abstract wallet...",
+          });
+          
+          // Second: Abstract login 
+          console.log("Starting Abstract login...");
+          
+          // Trigger Abstract login - this will open the Abstract modal
+          loginWithAbstract();
         },
-        body: JSON.stringify({ 
-          walletAddress: mockPrincipal,
-          walletType: "icp" 
-        }),
+        onError: (error) => {
+          console.error("ICP authentication error:", error);
+          toast({
+            title: "Internet Identity Authentication Failed",
+            description: "Could not authenticate with Internet Identity. Please try again.",
+            variant: "destructive",
+          });
+          setIsLoading(false);
+        }
       });
-      
-      toast({
-        title: "Step 1 Complete",
-        description: "Internet Identity authenticated! Connecting with Abstract wallet...",
-      });
-
-      // Second: Abstract login 
-      console.log("Starting Abstract login...");
-      
-      // Trigger Abstract login - this will open the Abstract modal
-      loginWithAbstract();
-      
-      // No need to handle redirects as Abstract will handle that
       
     } catch (error) {
       console.error("Combined login error:", error);
@@ -80,7 +107,6 @@ export default function AuthPage() {
         description: "Could not complete the authentication process. Please try again.",
         variant: "destructive",
       });
-    } finally {
       setIsLoading(false);
     }
   };

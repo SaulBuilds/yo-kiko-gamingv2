@@ -14,7 +14,7 @@ import { apiRequest } from "@/lib/queryClient";
 interface BetModalProps {
   open: boolean;
   onClose: () => void;
-  gameType: 'tetris' | 'temple-runner' | 'street-fighter';
+  gameType: 'tetris' | 'temple-runner' | 'trench-fighter';
 }
 
 export function BetModal({ open, onClose, gameType }: BetModalProps) {
@@ -50,8 +50,8 @@ export function BetModal({ open, onClose, gameType }: BetModalProps) {
         case 'temple-runner':
           setLocation(`/temple-runner/${match.id}`);
           break;
-        case 'street-fighter':
-          setLocation(`/street-fighter/match/${match.id}`);
+        case 'trench-fighter':
+          setLocation(`/trench-fighter/match/${match.id}`);
           break;
         default:
           setLocation(`/game/${match.id}`);

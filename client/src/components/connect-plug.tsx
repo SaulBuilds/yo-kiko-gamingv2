@@ -87,7 +87,11 @@ export function ConnectPlug() {
 
   const createUserForICP = async (principal: string) => {
     try {
-      // Call the API to create a user with the ICP principal
+      // Get the device fingerprint
+      const { getOrCreateDeviceFingerprint } = await import('../lib/device-fingerprint');
+      const deviceId = getOrCreateDeviceFingerprint();
+      
+      // Call the API to create a user with the ICP principal and device fingerprint
       const res = await fetch("/api/user", {
         method: "POST",
         headers: {
@@ -95,7 +99,8 @@ export function ConnectPlug() {
         },
         body: JSON.stringify({ 
           walletAddress: principal,
-          walletType: "icp" 
+          walletType: "icp",
+          deviceId: deviceId
         }),
       });
       

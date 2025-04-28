@@ -80,10 +80,12 @@ contract GameBets is ReentrancyGuard, Ownable {
     /**
      * @notice Creates a new bet for a specific match
      * @dev Can be used with either ETH or ERC20 tokens
+     * @dev Follows CEI (Checks-Effects-Interactions) pattern
      * @param matchId The unique identifier for the match
      * @param tokenAddress The address of the ERC20 token, or address(0) for ETH
      */
     function createBet(uint256 matchId, address tokenAddress) external payable {
+        // === CHECKS ===
         require(bets[matchId].player1 == address(0), "Bet already exists");
         
         uint256 betAmount;
@@ -92,13 +94,14 @@ contract GameBets is ReentrancyGuard, Ownable {
             betAmount = msg.value;
             require(betAmount > 0, "Must send ETH for bet");
         } else {
-            // ERC20 bet
+            // ERC20 bet - check allowance
             IERC20 token = IERC20(tokenAddress);
             betAmount = token.allowance(msg.sender, address(this));
             require(betAmount > 0, "Must approve tokens for bet");
-            require(token.transferFrom(msg.sender, address(this), betAmount), "Token transfer failed");
+            require(tokenAddress != address(0), "Invalid token address");
         }
 
+        // === EFFECTS ===
         bets[matchId] = Bet({
             matchId: matchId,
             player1: msg.sender,
@@ -111,14 +114,24 @@ contract GameBets is ReentrancyGuard, Ownable {
         });
 
         emit BetCreated(matchId, msg.sender, tokenAddress, betAmount);
+        
+        // === INTERACTIONS ===
+        // Only perform external calls after state changes
+        if (tokenAddress != address(0)) {
+            // Transfer tokens only after state is updated
+            IERC20 token = IERC20(tokenAddress);
+            require(token.transferFrom(msg.sender, address(this), betAmount), "Token transfer failed");
+        }
     }
 
     /**
      * @notice Allows a second player to accept an existing bet
      * @dev Player must send the same amount of ETH or approve the same amount of tokens
+     * @dev Follows CEI (Checks-Effects-Interactions) pattern
      * @param matchId The identifier of the match with the bet to accept
      */
     function acceptBet(uint256 matchId) external payable {
+        // === CHECKS ===
         Bet storage bet = bets[matchId];
         require(bet.isActive, "Bet is not active");
         require(bet.player2 == address(0), "Bet already accepted");
@@ -129,31 +142,47 @@ contract GameBets is ReentrancyGuard, Ownable {
             // ETH bet
             require(msg.value == bet.amount, "Must match bet amount");
         } else {
-            // ERC20 bet
+            // ERC20 bet - check allowance
+            IERC20 token = IERC20(bet.tokenAddress);
+            require(token.allowance(msg.sender, address(this)) >= bet.amount, "Insufficient token allowance");
+        }
+
+        // === EFFECTS ===
+        bet.player2 = msg.sender;
+        emit BetAccepted(matchId, msg.sender);
+        
+        // === INTERACTIONS ===
+        // Only perform external calls after state changes
+        if (bet.tokenAddress != address(0)) {
             IERC20 token = IERC20(bet.tokenAddress);
             require(token.transferFrom(msg.sender, address(this), bet.amount), "Token transfer failed");
         }
-
-        bet.player2 = msg.sender;
-        emit BetAccepted(matchId, msg.sender);
     }
 
     /**
      * @notice Pays out the bet amount to the winner
      * @dev Can only be called by the contract owner (game authority)
+     * @dev Follows CEI (Checks-Effects-Interactions) pattern
      * @param matchId The identifier of the match
      * @param winner The address of the winner (must be either player1 or player2)
      */
     function payoutBet(uint256 matchId, address winner) external onlyOwner nonReentrant {
+        // === CHECKS ===
         Bet storage bet = bets[matchId];
         require(bet.isActive, "Bet is not active");
         require(!bet.isPaid, "Bet already paid");
         require(winner == bet.player1 || winner == bet.player2, "Invalid winner");
-
+        require(winner != address(0), "Winner cannot be zero address");
+        
         uint256 payout = bet.amount * 2; // Winner gets both bets
+        
+        // === EFFECTS ===
         bet.isActive = false;
         bet.isPaid = true;
+        
+        emit BetPaid(matchId, winner, payout);
 
+        // === INTERACTIONS ===
         if (bet.tokenAddress == address(0)) {
             // ETH payout
             (bool success, ) = winner.call{value: payout}("");
@@ -163,26 +192,30 @@ contract GameBets is ReentrancyGuard, Ownable {
             IERC20 token = IERC20(bet.tokenAddress);
             require(token.transfer(winner, payout), "Token transfer failed");
         }
-
-        emit BetPaid(matchId, winner, payout);
     }
 
     /**
      * @notice Refunds the bet if it has expired
      * @dev Can be called by anyone after the timeout period
+     * @dev Follows CEI (Checks-Effects-Interactions) pattern
      * @param matchId The identifier of the match to refund
      */
     function refundBet(uint256 matchId) external nonReentrant {
+        // === CHECKS ===
         Bet storage bet = bets[matchId];
         require(bet.isActive, "Bet not active");
         require(!bet.isPaid, "Bet already paid");
         require(block.timestamp - bet.timestamp > betTimeoutPeriod, "Bet not expired");
 
+        // === EFFECTS ===
+        bet.isActive = false;
+        bet.isPaid = true;
+
         if (bet.player2 == address(0)) {
             // No player2, refund player1
-            bet.isActive = false;
-            bet.isPaid = true;
-
+            emit BetRefunded(matchId, bet.player1, bet.amount);
+            
+            // === INTERACTIONS ===
             if (bet.tokenAddress == address(0)) {
                 (bool success, ) = bet.player1.call{value: bet.amount}("");
                 require(success, "ETH transfer failed");
@@ -190,27 +223,27 @@ contract GameBets is ReentrancyGuard, Ownable {
                 IERC20 token = IERC20(bet.tokenAddress);
                 require(token.transfer(bet.player1, bet.amount), "Token transfer failed");
             }
-
-            emit BetRefunded(matchId, bet.player1, bet.amount);
         } else {
             // Both players joined, refund both
             uint256 refundAmount = bet.amount;
-            bet.isActive = false;
-            bet.isPaid = true;
-
+            
+            // Emit events before external calls
+            emit BetRefunded(matchId, bet.player1, refundAmount);
+            emit BetRefunded(matchId, bet.player2, refundAmount);
+            
+            // === INTERACTIONS ===
             if (bet.tokenAddress == address(0)) {
+                // Transfer ETH to both players
                 (bool success1, ) = bet.player1.call{value: refundAmount}("");
                 require(success1, "ETH transfer to player1 failed");
                 (bool success2, ) = bet.player2.call{value: refundAmount}("");
                 require(success2, "ETH transfer to player2 failed");
             } else {
+                // Transfer tokens to both players
                 IERC20 token = IERC20(bet.tokenAddress);
                 require(token.transfer(bet.player1, refundAmount), "Token transfer to player1 failed");
                 require(token.transfer(bet.player2, refundAmount), "Token transfer to player2 failed");
             }
-
-            emit BetRefunded(matchId, bet.player1, refundAmount);
-            emit BetRefunded(matchId, bet.player2, refundAmount);
         }
     }
 

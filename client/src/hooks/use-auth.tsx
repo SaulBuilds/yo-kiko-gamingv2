@@ -4,6 +4,7 @@ import { useAccount, useConnect, useDisconnect } from 'wagmi';
 import { User as SelectUser } from "@shared/schema";
 import { getQueryFn, apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import { getOrCreateDeviceFingerprint } from "../lib/device-fingerprint";
 
 type AuthContextType = {
   user: SelectUser | null;
@@ -45,7 +46,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (!address || user || isLoading) return;
 
       try {
-        const res = await apiRequest("POST", "/api/user", { walletAddress: address });
+        // Get or create device ID using our utility function
+        const deviceId = getOrCreateDeviceFingerprint();
+
+        // Send wallet address and device ID to create/retrieve user
+        const res = await apiRequest("POST", "/api/user", { 
+          walletAddress: address,
+          walletType: 'eth', // Default wallet type for non-ICP wallets
+          deviceId: deviceId
+        });
+        
         if (!res.ok) throw new Error("Failed to create user");
 
         const newUser = await res.json();

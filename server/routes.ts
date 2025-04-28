@@ -3,6 +3,7 @@ import { createServer, type Server } from "http";
 import { WebSocketServer, WebSocket } from "ws";
 import { setupAuth } from "./auth";
 import { storage } from "./storage";
+import { db } from "./db";
 import { log } from "./vite";
 import session from "express-session";
 
@@ -32,25 +33,58 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // User routes
   app.post("/api/user", async (req, res) => {
     try {
-      const { walletAddress } = req.body;
+      const { walletAddress, walletType, deviceId } = req.body;
       if (!walletAddress) {
         return res.status(400).json({ error: "Wallet address is required" });
       }
 
-      let user = await storage.getUserByWalletAddress(walletAddress);
-      if (!user) {
-        user = await storage.createUser({
-          walletAddress,
-          username: null,
-          avatar: null,
-        });
-      }
+      // Generate a device fingerprint if not provided
+      const deviceFingerprint = deviceId || 
+        `${req.headers['user-agent'] || 'unknown'}-${req.ip || 'unknown'}`;
+      
+      // For Internet Identity, search with both wallet address and device
+      if (walletType === 'icp') {
+        // Look up existing user by both ICP address and device fingerprint
+        let user = await storage.getUserByWalletAddressAndDevice(walletAddress, deviceFingerprint);
+        
+        if (!user) {
+          // If no user found for this address+device combo, create a new one
+          user = await storage.createUser({
+            walletAddress,
+            walletType: 'icp',
+            deviceId: deviceFingerprint,
+            username: null,
+            avatar: null,
+          });
+          log(`Created new ICP user for device: ${deviceFingerprint}`, "auth");
+        }
+        
+        // Set the session
+        if (req.session) {
+          req.session.userId = user.id;
+          req.session.deviceId = deviceFingerprint;
+        }
+        res.json(user);
+      } else {
+        // For non-ICP wallets, use original wallet-based lookup
+        let user = await storage.getUserByWalletAddress(walletAddress);
+        if (!user) {
+          user = await storage.createUser({
+            walletAddress,
+            walletType: walletType || 'eth',
+            deviceId: deviceFingerprint,
+            username: null,
+            avatar: null,
+          });
+        }
 
-      // Set the session
-      if (req.session) {
-        req.session.userId = user.id;
+        // Set the session
+        if (req.session) {
+          req.session.userId = user.id;
+          req.session.deviceId = deviceFingerprint;
+        }
+        res.json(user);
       }
-      res.json(user);
     } catch (error) {
       console.error("Error creating user:", error);
       res.status(500).json({ error: "Failed to create user" });
@@ -81,8 +115,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(401).json({ error: "Not authenticated" });
       }
 
-      const { xp, isPractice } = req.body;
-      await storage.updateUserXP(req.session.userId, xp, !isPractice);
+      const { xp, isPractice, isMatch } = req.body;
+      console.log(`XP Update - User: ${req.session.userId}, XP: ${xp}, isPractice: ${isPractice}, isMatch: ${isMatch}`);
+      
+      // Only increment games played if it's a new game completion
+      await storage.updateUserXP(
+        req.session.userId, 
+        xp, 
+        !isPractice, // Only update score for non-practice games
+        isMatch ? false : !isPractice // Only increment games played if it's not part of a match and not practice
+      );
 
       const updatedUser = await storage.getUser(req.session.userId);
       res.json(updatedUser);
@@ -189,6 +231,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         isPractice: req.body.isPractice || false,
         timeLimit: req.body.timeLimit
       });
+      
+      // Broadcast the updated matches list to all connected dashboard clients
+      broadcastActiveMatches();
+      
       res.json(match);
     } catch (error) {
       console.error("Error creating match:", error);
@@ -203,6 +249,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
     try {
       const matchId = parseInt(req.params.id);
+      const userId = req.session.userId;
       const { score } = req.body;
       const match = await storage.getGameMatch(matchId);
 
@@ -210,19 +257,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ error: "Match not found" });
       }
 
-      // Update match with score
-      const updates = {
-        status: "completed" as const,
-        endTime: new Date()
-      };
-
-      if (match.player1Id === req.session.userId) {
-        updates.player1Score = score;
-      } else if (match.player2Id === req.session.userId) {
-        updates.player2Score = score;
+      // Mark the player as finished and update their score
+      const updatedMatch = await storage.markPlayerFinished(matchId, userId, score);
+      
+      // Broadcast the updated matches list to all connected dashboard clients
+      broadcastActiveMatches();
+      
+      // Send a message to the specific match room if it exists
+      const matchRoom = `match:${matchId}`;
+      wss.clients.forEach(client => {
+        if (client.readyState === WebSocket.OPEN && (client as any).matchRoom === matchRoom) {
+          client.send(JSON.stringify({
+            type: 'MATCH_UPDATE',
+            match: updatedMatch
+          }));
+        }
+      });
+      
+      // If match is completed, delay a bit to process payout
+      if (updatedMatch.status === 'completed') {
+        await storage.processGamePayout(matchId);
       }
-
-      const updatedMatch = await storage.updateGameMatch(matchId, updates);
+      
+      // Notify this player of the result
+      await storage.notifyGameResult(matchId, userId);
+      
       res.json(updatedMatch);
     } catch (error) {
       console.error("Error finishing match:", error);
@@ -234,18 +293,71 @@ export async function registerRoutes(app: Express): Promise<Server> {
     const leaderboard = await storage.getLeaderboard();
     res.json(leaderboard);
   });
+  
+  // Admin endpoint to view all users (for testing purposes)
+  app.get("/api/admin/users", async (_req, res) => {
+    try {
+      // Get all users from the database
+      const result = await db.query.users.findMany();
+      res.json(result);
+    } catch (error) {
+      console.error("Error fetching all users:", error);
+      res.status(500).json({ error: "Failed to fetch users" });
+    }
+  });
 
-  // WebSocket handling
+  // WebSocket handling - one for games and one for ICP betting
   const wss = new WebSocketServer({
     server: httpServer,
     path: '/game-ws'
   });
 
+  // Create separate WebSocket server for ICP bet updates
+  const betsWss = new WebSocketServer({
+    server: httpServer,
+    path: '/icp-bets-ws'
+  });
+
   const gameStates = new Map<number, Map<number, GameState>>();
-  const clients = new Map<WebSocket, number>();
+  const clients = new Map<WebSocket, { matchId?: number, userId?: number, dashboardUser: boolean }>();
+  const betClients = new Map<WebSocket, { matchId?: number, userId?: number }>();
+
+  // Helper function to broadcast active matches to all dashboard clients
+  const broadcastActiveMatches = async () => {
+    try {
+      const activeMatches = await storage.getActiveMatches();
+      log(`Broadcasting ${activeMatches.length} active matches to all dashboard clients`, "websocket");
+      
+      let broadcastCount = 0;
+      wss.clients.forEach((client) => {
+        if (client.readyState === WebSocket.OPEN && clients.get(client)?.dashboardUser) {
+          broadcastCount++;
+          client.send(JSON.stringify({
+            type: "activeMatches",
+            matches: activeMatches
+          }));
+        }
+      });
+      
+      log(`Sent active matches to ${broadcastCount} dashboard clients`, "websocket");
+      
+      // If no clients are connected, schedule a retry
+      if (broadcastCount === 0 && wss.clients.size > 0) {
+        log("No dashboard clients ready, scheduling retry broadcast in 1s", "websocket");
+        setTimeout(broadcastActiveMatches, 1000);
+      }
+    } catch (error) {
+      log(`Error broadcasting matches: ${error}`, "websocket");
+    }
+  };
 
   wss.on("connection", (ws) => {
     log("New WebSocket connection established", "websocket");
+    // By default, track this as a dashboard client
+    clients.set(ws, { dashboardUser: true });
+
+    // Send active matches immediately upon connection
+    broadcastActiveMatches();
 
     ws.on("message", async (data) => {
       try {
@@ -253,9 +365,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
         log(`Received message: ${JSON.stringify(message)}`, "websocket");
 
         switch (message.type) {
+          case "dashboard": {
+            // Client is requesting to receive dashboard updates (match challenges)
+            const { userId } = message;
+            clients.set(ws, { userId, dashboardUser: true });
+            log(`User ${userId} connected to dashboard`, "websocket");
+            // Send the most recent active matches
+            broadcastActiveMatches();
+            break;
+          }
+            
           case "join": {
             const { matchId, userId } = message;
-            clients.set(ws, matchId);
+            clients.set(ws, { matchId, userId, dashboardUser: false });
             log(`User ${userId} joined match ${matchId}`, "websocket");
 
             if (!gameStates.has(matchId)) {
@@ -269,6 +391,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 status: "in_progress",
                 startTime: new Date()
               });
+              
+              // Broadcast updates since match status changed
+              broadcastActiveMatches();
             }
             break;
           }
@@ -279,7 +404,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             if (matchStates) {
               matchStates.set(userId, state);
               wss.clients.forEach((client) => {
-                if (client.readyState === WebSocket.OPEN && clients.get(client) === matchId) {
+                if (client.readyState === WebSocket.OPEN && clients.get(client)?.matchId === matchId) {
                   client.send(JSON.stringify({
                     type: "gameState",
                     states: Array.from(matchStates.entries())
@@ -292,25 +417,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
           case "gameOver": {
             const { matchId, userId, score } = message;
-            log(`Game over for match ${matchId}, score: ${score}`, "websocket");
-            const match = await storage.getGameMatch(matchId);
-            if (match) {
-              const updates: any = {
-                status: "completed",
-                endTime: new Date()
-              };
-
-              if (match.player1Id === userId) {
-                updates.player1Score = score;
-              } else if (match.player2Id === userId) {
-                updates.player2Score = score;
-              }
-
-              if (updates.player1Score && updates.player2Score) {
-                updates.winnerId = updates.player1Score > updates.player2Score ? match.player1Id : match.player2Id;
-              }
-
-              await storage.updateGameMatch(matchId, updates);
+            log(`Game over for match ${matchId}, user ${userId}, score: ${score}`, "websocket");
+            
+            try {
+              // Mark the player as finished with their score
+              const updatedMatch = await storage.markPlayerFinished(matchId, userId, score);
+              
+              // Notify this player that we processed their result
+              await storage.notifyGameResult(matchId, userId);
+              
+              // Broadcast updates since match status changed
+              broadcastActiveMatches();
+              
+              // Send an update to all clients in this match
+              wss.clients.forEach((client) => {
+                if (client.readyState === WebSocket.OPEN && clients.get(client)?.matchId === matchId) {
+                  client.send(JSON.stringify({
+                    type: "matchUpdate",
+                    match: updatedMatch
+                  }));
+                }
+              });
+              
+              log(`Updated match ${matchId} status: ${updatedMatch.status}`, "websocket");
+            } catch (error) {
+              log(`Error processing game over: ${error}`, "websocket");
             }
             break;
           }
@@ -321,10 +452,145 @@ export async function registerRoutes(app: Express): Promise<Server> {
     });
 
     ws.on("close", () => {
-      const matchId = clients.get(ws);
-      log(`Connection closed for match ${matchId}`, "websocket");
+      const client = clients.get(ws);
+      log(`Connection closed for user ${client?.userId}, match ${client?.matchId}`, "websocket");
       clients.delete(ws);
     });
+  });
+
+  // Handle ICP bet updates via WebSocket
+  betsWss.on("connection", (ws) => {
+    log("New ICP bet WebSocket connection established", "websocket");
+
+    ws.on("message", async (data) => {
+      try {
+        const message = JSON.parse(data.toString());
+        log(`Received bet message: ${JSON.stringify(message)}`, "websocket");
+
+        switch (message.type) {
+          case "subscribe": {
+            // Client wants to subscribe to bet updates for a specific match
+            const { matchId, userId } = message;
+            betClients.set(ws, { matchId, userId });
+            log(`User ${userId} subscribed to bet updates for match ${matchId}`, "websocket");
+            break;
+          }
+          
+          case "bet_create": {
+            // Client is creating a new bet using ICP
+            const { matchId, userId, amount, tokenAddress, receiver } = message;
+            log(`User ${userId} creating a bet of ${amount} for match ${matchId}`, "websocket");
+            
+            // Broadcast to all clients subscribed to this match
+            betsWss.clients.forEach((client) => {
+              if (client.readyState === WebSocket.OPEN && betClients.get(client)?.matchId === matchId) {
+                client.send(JSON.stringify({
+                  type: "bet_created",
+                  matchId,
+                  userId,
+                  amount,
+                  tokenAddress,
+                  receiver,
+                  timestamp: new Date().toISOString()
+                }));
+              }
+            });
+            break;
+          }
+          
+          case "bet_accept": {
+            // Client is accepting an existing bet
+            const { matchId, userId } = message;
+            log(`User ${userId} accepting bet for match ${matchId}`, "websocket");
+            
+            // Broadcast to all clients subscribed to this match
+            betsWss.clients.forEach((client) => {
+              if (client.readyState === WebSocket.OPEN && betClients.get(client)?.matchId === matchId) {
+                client.send(JSON.stringify({
+                  type: "bet_accepted",
+                  matchId,
+                  userId,
+                  timestamp: new Date().toISOString()
+                }));
+              }
+            });
+            break;
+          }
+          
+          case "bet_payout": {
+            // Bet payout has occurred
+            const { matchId, winner } = message;
+            log(`Bet payout for match ${matchId} to winner ${winner}`, "websocket");
+            
+            // Broadcast to all clients subscribed to this match
+            betsWss.clients.forEach((client) => {
+              if (client.readyState === WebSocket.OPEN && betClients.get(client)?.matchId === matchId) {
+                client.send(JSON.stringify({
+                  type: "bet_paid",
+                  matchId,
+                  winner,
+                  timestamp: new Date().toISOString()
+                }));
+              }
+            });
+            break;
+          }
+        }
+      } catch (error) {
+        log(`ICP bet WebSocket error: ${error}`, "websocket");
+      }
+    });
+
+    ws.on("close", () => {
+      const client = betClients.get(ws);
+      log(`ICP bet connection closed for user ${client?.userId}, match ${client?.matchId}`, "websocket");
+      betClients.delete(ws);
+    });
+  });
+
+  // Add a route to create ICP bets via REST API
+  app.post("/api/icp/bets/:matchId", async (req, res) => {
+    if (!req.session?.userId) {
+      return res.status(401).json({ error: "Not authenticated" });
+    }
+
+    try {
+      const matchId = parseInt(req.params.matchId);
+      const { amount, tokenAddress, receiver } = req.body;
+      
+      if (!amount || !tokenAddress || !receiver) {
+        return res.status(400).json({ error: "Missing required parameters" });
+      }
+      
+      log(`Creating ICP bet for match ${matchId} with amount ${amount}`, "icp-bets");
+      
+      // In a production app, this would call the ICP canister directly
+      // For now, we'll just simulate the response
+      
+      // Notify clients via WebSocket
+      betsWss.clients.forEach((client) => {
+        if (client.readyState === WebSocket.OPEN && betClients.get(client)?.matchId === matchId) {
+          client.send(JSON.stringify({
+            type: "bet_created",
+            matchId,
+            userId: req.session.userId,
+            amount,
+            tokenAddress,
+            receiver,
+            timestamp: new Date().toISOString()
+          }));
+        }
+      });
+      
+      res.json({
+        success: true,
+        matchId,
+        transactionId: `icp-bet-${matchId}-${Date.now()}`
+      });
+    } catch (error) {
+      console.error("Error creating ICP bet:", error);
+      res.status(500).json({ error: "Failed to create ICP bet" });
+    }
   });
 
   setupAuth(app);

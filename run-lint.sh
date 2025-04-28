@@ -2,4 +2,4 @@
 
 # Run ESLint
 echo "Running linter..."
-npx eslint . --ext .js,.jsx,.ts,.tsx "$@"
+npx eslint --config eslint.config.js . --ext .js,.jsx,.ts,.tsx "$@"

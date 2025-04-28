@@ -478,17 +478,29 @@ export function Tetris({ initialState, onStateChange, onGameOver, onSaveScore }:
 
   return (
     <div
-      className="flex flex-col items-center max-h-[95vh] overflow-hidden touch-none"
-      onTouchStart={handleTouchStart}
-      onTouchMove={handleTouchMove}
-      onTouchEnd={handleTouchEnd}
+      className="flex flex-col items-center max-h-[95vh] overflow-hidden touch-none select-none"
+      onTouchStart={(e) => {
+        e.preventDefault(); // Prevent browser's default behavior
+        handleTouchStart(e);
+      }}
+      onTouchMove={(e) => {
+        e.preventDefault(); // Prevent browser refresh and selection
+        handleTouchMove(e);
+      }}
+      onTouchEnd={(e) => {
+        e.preventDefault(); // Prevent default touch behavior
+        handleTouchEnd(e);
+      }}
     >
       <div
-        className="relative grid grid-cols-10 gap-px bg-primary/20 p-2 rounded-lg shadow-lg game-board"
+        className="relative grid grid-cols-10 gap-px bg-primary/20 p-2 rounded-lg shadow-lg game-board select-none"
         style={{
           width: `${BOARD_WIDTH * CELL_SIZE}px`,
           height: `${(BOARD_HEIGHT + 1) * CELL_SIZE}px`,
           touchAction: 'none',
+          userSelect: 'none',
+          WebkitUserSelect: 'none',
+          WebkitTouchCallout: 'none',
           border: '2px solid rgba(var(--primary), 0.2)'
         }}
       >
